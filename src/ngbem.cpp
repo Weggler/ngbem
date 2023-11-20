@@ -363,12 +363,12 @@ namespace ngbem
           space->GetDofNrs(ei, dnumsi); // mapping to global dof
           space->GetDofNrs(ej, dnumsj);
 
-          Vector<> shapei(feli.GetNDof());
-          Vector<> shapej(felj.GetNDof());
+          FlatVector<> shapei(feli.GetNDof(), lh);
+          FlatVector<> shapej(felj.GetNDof(), lh);
           // cout << dnumsi.length() << endl;
           //  return;
 
-          Matrix elmat(feli.GetNDof(), felj.GetNDof()); // e.g. 3 x 3
+          FlatMatrix elmat(feli.GetNDof(), felj.GetNDof(), lh); // e.g. 3 x 3
           elmat = 0;
 
           
@@ -497,7 +497,7 @@ namespace ngbem
                       elmat += fac*kernel* shapei * Trans(shapej);
                     }
                 
-              // cout << "new elmat = " << endl << elmat << endl;
+                // cout << "new elmat = " << endl << elmat << endl;
             }
             else if (intCase == 1) {
               //common edge
