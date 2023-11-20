@@ -466,121 +466,41 @@ namespace ngbem
               elmat = I;
             }
           }
-          else {
-            // 3d cases
-
-            if (intCase == 0) {
-              //identical panel
-
-              /*
-              IntegrationPoint ip1(0,0,0,  wi[0]);  // weight not used
-              IntegrationPoint ip2(1,0,0,  wi[0]);
-              IntegrationPoint ip3(0,1,0,  wi[0]);
-
-              Vec<3> p1, p2, p3;              
-              trafoi.CalcPoint(ip1, p1);
-              trafoi.CalcPoint(ip2, p2);
-              trafoi.CalcPoint(ip3, p3);
-
-              Mat<3, 1> u, v;
-              u.Col(0) = p2 - p1;
-              v.Col(0) = p3 - p2;
-              //cout << u << " " << v << endl;
-
-              FlatMatrix<> eta3(1, xi.Size(), lh);
-              //FlatVector weta3(xi.Size(), lh);
-
-              for (int in = 0; in < xi.Size(); in++ ) {
-                eta3(0, in) = xi[in];
-                //weta3[in] = wi[in];
-              }
-              //cout << eta3 << endl;
-
-              FlatMatrix<> e_mat(1, xi.Size(), lh);
-              e_mat = 1;
-
-              double JT = L2Norm(Cross(u.Col(0),v.Col(0)));
-
-              FlatMatrix<> G12(3, xi.Size(), lh);
-              FlatMatrix<> G34(3, xi.Size(), lh);
-              FlatMatrix<> G56(3, xi.Size(), lh);
-
-              G12 = u*eta3+v*e_mat;
-              G34 = u*e_mat+v*eta3;
-              G56 = v*(e_mat-eta3)-u*eta3;
-
-              //cout << G56 << endl;
-
-              for (int p = 0; p < xi.Size(); p++) 
-                I += 2 * wi[p] * ( 1.0/ L2Norm( G12.Col(p) ) + 
-                                   1.0/ L2Norm( G34.Col(p) ) + 
-                                   1.0/ L2Norm( G56.Col(p) ) );   // Gauss kernel
-
+          else
+            {
+              // 3d cases
               
-              I = I * (JT * JT) / 4 / Pi / 6;
-              elmat = I;
-              cout << "identic panely, elmat = " << elmat << endl;
-              */
-              
-              /**/
-              //cout << 3 << "-d , P: " << p1 << p2 << p3 << endl;
+              if (intCase == 0) {
+                //identical panel
+                
 
-              // Sauter-Schwab, page 240 German edition
-              elmat = 0.0;
-              for (int k = 0; k < identic_weights.Size(); k++)
-                for (int l = 0; l < 6; l++)
-                  {
-                    Vec<4> xy = identic_Duffies[l][k];
-                    IntegrationPoint xhat(xy(0)-xy(1), xy(1), 0, 0);
-                    IntegrationPoint yhat(xy(2)-xy(3), xy(3), 0, 0);
-                    
-                    MappedIntegrationPoint<2,3> mipx(xhat, trafoi);
-                    MappedIntegrationPoint<2,3> mipy(yhat, trafoi);
-
-                    Vec<3> x = mipx.Point();
-                    Vec<3> y = mipy.Point();
-
-                    double kernel = 1.0 / (4*M_PI*L2Norm(x-y));
-                    
-                    feli.CalcShape (xhat, shapei);
-                    feli.CalcShape (yhat, shapej);
-                    double fac = mipx.GetMeasure()*mipy.GetMeasure() * identic_weights[k];
-                    elmat += fac*kernel* shapei * Trans(shapej);
-                  }
-
+                // Sauter-Schwab, page 240 German edition
+                elmat = 0.0;
+                for (int k = 0; k < identic_weights.Size(); k++)
+                  for (int l = 0; l < 6; l++)
+                    {
+                      Vec<4> xy = identic_Duffies[l][k];
+                      IntegrationPoint xhat(xy(0)-xy(1), xy(1), 0, 0);
+                      IntegrationPoint yhat(xy(2)-xy(3), xy(3), 0, 0);
+                      
+                      MappedIntegrationPoint<2,3> mipx(xhat, trafoi);
+                      MappedIntegrationPoint<2,3> mipy(yhat, trafoj);
+                      
+                      Vec<3> x = mipx.Point();
+                      Vec<3> y = mipy.Point();
+                      
+                      double kernel = 1.0 / (4*M_PI*L2Norm(x-y));
+                      
+                      feli.CalcShape (xhat, shapei);
+                      felj.CalcShape (yhat, shapej);
+                      double fac = mipx.GetMeasure()*mipy.GetMeasure() * identic_weights[k];
+                      elmat += fac*kernel* shapei * Trans(shapej);
+                    }
+                
               // cout << "new elmat = " << endl << elmat << endl;
             }
             else if (intCase == 1) {
               //common edge
-              /**/
-
-              /*
-              Vec<3> u, v, w;
-              commonEdgeVec(u, v, w, verti, vertj, mesh);
-              //cout << u << endl << v << endl << w << endl;
-              I = 0;
-              double Jtau = L2Norm(Cross(u,v));
-              double JT = L2Norm(Cross(u,w));
-
-              double G1, G2, G3, G4, G5;
-
-              for (int k = 0; k < xi.Size(); k++) {
-                for (int l = 0; l < xi.Size(); l++) {
-                  G1 = L2Norm(xi[k]*u+xi[l]*v-(1-xi[k])*w);
-                  I = I + wi[k]*wi[l]/G1;
-                  G2 = L2Norm(xi[k]*xi[l]*u+v-xi[k]*(1-xi[l])*w);
-                  G3 = L2Norm(-xi[k]*u+(1-xi[k])*v-xi[k]*xi[l]*w);
-                  G4 = L2Norm(-xi[k]*xi[l]*u+xi[k]*(1-xi[l])*v-w);
-                  G5 = L2Norm(-xi[k]*xi[l]*u+(1-xi[k]*xi[l])*v-xi[k]*w);
-                  I = I + wi[k]*wi[l] * xi[k] * ( 1/G2 + 1/G3 + 1/G4 + 1/G5 );
-                }
-              }
-              I = I * Jtau * JT / 4 / Pi / 6;
-              elmat = I;
-
-              cout << "common edge: " << I << endl;
-              */
-              
 
               const EDGE * edges = ElementTopology::GetEdges (ET_TRIG);
               int cex, cey;
@@ -632,44 +552,13 @@ namespace ngbem
                     double kernel = 1.0 / (4*M_PI*L2Norm(x-y));
                     
                     feli.CalcShape (xhat, shapei);
-                    feli.CalcShape (yhat, shapej);
+                    felj.CalcShape (yhat, shapej);
                     double fac = mipx.GetMeasure()*mipy.GetMeasure() * common_edge_weights[l][k];
                     elmat += fac*kernel* shapei * Trans(shapej);
                   }
-
-              // cout << elmat << endl;
-              /**/
-              // /cout << I << endl;
-              //cout << 3 << "-d , P: " << p1 << p2 << p3 << endl;
             }
             else if (intCase == 2) {
               //common vertex
-
-              /*
-              Vec<3> r1, r2, rt1, rt2;
-              commonVertexVec(r1, r2, rt1, rt2, verti, vertj, mesh);
-              //cout << r1 << endl << r2 << endl << rt1 << endl << rt2 << endl;
-              I = 0;
-              double Jtau = L2Norm(Cross(rt1,rt2));
-              double JT = L2Norm(Cross(r1,r2));
-
-              for (int p = 0; p < xi.Size(); p++) {
-                for (int k = 0; k < xi.Size(); k++) {
-                  for (int l = 0; l < xi.Size(); l++) {
-                    I = I + wi[p] * wi[k] * wi[l] * xi[k] * ( 1/L2Norm(rt1 + xi[p] * rt2 - xi[k] * (r1 + xi[l] * r2)) + 1/L2Norm(xi[k] * (rt1 + xi[l] * rt2)- (r1 + xi[p] * r2)) );
-                  }
-                }
-              }
-              I = I * Jtau * JT / 4 / Pi / 3;
-              elmat = I;
-
-              
-              cout << I << endl;
-              //cout << 3 << "-d , P: " << p1 << p2 << p3 << endl;
-              */
-
-
-
 
               int cvx=-1, cvy=-1;
               for (int cx = 0; cx < 3; cx++)
@@ -718,63 +607,13 @@ namespace ngbem
                     double kernel = 1.0 / (4*M_PI*L2Norm(x-y));
                     
                     feli.CalcShape (xhat, shapei);
-                    feli.CalcShape (yhat, shapej);
+                    felj.CalcShape (yhat, shapej);
                     double fac = mipx.GetMeasure()*mipy.GetMeasure() * common_vertex_weights[k];
                     elmat += fac*kernel* shapei * Trans(shapej);
                   }
             }
             else {
               //disjoint panels
-              /**/
-              /*
-              Vec<3> A,u,v,B,w,z;
-              mesh->GetPoint(verti[0], A);
-              mesh->GetPoint(verti[1], u);
-              mesh->GetPoint(verti[2], v);
-              mesh->GetPoint(vertj[0], B);
-              mesh->GetPoint(vertj[1], w);
-              mesh->GetPoint(vertj[2], z);
-              u = u - A;
-              v = v - A;
-              w = w - B;
-              z = z - B;
-            
-              double J = L2Norm(Cross(u, v));
-              J *= L2Norm(Cross(w, z));
-
-              // for (int k=0; k<7; k++)
-              for (auto ipx : irtrig)
-                {
-                  // double ksi1 = quadTriPoints1[k];
-                  // double ksi2 = quadTriPoints2[k];
-                  // double wksi = quadTriWeights[k];
-                  double ksi1 = ipx(0);
-                  double ksi2 = ipx(1);
-                  double wksi = ipx.Weight();
-                  double x1 = A[0]+ksi1*u[0]+ksi2*v[0];
-                  double x2 = A[1]+ksi1*u[1]+ksi2*v[1];
-                  double x3 = A[2]+ksi1*u[2]+ksi2*v[2];
-                  // for (int l=0; l<7; l++)
-                  for (auto ipy : irtrig)
-                    {
-                      // double eta1 = quadTriPoints1[l];
-                      // double eta2 = quadTriPoints2[l];
-                      // double weta = quadTriWeights[l];
-                      double eta1 = ipy(0);
-                      double eta2 = ipy(1);
-                      double weta = ipy.Weight();
-                      double xy1 = x1-B[0]-eta1*w[0]-eta2*z[0];
-                      double xy2 = x2-B[1]-eta1*w[1]-eta2*z[1];
-                      double xy3 = x3-B[2]-eta1*w[2]-eta2*z[2];
-
-                      I += wksi*weta/sqrt(xy1*xy1+xy2*xy2+xy3*xy3);
-                    }
-                }
-
-              I = J * I / Pi / 4.0;
-              elmat = I;
-              // cout << "orig, I = " << I << endl;
-              */
               
               elmat = 0.0;
               for (auto ipx : irtrig)              
@@ -789,20 +628,15 @@ namespace ngbem
                     double kernel = 1.0 / (4*M_PI*L2Norm(x-y));
                     
                     feli.CalcShape (ipx, shapei);
-                    feli.CalcShape (ipy, shapej);
+                    felj.CalcShape (ipy, shapej);
                     double fac = mipx.GetMeasure()*mipy.GetMeasure() * ipx.Weight()*ipy.Weight();
                     elmat += fac*kernel* shapei * Trans(shapej);
                   }
             }
           }
 
-          // tmpmat = I;
-          // elmat += tmpmat;
-          //cout << elmat << endl;
-
           for (int ii = 0; ii < dnumsi.Size(); ii++)
             for (int jj = 0; jj < dnumsj.Size(); jj++)
-              //if (ii != jj)
               matrix(mapglob2bnd[dnumsi[ii]], mapglob2bnd[dnumsj[jj]]) += elmat(ii, jj);
         }
   }
