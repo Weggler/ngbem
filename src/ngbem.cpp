@@ -331,10 +331,11 @@ namespace ngbem
         }
 
 
-    
-    
 
     auto mesh = space->GetMeshAccess();
+    auto evaluator = space->GetEvaluator(BND);
+
+    
     for (int i = 0; i < mesh->GetNSE(); i++)
       for (int j = 0; j < mesh->GetNSE(); j++)
         {
@@ -501,9 +502,12 @@ namespace ngbem
                       
                       double kernel = 1.0 / (4*M_PI*L2Norm(x-y));
                       
-                      feli.CalcShape (xhat, shapei);
-                      felj.CalcShape (yhat, shapej);
-                      double fac = mipx.GetMeasure()*mipy.GetMeasure() * identic_weights[k];
+                      // feli.CalcShape (xhat, shapei);
+                      // felj.CalcShape (yhat, shapej);
+                      evaluator->CalcMatrix(feli, mipx, Trans(shapei.AsMatrix(feli.GetNDof(),1)), lh);
+                      evaluator->CalcMatrix(felj, mipy, Trans(shapej.AsMatrix(felj.GetNDof(),1)), lh);
+                      
+                      double fac = mipx.GetMeasure()*mipy.GetMeasure()*identic_weights[k];
                       elmat += fac*kernel* shapei * Trans(shapej);
                     }
                 
@@ -562,8 +566,11 @@ namespace ngbem
 
                     double kernel = 1.0 / (4*M_PI*L2Norm(x-y));
                     
-                    feli.CalcShape (xhat, shapei);
-                    felj.CalcShape (yhat, shapej);
+                    // feli.CalcShape (xhat, shapei);
+                    // felj.CalcShape (yhat, shapej);
+                    evaluator->CalcMatrix(feli, mipx, Trans(shapei.AsMatrix(feli.GetNDof(),1)), lh);
+                    evaluator->CalcMatrix(felj, mipy, Trans(shapej.AsMatrix(felj.GetNDof(),1)), lh);
+                    
                     double fac = mipx.GetMeasure()*mipy.GetMeasure() * common_edge_weights[l][k];
                     elmat += fac*kernel* shapei * Trans(shapej);
                   }
@@ -618,9 +625,12 @@ namespace ngbem
 
                     double kernel = 1.0 / (4*M_PI*L2Norm(x-y));
                     
-                    feli.CalcShape (xhat, shapei);
-                    felj.CalcShape (yhat, shapej);
-                    double fac = mipx.GetMeasure()*mipy.GetMeasure() * common_vertex_weights[k];
+                    // feli.CalcShape (xhat, shapei);
+                    // felj.CalcShape (yhat, shapej);
+                    evaluator->CalcMatrix(feli, mipx, Trans(shapei.AsMatrix(feli.GetNDof(),1)), lh);
+                    evaluator->CalcMatrix(felj, mipy, Trans(shapej.AsMatrix(felj.GetNDof(),1)), lh);
+                    
+                    double fac = mipx.GetMeasure()*mipy.GetMeasure()*common_vertex_weights[k];
                     elmat += fac*kernel* shapei * Trans(shapej);
                   }
             }
@@ -678,28 +688,27 @@ namespace ngbem
               FlatMatrix<> shapesi(feli.GetNDof(), irtrig.Size(), lh);
               FlatMatrix<> shapesj(felj.GetNDof(), irtrig.Size(), lh);
               FlatMatrix<> kernel_shapesj(felj.GetNDof(), irtrig.Size(), lh);
-              FlatVector<> sumj(felj.GetNDof(), lh);
-              feli.CalcShape (irtrig, shapesi);
-              felj.CalcShape (irtrig, shapesj);
+
+              
+              // feli.CalcShape (irtrig, shapesi);
+              // felj.CalcShape (irtrig, shapesj);
+              evaluator -> CalcMatrix(feli, mirx, Trans(shapesi), lh);
+              evaluator -> CalcMatrix(felj, miry, Trans(shapesj), lh);
 
               RegionTimer r2(t_disjoint2);
               kernel_shapesj = 0;
               for (int ix = 0; ix < irtrig.Size(); ix++)
-                {
-                  sumj = 0;
-                  for (int iy = 0; iy < irtrig.Size(); iy++)
-                    {
-                      Vec<3> x = mirx[ix].GetPoint();
-                      Vec<3> y = miry[iy].GetPoint();
+                for (int iy = 0; iy < irtrig.Size(); iy++)
+                  {
+                    Vec<3> x = mirx[ix].GetPoint();
+                    Vec<3> y = miry[iy].GetPoint();
                     
-                      double kernel = 1.0 / (4*M_PI*L2Norm(x-y));
-                      
-                      double fac = mirx[ix].GetWeight()*miry[iy].GetWeight();
-                      // sumj += fac*kernel*shapesj.Col(iy);
-                      kernel_shapesj.Col(ix) += fac*kernel*shapesj.Col(iy);
-                    }
-                  // elmat += shapesi.Col(ix) * Trans(sumj);
-                }
+                    double kernel = 1.0 / (4*M_PI*L2Norm(x-y));
+                    double fac = mirx[ix].GetWeight()*miry[iy].GetWeight();
+                    // double fac = irtrig[ix].Weight()*irtrig[iy].Weight();
+                    kernel_shapesj.Col(ix) += fac*kernel*shapesj.Col(iy);
+                  }
+
               elmat += shapesi * Trans(kernel_shapesj);
             }
           }
