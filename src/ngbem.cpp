@@ -260,7 +260,15 @@ namespace ngbem
     
     Array<Vec<4>> identic_Duffies[6];
     Array<double> identic_weights;
-    
+
+    static Timer tall("SingleLayer - all");
+    static Timer t_identic("SingleLayer - identic panel");
+    static Timer t_common_vertex("SingleLayer - common vertex");        
+    static Timer t_common_edge("SingleLayer - common edge");        
+    static Timer t_disjoint("SingleLayer - disjoint");
+    static Timer t_disjoint2("SingleLayer - disjoint2");        
+    RegionTimer reg(tall);
+
     for (auto ipeta : irhex)
       for (auto ipxi : irsegm)
         {
@@ -472,6 +480,8 @@ namespace ngbem
               
               if (intCase == 0) {
                 //identical panel
+                RegionTimer reg(t_identic);    
+    
                 
 
                 // Sauter-Schwab, page 240 German edition
@@ -501,6 +511,7 @@ namespace ngbem
             }
             else if (intCase == 1) {
               //common edge
+              RegionTimer reg(t_common_edge);    
 
               const EDGE * edges = ElementTopology::GetEdges (ET_TRIG);
               int cex, cey;
@@ -559,6 +570,7 @@ namespace ngbem
             }
             else if (intCase == 2) {
               //common vertex
+              RegionTimer reg(t_common_vertex);    
 
               int cvx=-1, cvy=-1;
               for (int cx = 0; cx < 3; cx++)
@@ -614,8 +626,12 @@ namespace ngbem
             }
             else {
               //disjoint panels
+              RegionTimer r(t_disjoint);    
               
               elmat = 0.0;
+
+              /*
+                // naive version
               for (auto ipx : irtrig)              
                 for (auto ipy : irtrig)              
                   {
@@ -632,6 +648,59 @@ namespace ngbem
                     double fac = mipx.GetMeasure()*mipy.GetMeasure() * ipx.Weight()*ipy.Weight();
                     elmat += fac*kernel* shapei * Trans(shapej);
                   }
+              */
+
+              /*
+              // shapes+geom out of loop
+              auto & mirx = trafoi(irtrig, lh);
+              auto & miry = trafoj(irtrig, lh);
+              FlatMatrix<> shapesi(feli.GetNDof(), irtrig.Size(), lh);
+              FlatMatrix<> shapesj(felj.GetNDof(), irtrig.Size(), lh);
+              feli.CalcShape (irtrig, shapesi);
+              felj.CalcShape (irtrig, shapesj);
+
+              for (int ix = 0; ix < irtrig.Size(); ix++)
+                for (int iy = 0; iy < irtrig.Size(); iy++)
+                  {
+                    Vec<3> x = mirx[ix].GetPoint();
+                    Vec<3> y = miry[iy].GetPoint();
+                    
+                    double kernel = 1.0 / (4*M_PI*L2Norm(x-y));
+                    
+                    double fac = mirx[ix].GetWeight()*miry[iy].GetWeight();
+                    elmat += fac*kernel* shapesi.Col(ix) * Trans(shapesj.Col(iy));
+                  }
+              */
+
+              // shapes+geom out of loop, matrix multiplication
+              auto & mirx = trafoi(irtrig, lh);
+              auto & miry = trafoj(irtrig, lh);
+              FlatMatrix<> shapesi(feli.GetNDof(), irtrig.Size(), lh);
+              FlatMatrix<> shapesj(felj.GetNDof(), irtrig.Size(), lh);
+              FlatMatrix<> kernel_shapesj(felj.GetNDof(), irtrig.Size(), lh);
+              FlatVector<> sumj(felj.GetNDof(), lh);
+              feli.CalcShape (irtrig, shapesi);
+              felj.CalcShape (irtrig, shapesj);
+
+              RegionTimer r2(t_disjoint2);
+              kernel_shapesj = 0;
+              for (int ix = 0; ix < irtrig.Size(); ix++)
+                {
+                  sumj = 0;
+                  for (int iy = 0; iy < irtrig.Size(); iy++)
+                    {
+                      Vec<3> x = mirx[ix].GetPoint();
+                      Vec<3> y = miry[iy].GetPoint();
+                    
+                      double kernel = 1.0 / (4*M_PI*L2Norm(x-y));
+                      
+                      double fac = mirx[ix].GetWeight()*miry[iy].GetWeight();
+                      // sumj += fac*kernel*shapesj.Col(iy);
+                      kernel_shapesj.Col(ix) += fac*kernel*shapesj.Col(iy);
+                    }
+                  // elmat += shapesi.Col(ix) * Trans(sumj);
+                }
+              elmat += shapesi * Trans(kernel_shapesj);
             }
           }
 
