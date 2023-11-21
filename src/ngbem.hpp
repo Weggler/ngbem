@@ -7,7 +7,7 @@ namespace ngbem
 {
   using namespace ngcomp;
 
-
+  
   class SingleLayerPotential : public SpecialElement
   {
     shared_ptr<FESpace> space;
