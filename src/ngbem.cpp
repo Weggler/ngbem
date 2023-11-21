@@ -258,7 +258,7 @@ namespace ngbem
     IntegrationRule irtrig(ET_TRIG, 10); // order=4
 
     
-    Array<Vec<4>> identic_Duffies[6];
+    Array<Vec<4>> identic_Duffies;
     Array<double> identic_weights;
 
     static Timer tall("SingleLayer - all");
@@ -277,18 +277,19 @@ namespace ngbem
           double e3 = ipeta(2);
           double xi = ipxi(0);
 
-          identic_Duffies[0].Append (xi*Vec<4>(1, 1-e1+e1*e2, 1-e1*e2*e3, 1-e1));
-          identic_Duffies[1].Append (xi*Vec<4>(1-e1*e2*e3, 1-e1, 1, 1-e1+e1*e2));
-          identic_Duffies[2].Append (xi*Vec<4>(1, e1*(1-e2+e2*e3), 1-e1*e2, e1*(1-e2) ));
-          identic_Duffies[3].Append (xi*Vec<4>(1-e1*e2, e1*(1-e2), 1, e1*(1-e2+e2*e3) ));
-          identic_Duffies[4].Append (xi*Vec<4>(1-e1*e2*e3, e1*(1-e2*e3), 1, e1*(1-e2) ));
-          identic_Duffies[5].Append (xi*Vec<4>(1, e1*(1-e2), 1-e1*e2*e3, e1*(1-e2*e3) ));
-          identic_weights.Append (xi*xi*xi*e1*e1*e2 * ipeta.Weight()*ipxi.Weight());
+          identic_Duffies.Append (xi*Vec<4>(1, 1-e1+e1*e2, 1-e1*e2*e3, 1-e1));
+          identic_Duffies.Append (xi*Vec<4>(1-e1*e2*e3, 1-e1, 1, 1-e1+e1*e2));
+          identic_Duffies.Append (xi*Vec<4>(1, e1*(1-e2+e2*e3), 1-e1*e2, e1*(1-e2) ));
+          identic_Duffies.Append (xi*Vec<4>(1-e1*e2, e1*(1-e2), 1, e1*(1-e2+e2*e3) ));
+          identic_Duffies.Append (xi*Vec<4>(1-e1*e2*e3, e1*(1-e2*e3), 1, e1*(1-e2) ));
+          identic_Duffies.Append (xi*Vec<4>(1, e1*(1-e2), 1-e1*e2*e3, e1*(1-e2*e3) ));
+          for (int j = 0; j < 6; j++)
+            identic_weights.Append (xi*xi*xi*e1*e1*e2 * ipeta.Weight()*ipxi.Weight());
         }
 
 
-    Array<Vec<4>> common_edge_Duffies[5];
-    Array<double> common_edge_weights[5];
+    Array<Vec<4>> common_edge_Duffies;
+    Array<double> common_edge_weights;
     
     for (auto ipeta : irhex)
       for (auto ipxi : irsegm)
@@ -298,23 +299,19 @@ namespace ngbem
           double e3 = ipeta(2);
           double xi = ipxi(0);
 
-          common_edge_Duffies[0].Append (xi*Vec<4>(1, e1*e3, 1-e1*e2, e1*(1-e2)));
-          common_edge_Duffies[1].Append (xi*Vec<4>(1, e1, 1-e1*e2*e3, e1*e2*(1-e3)));
-          common_edge_Duffies[2].Append (xi*Vec<4>(1-e1*e2, e1*(1-e2), 1, e1*e2*e3));
-          common_edge_Duffies[3].Append (xi*Vec<4>(1-e1*e2*e3, e1*e2*(1-e3), 1, e1));
-          common_edge_Duffies[4].Append (xi*Vec<4>(1-e1*e2*e3, e1*(1-e2*e3), 1, e1*e2));
+          common_edge_Duffies.Append (xi*Vec<4>(1, e1*e3, 1-e1*e2, e1*(1-e2)));
+          common_edge_Duffies.Append (xi*Vec<4>(1, e1, 1-e1*e2*e3, e1*e2*(1-e3)));
+          common_edge_Duffies.Append (xi*Vec<4>(1-e1*e2, e1*(1-e2), 1, e1*e2*e3));
+          common_edge_Duffies.Append (xi*Vec<4>(1-e1*e2*e3, e1*e2*(1-e3), 1, e1));
+          common_edge_Duffies.Append (xi*Vec<4>(1-e1*e2*e3, e1*(1-e2*e3), 1, e1*e2));
           
-          common_edge_weights[0].Append (xi*xi*xi*e1*e1    * ipeta.Weight()*ipxi.Weight());
-          common_edge_weights[1].Append (xi*xi*xi*e1*e1*e2 * ipeta.Weight()*ipxi.Weight());          
+          common_edge_weights.Append (xi*xi*xi*e1*e1    * ipeta.Weight()*ipxi.Weight());
+          for (int j = 0; j < 4; j++)
+            common_edge_weights.Append (xi*xi*xi*e1*e1*e2 * ipeta.Weight()*ipxi.Weight());          
         }
-    common_edge_weights[2] = common_edge_weights[1];
-    common_edge_weights[3] = common_edge_weights[1];
-    common_edge_weights[4] = common_edge_weights[1];
 
 
-
-
-    Array<Vec<4>> common_vertex_Duffies[2];
+    Array<Vec<4>> common_vertex_Duffies;
     Array<double> common_vertex_weights;
     
     for (auto ipeta : irhex)
@@ -325,9 +322,10 @@ namespace ngbem
           double e3 = ipeta(2);
           double xi = ipxi(0);
 
-          common_vertex_Duffies[0].Append (xi*Vec<4>(1, e1, e2, e2*e3 ));
-          common_vertex_Duffies[1].Append (xi*Vec<4>(e2, e2*e3, 1, e1 ));
-          common_vertex_weights.Append (xi*xi*xi*e2  * ipeta.Weight()*ipxi.Weight());
+          common_vertex_Duffies.Append (xi*Vec<4>(1, e1, e2, e2*e3 ));
+          common_vertex_Duffies.Append (xi*Vec<4>(e2, e2*e3, 1, e1 ));
+          for (int j = 0; j < 2; j++)
+            common_vertex_weights.Append (xi*xi*xi*e2  * ipeta.Weight()*ipxi.Weight());
         }
 
 
@@ -342,26 +340,11 @@ namespace ngbem
           HeapReset hr(lh);
           ElementId ei(BND, i);
           ElementId ej(BND, j);
-          //cout << "bem elements: " << ei << ", " << ej << endl;
 
-          Ngs_Element ngsEli = mesh->GetElement(ei);
-          auto tmp_verti = ngsEli.Vertices();
+
+          auto verti = mesh->GetElement(ei).Vertices();
+          auto vertj = mesh->GetElement(ej).Vertices();          
           
-          Vec<3,int> verti;
-          verti[0] = tmp_verti[0];
-          verti[1] = tmp_verti[1];
-          verti[2] = tmp_verti[2];
-          
-          //cout << verti << endl;
-          Ngs_Element ngsElj = mesh->GetElement(ej);
-          auto tmp_vertj = ngsElj.Vertices();
-          Vec<3,int> vertj;
-          vertj[0] = tmp_vertj[0];
-          vertj[1] = tmp_vertj[1];
-          vertj[2] = tmp_vertj[2];
-          //cout << vertj << endl;
-
-
           BaseScalarFiniteElement &feli = dynamic_cast<BaseScalarFiniteElement &>(space->GetFE(ei, lh));
           BaseScalarFiniteElement &felj = dynamic_cast<BaseScalarFiniteElement &>(space->GetFE(ej, lh));
 
@@ -374,196 +357,37 @@ namespace ngbem
 
           FlatVector<> shapei(feli.GetNDof(), lh);
           FlatVector<> shapej(felj.GetNDof(), lh);
-          // cout << dnumsi.length() << endl;
-          //  return;
 
           FlatMatrix elmat(feli.GetNDof(), felj.GetNDof(), lh); // e.g. 3 x 3
           elmat = 0;
 
           
-          int intCase = -1;
-          // 2d cases
-          if (space->GetSpatialDimension() == 2) {
-            if (i == j)
-              intCase = 0;
-            else if (verti[0] == vertj[0] || verti[0] == vertj[1] ||
-                     verti[1] == vertj[0] || verti[1] == vertj[1])
-              intCase = 1;
-            else
-              intCase = 2;
-          }
+          int n_common_vertices = 0;
+          for (auto vi : verti)
+            if (vertj.Contains(vi))
+              n_common_vertices++;
 
-          // 3d cases
-          if (space->GetSpatialDimension() == 3) {
-            if (i == j)
-              intCase = 0;
-            else if (commonEdge(verti, vertj))
-              intCase = 1;
-            else if (commonVertex(verti, vertj)) 
-              intCase = 2;
-            else
-              intCase = 3;
-          }
-
-          //cout << "Case: " << intCase << endl;
-
-          // feli.GetNDof() == dnumsi.Size()
-
-          double I = 0;
-          Matrix tmpmat(feli.GetNDof(), felj.GetNDof());
-
-          if (space->GetSpatialDimension() == 2) {
-            // 2d cases
-
-            if (intCase == 0) {
-              Vec<3> int_start, int_end, start, end;
-              int_start = 0;
-              int_end = 0;
-              int_end[0] = 1;
-
-              IntegrationPoint ip_start(int_start, wi[0]);
-              IntegrationPoint ip_end(int_end, wi[0]);
-
-              trafoi.CalcPoint(ip_start, start);
-              trafoi.CalcPoint(ip_end, end);
-
-              double seg_length = L2Norm(end-start);
-              I = seg_length * seg_length * ( log(seg_length) - 1.5);
-              elmat = I;
-            }
-            else {
-              //case 1 + 2, to do Guass-Log
-              for (int ki = 0; ki < xi.Size(); ki++)
-                {
-                  for (int kj = 0; kj < xi.Size(); kj++)
-                    {
-                      Vec<3> xi3, xj3, pxi, pxj;
-                      xi3 = 0;
-                      xj3 = 0;
-                      xi3[0] = xi[ki];
-                      xj3[0] = xi[kj];
-
-                      IntegrationPoint ipi(xi3, wi[ki]);
-                      IntegrationPoint ipj(xj3, wi[kj]);
-
-                      trafoi.CalcPoint(ipi, pxi);
-                      trafoj.CalcPoint(ipj, pxj);
-
-                      I += wi[ki] * wi[kj] * log(L2Norm(pxi-pxj));
-                    }
-                }
-
-              Vec<3> int_start, int_end, start, end;
-              int_start = 0;
-              int_end = 0;
-              int_end[0] = 1;
-
-              IntegrationPoint p_start(int_start, wi[0]);
-              IntegrationPoint p_end(int_end, wi[0]);
-
-              trafoi.CalcPoint(p_start, start);
-              trafoi.CalcPoint(p_end, end);
-
-              double segi_length = L2Norm(end-start);
-
-              trafoj.CalcPoint(p_start, start);
-              trafoj.CalcPoint(p_end, end);
-
-              double segj_length = L2Norm(end-start);
-
-              I = I * segi_length * segj_length;
-              elmat = I;
-            }
-          }
-          else
+          
+          // Sauter-Schwab, page 240 German edition
+          switch (n_common_vertices)
             {
-              // 3d cases
-              
-              if (intCase == 0) {
-                //identical panel
+            case 3: //identical panel
+              {
                 RegionTimer reg(t_identic);    
-    
                 
-
-                // Sauter-Schwab, page 240 German edition
                 elmat = 0.0;
                 for (int k = 0; k < identic_weights.Size(); k++)
-                  for (int l = 0; l < 6; l++)
-                    {
-                      Vec<4> xy = identic_Duffies[l][k];
-                      IntegrationPoint xhat(xy(0)-xy(1), xy(1), 0, 0);
-                      IntegrationPoint yhat(xy(2)-xy(3), xy(3), 0, 0);
-                      
-                      MappedIntegrationPoint<2,3> mipx(xhat, trafoi);
-                      MappedIntegrationPoint<2,3> mipy(yhat, trafoj);
-                      
-                      Vec<3> x = mipx.Point();
-                      Vec<3> y = mipy.Point();
-                      
-                      double kernel = 1.0 / (4*M_PI*L2Norm(x-y));
-                      
-                      // feli.CalcShape (xhat, shapei);
-                      // felj.CalcShape (yhat, shapej);
-                      evaluator->CalcMatrix(feli, mipx, Trans(shapei.AsMatrix(feli.GetNDof(),1)), lh);
-                      evaluator->CalcMatrix(felj, mipy, Trans(shapej.AsMatrix(felj.GetNDof(),1)), lh);
-                      
-                      double fac = mipx.GetMeasure()*mipy.GetMeasure()*identic_weights[k];
-                      elmat += fac*kernel* shapei * Trans(shapej);
-                    }
-                
-                // cout << "new elmat = " << endl << elmat << endl;
-            }
-            else if (intCase == 1) {
-              //common edge
-              RegionTimer reg(t_common_edge);    
-
-              const EDGE * edges = ElementTopology::GetEdges (ET_TRIG);
-              int cex, cey;
-              for (int cx = 0; cx < 3; cx++)
-                for (int cy = 0; cy < 3; cy++)
                   {
-                    INT<2> ex (verti[edges[cx][0]], verti[edges[cx][1]]);
-                    INT<2> ey (vertj[edges[cy][0]], vertj[edges[cy][1]]);
-                    if (ex.Sort() == ey.Sort())
-                      {
-                        cex = cx;
-                        cey = cy;
-                        break;
-                      }
-                  }
-              int vpermx[3] = { edges[cex][0], edges[cex][1], -1 };
-              vpermx[2] = 3-vpermx[0]-vpermx[1];
-              int vpermy[3] = { edges[cey][0], edges[cey][1], -1 };
-              vpermy[2] = 3-vpermy[0]-vpermy[1];
-
-              int ivpermx[3], ivpermy[3];
-              for (int i = 0; i < 3; i++)
-                {
-                  ivpermx[vpermx[i]] = i;
-                  ivpermy[vpermy[i]] = i;
-                }
-
-              
-              // Sauter-Schwab, page 240 German edition
-              elmat = 0.0;
-              for (int k = 0; k < common_edge_weights[0].Size(); k++)
-                for (int l = 0; l < 5; l++)
-                  {
-                    Vec<4> xy = common_edge_Duffies[l][k];
-
-                    Vec<3> lamx (xy(0)-xy(1), xy(1), 1-xy(0));   // other ref-triangle
-                    Vec<3> lamy (xy(2)-xy(3), xy(3), 1-xy(2));
-                    // lamx0, lamx1 ... common edge
-                    
-                    IntegrationPoint xhat(lamx(ivpermx[0]), lamx(ivpermx[1]), 0, 0);
-                    IntegrationPoint yhat(lamy(ivpermy[0]), lamy(ivpermy[1]), 0, 0);
-                    
+                    Vec<4> xy = identic_Duffies[k];
+                    IntegrationPoint xhat(xy(0)-xy(1), xy(1), 0, 0);
+                    IntegrationPoint yhat(xy(2)-xy(3), xy(3), 0, 0);
+                      
                     MappedIntegrationPoint<2,3> mipx(xhat, trafoi);
                     MappedIntegrationPoint<2,3> mipy(yhat, trafoj);
-
+                    
                     Vec<3> x = mipx.Point();
                     Vec<3> y = mipy.Point();
-
+                    
                     double kernel = 1.0 / (4*M_PI*L2Norm(x-y));
                     
                     // feli.CalcShape (xhat, shapei);
@@ -571,45 +395,49 @@ namespace ngbem
                     evaluator->CalcMatrix(feli, mipx, Trans(shapei.AsMatrix(feli.GetNDof(),1)), lh);
                     evaluator->CalcMatrix(felj, mipy, Trans(shapej.AsMatrix(felj.GetNDof(),1)), lh);
                     
-                    double fac = mipx.GetMeasure()*mipy.GetMeasure() * common_edge_weights[l][k];
+                    double fac = mipx.GetMeasure()*mipy.GetMeasure()*identic_weights[k];
                     elmat += fac*kernel* shapei * Trans(shapej);
                   }
-            }
-            else if (intCase == 2) {
-              //common vertex
-              RegionTimer reg(t_common_vertex);    
-
-              int cvx=-1, cvy=-1;
-              for (int cx = 0; cx < 3; cx++)
-                for (int cy = 0; cy < 3; cy++)
-                  {
-                    if (verti[cx] == vertj[cy])
-                      {
-                        cvx = cx;
-                        cvy = cy;
-                        break;
+                
+                // cout << "new elmat = " << endl << elmat << endl;
+                break;
+              }
+            case 2: //common edge
+              {
+                RegionTimer reg(t_common_edge);    
+                
+                const EDGE * edges = ElementTopology::GetEdges (ET_TRIG);
+                int cex, cey;
+                for (int cx = 0; cx < 3; cx++)
+                  for (int cy = 0; cy < 3; cy++)
+                    {
+                      INT<2> ex (verti[edges[cx][0]], verti[edges[cx][1]]);
+                      INT<2> ey (vertj[edges[cy][0]], vertj[edges[cy][1]]);
+                      if (ex.Sort() == ey.Sort())
+                        {
+                          cex = cx;
+                          cey = cy;
+                          break;
                       }
-                  }
-              
-              int vpermx[3] = { cvx, (cvx+1)%3, (cvx+2)%3 };
-              vpermx[2] = 3-vpermx[0]-vpermx[1];
-              int vpermy[3] = { cvy, (cvy+1)%3, (cvy+2)%3 };
-              vpermy[2] = 3-vpermy[0]-vpermy[1];
-
-              int ivpermx[3], ivpermy[3];
-              for (int i = 0; i < 3; i++)
-                {
-                  ivpermx[vpermx[i]] = i;
-                  ivpermy[vpermy[i]] = i;
-                }
-
-              // Sauter-Schwab, page 240 German edition
-              elmat = 0.0;
-              for (int k = 0; k < common_vertex_weights.Size(); k++)
-                for (int l = 0; l < 2; l++)
+                    }
+                int vpermx[3] = { edges[cex][0], edges[cex][1], -1 };
+                vpermx[2] = 3-vpermx[0]-vpermx[1];
+                int vpermy[3] = { edges[cey][0], edges[cey][1], -1 };
+                vpermy[2] = 3-vpermy[0]-vpermy[1];
+                
+                int ivpermx[3], ivpermy[3];
+                for (int i = 0; i < 3; i++)
                   {
-                    Vec<4> xy = common_vertex_Duffies[l][k];
-
+                    ivpermx[vpermx[i]] = i;
+                    ivpermy[vpermy[i]] = i;
+                  }
+                
+                
+                elmat = 0.0;
+                for (int k = 0; k < common_edge_weights.Size(); k++)
+                  {
+                    Vec<4> xy = common_edge_Duffies[k];
+                    
                     Vec<3> lamx (xy(0)-xy(1), xy(1), 1-xy(0));   // other ref-triangle
                     Vec<3> lamy (xy(2)-xy(3), xy(3), 1-xy(2));
                     // lamx0, lamx1 ... common edge
@@ -619,10 +447,69 @@ namespace ngbem
                     
                     MappedIntegrationPoint<2,3> mipx(xhat, trafoi);
                     MappedIntegrationPoint<2,3> mipy(yhat, trafoj);
-
+                    
                     Vec<3> x = mipx.Point();
                     Vec<3> y = mipy.Point();
+                    
+                    double kernel = 1.0 / (4*M_PI*L2Norm(x-y));
+                    
+                    // feli.CalcShape (xhat, shapei);
+                    // felj.CalcShape (yhat, shapej);
+                    evaluator->CalcMatrix(feli, mipx, Trans(shapei.AsMatrix(feli.GetNDof(),1)), lh);
+                    evaluator->CalcMatrix(felj, mipy, Trans(shapej.AsMatrix(felj.GetNDof(),1)), lh);
+                    
+                    double fac = mipx.GetMeasure()*mipy.GetMeasure() * common_edge_weights[k];
+                    elmat += fac*kernel* shapei * Trans(shapej);
+                  }
+                break;
+              }
 
+            case 1: //common vertex
+              {
+                RegionTimer reg(t_common_vertex);    
+                
+                int cvx=-1, cvy=-1;
+                for (int cx = 0; cx < 3; cx++)
+                  for (int cy = 0; cy < 3; cy++)
+                    {
+                      if (verti[cx] == vertj[cy])
+                        {
+                          cvx = cx;
+                          cvy = cy;
+                          break;
+                        }
+                    }
+                
+                int vpermx[3] = { cvx, (cvx+1)%3, (cvx+2)%3 };
+                vpermx[2] = 3-vpermx[0]-vpermx[1];
+                int vpermy[3] = { cvy, (cvy+1)%3, (cvy+2)%3 };
+                vpermy[2] = 3-vpermy[0]-vpermy[1];
+                
+                int ivpermx[3], ivpermy[3];
+                for (int i = 0; i < 3; i++)
+                  {
+                    ivpermx[vpermx[i]] = i;
+                    ivpermy[vpermy[i]] = i;
+                  }
+                
+                elmat = 0.0;
+                for (int k = 0; k < common_vertex_weights.Size(); k++)
+                  {
+                    Vec<4> xy = common_vertex_Duffies[k];
+                    
+                    Vec<3> lamx (xy(0)-xy(1), xy(1), 1-xy(0));   // other ref-triangle
+                    Vec<3> lamy (xy(2)-xy(3), xy(3), 1-xy(2));
+                    // lamx0, lamx1 ... common edge
+                    
+                    IntegrationPoint xhat(lamx(ivpermx[0]), lamx(ivpermx[1]), 0, 0);
+                    IntegrationPoint yhat(lamy(ivpermy[0]), lamy(ivpermy[1]), 0, 0);
+                    
+                    MappedIntegrationPoint<2,3> mipx(xhat, trafoi);
+                    MappedIntegrationPoint<2,3> mipy(yhat, trafoj);
+                    
+                    Vec<3> x = mipx.Point();
+                    Vec<3> y = mipy.Point();
+                    
                     double kernel = 1.0 / (4*M_PI*L2Norm(x-y));
                     
                     // feli.CalcShape (xhat, shapei);
@@ -633,12 +520,14 @@ namespace ngbem
                     double fac = mipx.GetMeasure()*mipy.GetMeasure()*common_vertex_weights[k];
                     elmat += fac*kernel* shapei * Trans(shapej);
                   }
-            }
-            else {
-              //disjoint panels
-              RegionTimer r(t_disjoint);    
-              
-              elmat = 0.0;
+                break;
+              }
+
+            case 0: //disjoint panels
+              {
+                RegionTimer r(t_disjoint);    
+                
+                elmat = 0.0;
 
               /*
                 // naive version
@@ -683,36 +572,39 @@ namespace ngbem
               */
 
               // shapes+geom out of loop, matrix multiplication
-              auto & mirx = trafoi(irtrig, lh);
-              auto & miry = trafoj(irtrig, lh);
-              FlatMatrix<> shapesi(feli.GetNDof(), irtrig.Size(), lh);
-              FlatMatrix<> shapesj(felj.GetNDof(), irtrig.Size(), lh);
-              FlatMatrix<> kernel_shapesj(felj.GetNDof(), irtrig.Size(), lh);
-
-              
-              // feli.CalcShape (irtrig, shapesi);
-              // felj.CalcShape (irtrig, shapesj);
-              evaluator -> CalcMatrix(feli, mirx, Trans(shapesi), lh);
-              evaluator -> CalcMatrix(felj, miry, Trans(shapesj), lh);
-
-              RegionTimer r2(t_disjoint2);
-              kernel_shapesj = 0;
-              for (int ix = 0; ix < irtrig.Size(); ix++)
-                for (int iy = 0; iy < irtrig.Size(); iy++)
-                  {
-                    Vec<3> x = mirx[ix].GetPoint();
-                    Vec<3> y = miry[iy].GetPoint();
+                auto & mirx = trafoi(irtrig, lh);
+                auto & miry = trafoj(irtrig, lh);
+                FlatMatrix<> shapesi(feli.GetNDof(), irtrig.Size(), lh);
+                FlatMatrix<> shapesj(felj.GetNDof(), irtrig.Size(), lh);
+                FlatMatrix<> kernel_shapesj(felj.GetNDof(), irtrig.Size(), lh);
+                
+                
+                // feli.CalcShape (irtrig, shapesi);
+                // felj.CalcShape (irtrig, shapesj);
+                evaluator -> CalcMatrix(feli, mirx, Trans(shapesi), lh);
+                evaluator -> CalcMatrix(felj, miry, Trans(shapesj), lh);
+                
+                RegionTimer r2(t_disjoint2);
+                kernel_shapesj = 0;
+                for (int ix = 0; ix < irtrig.Size(); ix++)
+                  for (int iy = 0; iy < irtrig.Size(); iy++)
+                    {
+                      Vec<3> x = mirx[ix].GetPoint();
+                      Vec<3> y = miry[iy].GetPoint();
                     
-                    double kernel = 1.0 / (4*M_PI*L2Norm(x-y));
-                    double fac = mirx[ix].GetWeight()*miry[iy].GetWeight();
-                    // double fac = irtrig[ix].Weight()*irtrig[iy].Weight();
-                    kernel_shapesj.Col(ix) += fac*kernel*shapesj.Col(iy);
-                  }
+                      double kernel = 1.0 / (4*M_PI*L2Norm(x-y));
+                      double fac = mirx[ix].GetWeight()*miry[iy].GetWeight();
+                      kernel_shapesj.Col(ix) += fac*kernel*shapesj.Col(iy);
+                    }
+                
+                elmat += shapesi * Trans(kernel_shapesj);
 
-              elmat += shapesi * Trans(kernel_shapesj);
+                break;
+              }
+            default:
+              throw Exception ("not possible");
             }
-          }
-
+          
           for (int ii = 0; ii < dnumsi.Size(); ii++)
             for (int jj = 0; jj < dnumsj.Size(); jj++)
               matrix(mapglob2bnd[dnumsi[ii]], mapglob2bnd[dnumsj[jj]]) += elmat(ii, jj);
