@@ -125,7 +125,7 @@ namespace ngbem
     return tuple { ipx, ipy, weights };
   }
 
-
+  
 
   
   
@@ -163,10 +163,14 @@ namespace ngbem
   {
     static Timer tall("SingleLayer - all");
     static Timer t_identic("SingleLayer - identic panel");
-    static Timer t_common_vertex("SingleLayer - common vertex");        
+    static Timer t_common_vertex("SingleLayer - common vertex");
+    static Timer t_common_vertex1("SingleLayer - common vertex 1");            
+    static Timer t_common_vertex2("SingleLayer - common vertex 2");            
+    static Timer t_common_vertex3("SingleLayer - common vertex 3");            
     static Timer t_common_edge("SingleLayer - common edge");        
     static Timer t_disjoint("SingleLayer - disjoint");
     static Timer t_disjoint2("SingleLayer - disjoint2");        
+    static Timer t_disjoint3("SingleLayer - disjoint3");        
     RegionTimer reg(tall);
 
 
@@ -348,7 +352,6 @@ namespace ngbem
             case 1: //common vertex
               {
                 RegionTimer reg(t_common_vertex);    
-                
                 int cvx=-1, cvy=-1;
                 for (int cx = 0; cx < 3; cx++)
                   for (int cy = 0; cy < 3; cy++)
@@ -372,19 +375,12 @@ namespace ngbem
                   }
                 
                 elmat = 0.0;
+
+                /*
                 for (int k = 0; k < common_vertex_weight.Size(); k++)
                   {
                     Vec<2> xk = common_vertex_x[k];
                     Vec<2> yk = common_vertex_y[k];
-
-                    /*
-                    Vec<3> lamx (xk(0), xk(1), 1-xk(0)-xk(1));
-                    Vec<3> lamy (yk(0), yk(1), 1-yk(0)-yk(1));
-                    // lam2 .. barycentric at singular vertex
-                    
-                    IntegrationPoint xhat(lamx(ivpermx[2]), lamx(ivpermx[0]), 0, 0);
-                    IntegrationPoint yhat(lamy(ivpermy[2]), lamy(ivpermy[0]), 0, 0);
-                    */
 
                     Vec<3> lamx (1-xk(0)-xk(1), xk(0), xk(1) );
                     Vec<3> lamy (1-yk(0)-yk(1), yk(0), yk(1) );
@@ -413,10 +409,99 @@ namespace ngbem
                     double fac = mipx.GetMeasure()*mipy.GetMeasure()*common_vertex_weight[k];
                     elmat += fac*kernel* Trans(mshapej) * mshapei;
                   }
-
+                */
                 // cout.precision(12);
                 // cout << "common vertex: " << endl << elmat << endl;
                 // elmat = 0.0;
+
+                for (int k = 0; k < common_vertex_weight.Size(); k+=128)
+                  {
+                    int num = std::min(size_t(128), common_vertex_weight.Size()-k);
+
+                    HeapReset hr(lh);
+                    t_common_vertex1.Start();
+                    
+                    IntegrationRule irx(num, lh);
+                    IntegrationRule iry(num, lh);
+
+                    for (int k2 = 0; k2 < num; k2++)
+                      {
+                        Vec<2> xk = common_vertex_x[k+k2];
+                        Vec<2> yk = common_vertex_y[k+k2];
+
+                        Vec<3> lamx (1-xk(0)-xk(1), xk(0), xk(1) );
+                        Vec<3> lamy (1-yk(0)-yk(1), yk(0), yk(1) );
+
+                        Vec<3> plamx, plamy;
+                        for (int i = 0; i < 3; i++)
+                          {
+                            plamx(vpermx[i]) = lamx(i);
+                            plamy(vpermy[i]) = lamy(i);
+                          }
+                        
+                        irx[k2] = IntegrationPoint(plamx(0), plamx(1), 0, common_vertex_weight[k+k2]);
+                        iry[k2] = IntegrationPoint(plamy(0), plamy(1), 0, 0);
+                      }
+
+                    /*
+                      // integrationrule, not simded
+                    MappedIntegrationRule<2,3> mirx(irx, trafoi, lh);
+                    MappedIntegrationRule<2,3> miry(iry, trafoj, lh);
+                    
+                    FlatMatrix<double, ColMajor> mshapesi(num, feli.GetNDof(), lh);
+                    FlatMatrix<double, ColMajor> mshapesj(num, felj.GetNDof(), lh);
+
+                    evaluator->CalcMatrix(feli, mirx, mshapesi, lh);
+                    evaluator->CalcMatrix(felj, miry, mshapesj, lh);
+                    
+                    for (int k2 = 0; k2 < num; k2++)
+                      {
+                        Vec<3> x = mirx[k2].Point();
+                        Vec<3> y = miry[k2].Point();
+                    
+                        double kernel = 1.0 / (4*M_PI*L2Norm(x-y));
+                        double fac = mirx[k2].GetMeasure()*miry[k2].GetMeasure()*common_vertex_weight[k+k2];
+                        mshapesi.Rows(k2,k2+1) *= fac*kernel;                      
+                      }
+                    elmat += Trans(mshapesj) * mshapesi;
+                    */
+
+                    
+                    SIMD_IntegrationRule simd_irx(irx);
+                    SIMD_IntegrationRule simd_iry(iry);
+                    
+                    t_common_vertex1.Stop();
+                    t_common_vertex2.Start();
+                    
+                    SIMD_MappedIntegrationRule<2,3> mirx(simd_irx, trafoi, lh);
+                    SIMD_MappedIntegrationRule<2,3> miry(simd_iry, trafoj, lh);
+                    
+                    t_common_vertex2.Stop();
+                    t_common_vertex3.Start();
+
+                    FlatMatrix<SIMD<double>> mshapesi(feli.GetNDof(), mirx.Size(), lh);
+                    FlatMatrix<SIMD<double>> mshapesj(felj.GetNDof(), miry.Size(), lh);
+
+                    evaluator->CalcMatrix(feli, mirx, mshapesi);
+                    evaluator->CalcMatrix(felj, miry, mshapesj);
+                    
+                    for (int k2 = 0; k2 < mirx.Size(); k2++)
+                      {
+                        Vec<3,SIMD<double>> x = mirx[k2].Point();
+                        Vec<3,SIMD<double>> y = miry[k2].Point();
+                    
+                        auto kernel = 1.0 / (4*M_PI*L2Norm(x-y));
+                        auto fac = mirx[k2].GetMeasure()*miry[k2].GetMeasure()*simd_irx[k2].Weight(); 
+                        mshapesi.Col(k2) *= fac*kernel;                      
+                      }
+
+                    FlatMatrix<> dmshapesi(feli.GetNDof(), simd_irx.GetNIP(), (double*)mshapesi.Data());
+                    FlatMatrix<> dmshapesj(felj.GetNDof(), simd_iry.GetNIP(), (double*)mshapesj.Data());
+                    elmat += dmshapesj * Trans(dmshapesi);
+                    t_common_vertex3.Stop();
+                    
+                  }
+
                 break;
               }
 
@@ -473,6 +558,7 @@ namespace ngbem
                       kernel_shapesj.Col(ix) += fac*kernel*shapesj.Col(iy);
                     }
                 
+                RegionTimer r3(t_disjoint3);
                 elmat += kernel_shapesj * Trans(shapesi);
 
                 // cout << "disjoint panel " << endl << elmat << endl;
