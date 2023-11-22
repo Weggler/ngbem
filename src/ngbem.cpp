@@ -650,7 +650,7 @@ namespace ngbem
                     evaluator2->CalcMatrix(felj, mipy, Trans(shapej.AsMatrix(felj.GetNDof(),1)), lh);
                     
                     double fac = mipx.GetMeasure()*mipy.GetMeasure()*identic_panel_weight[k];
-                    //elmat += fac*kernel* shapej * Trans(shapei);
+                    elmat += fac*kernel* shapej * Trans(shapei);
                   }
                 
                 // cout << "new elmat = " << endl << elmat << endl;
@@ -676,7 +676,7 @@ namespace ngbem
                     }
                 int vpermx[3] = { edges[cex][0], edges[cex][1], -1 }; // common edge gets first
                 vpermx[2] = 3-vpermx[0]-vpermx[1]; 
-                int vpermy[3] = { edges[cey][0], edges[cey][1], -1 }; // common edge gets first
+                int vpermy[3] = { edges[cey][1], edges[cey][0], -1 }; // common edge gets first
                 vpermy[2] = 3-vpermy[0]-vpermy[1];
                 
                 int ivpermx[3], ivpermy[3];
@@ -820,7 +820,7 @@ namespace ngbem
                     evaluator2->CalcMatrix(felj, mipy, Trans(shapej.AsMatrix(felj.GetNDof(),1)), lh);
                     
                     double fac = mipx.GetMeasure()*mipy.GetMeasure()*common_vertex_weight[k];
-                    //elmat += fac*kernel* shapej * Trans(shapei);
+                    elmat += fac*kernel* shapej * Trans(shapei);
                   }
                 // cout << "new: common vertex elmat = " << elmat << endl;
                 break;
@@ -861,7 +861,7 @@ namespace ngbem
                       kernel_shapesj.Col(ix) += fac*kernel*shapesj.Col(iy);
                     }
                 
-                //elmat += kernel_shapesj * Trans(shapesi);
+                elmat += kernel_shapesj * Trans(shapesi);
 
                 // cout << "new: disjoint elmat = " << elmat << endl;
                 // cout << "dnumsj = " << dnumsj[0] << ", rowdof = " << mapglob2bnd2[dnumsj[0]] << endl;
