@@ -275,7 +275,16 @@ namespace ngbem
                 vpermx[2] = 3-vpermx[0]-vpermx[1];
                 int vpermy[3] = { edges[cey][1], edges[cey][0], -1 };
                 vpermy[2] = 3-vpermy[0]-vpermy[1];
-                
+
+                /*
+                cout << "px = " << verti[vpermx[0]] << ", "
+                     << verti[vpermx[1]] << ", "
+                     << verti[vpermx[2]] << endl;
+                cout << "py = " << vertj[vpermy[0]] << ", "
+                     << vertj[vpermy[1]] << ", "
+                     << vertj[vpermy[2]] << endl;
+                */
+                  
                 int ivpermx[3], ivpermy[3];
                 for (int i = 0; i < 3; i++)
                   {
@@ -289,13 +298,31 @@ namespace ngbem
                   {
                     Vec<2> xk = common_edge_x[k];
                     Vec<2> yk = common_edge_y[k];
-                    
+
+                    /*
                     Vec<3> lamx (xk(0), xk(1), 1-xk(0)-xk(1));
                     Vec<3> lamy (yk(0), yk(1), 1-yk(0)-yk(1));
                     // lamx0, lamx2 ... common edge
-                    
+
                     IntegrationPoint xhat(lamx(ivpermx[0]), lamx(ivpermx[1]), 0, 0);
                     IntegrationPoint yhat(lamy(ivpermy[0]), lamy(ivpermy[1]), 0, 0);
+                    */
+                    
+                    Vec<3> lamx (1-xk(0)-xk(1), xk(0), xk(1) );
+                    Vec<3> lamy (1-yk(0)-yk(1), yk(0), yk(1) );
+
+                    Vec<3> plamx, plamy;
+                    for (int i = 0; i < 3; i++)
+                      {
+                        plamx(vpermx[i]) = lamx(i);
+                        plamy(vpermy[i]) = lamy(i);
+                      }
+                    
+                    IntegrationPoint xhat(plamx(0), plamx(1), 0, 0);
+                    IntegrationPoint yhat(plamy(0), plamy(1), 0, 0);
+
+
+                    
                     
                     MappedIntegrationPoint<2,3> mipx(xhat, trafoi);
                     MappedIntegrationPoint<2,3> mipy(yhat, trafoj);
@@ -349,13 +376,28 @@ namespace ngbem
                   {
                     Vec<2> xk = common_vertex_x[k];
                     Vec<2> yk = common_vertex_y[k];
-                    
+
+                    /*
                     Vec<3> lamx (xk(0), xk(1), 1-xk(0)-xk(1));
                     Vec<3> lamy (yk(0), yk(1), 1-yk(0)-yk(1));
                     // lam2 .. barycentric at singular vertex
                     
                     IntegrationPoint xhat(lamx(ivpermx[2]), lamx(ivpermx[0]), 0, 0);
                     IntegrationPoint yhat(lamy(ivpermy[2]), lamy(ivpermy[0]), 0, 0);
+                    */
+
+                    Vec<3> lamx (1-xk(0)-xk(1), xk(0), xk(1) );
+                    Vec<3> lamy (1-yk(0)-yk(1), yk(0), yk(1) );
+
+                    Vec<3> plamx, plamy;
+                    for (int i = 0; i < 3; i++)
+                      {
+                        plamx(vpermx[i]) = lamx(i);
+                        plamy(vpermy[i]) = lamy(i);
+                      }
+                    
+                    IntegrationPoint xhat(plamx(0), plamx(1), 0, 0);
+                    IntegrationPoint yhat(plamy(0), plamy(1), 0, 0);
                     
                     MappedIntegrationPoint<2,3> mipx(xhat, trafoi);
                     MappedIntegrationPoint<2,3> mipy(yhat, trafoj);
