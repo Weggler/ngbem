@@ -27,7 +27,7 @@ sp = Sphere( (0,0,0), 1)
 mesh = Mesh( OCCGeometry(sp).GenerateMesh(maxh=0.5)).Curve(1)
 # mesh = Mesh(unit_cube.GenerateMesh(maxh=0.3))
 
-fes = SurfaceL2(mesh, order=0, dual_mapping=True)
+fes = SurfaceL2(mesh, order=3, dual_mapping=True)
 u,v = fes.TnT()
 
 a8 = BilinearForm(fes)
