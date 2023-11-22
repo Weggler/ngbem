@@ -13,9 +13,9 @@ namespace ngbem
     shared_ptr<FESpace> space;
     Array<DofId> mapglob2bnd;
     Array<DofId> mapbnd2glob;
-
+    int intorder;
   public:
-    SingleLayerPotential(shared_ptr<FESpace> aspace);
+    SingleLayerPotential(shared_ptr<FESpace> aspace, int intorder);
 
     void CalcElementMatrix(FlatMatrix<double> matrix, // matrix dim = ndof_bnd x ndof_bnd
                            LocalHeap &lh) const override;
@@ -35,9 +35,9 @@ namespace ngbem
     Array<DofId> mapbnd2glob;
     Array<DofId> mapglob2bnd2;
     Array<DofId> mapbnd2glob2;
-
+    int intorder;
   public:
-    DoubleLayerPotential(shared_ptr<FESpace> aspace, shared_ptr<FESpace> bspace);
+    DoubleLayerPotential(shared_ptr<FESpace> aspace, shared_ptr<FESpace> bspace, int intorder);
 
     void CalcElementMatrix(FlatMatrix<double> matrix, // matrix dim = ndof_bnd x ndof_bnd2
                            LocalHeap &lh) const override;

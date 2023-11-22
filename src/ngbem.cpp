@@ -7,215 +7,10 @@
 namespace ngbem
 {
 
-  bool commonEdge(Vec<3,int> verti, Vec<3,int> vertj) {
-    bool test = false;
-    for(int i = 0; i < 3; i++) {
-      for(int j = 0; j < 3; j++) {
-        test = test || (verti[i] == vertj[j] && verti[(i+1)%3] == vertj[(j+1)%3]);
-        test = test || (verti[i] == vertj[j] && verti[(i+2)%3] == vertj[(j+2)%3]);
-        test = test || (verti[i] == vertj[j] && verti[(i+1)%3] == vertj[(j+2)%3]);
-        test = test || (verti[i] == vertj[j] && verti[(i+2)%3] == vertj[(j+1)%3]);
-      }
-    }
-    return test;
-  }
 
-  bool commonVertex(Vec<3> verti, Vec<3> vertj) {
-    bool test = false;
-    for(int i = 0; i < 3; i++) {
-      for(int j = 0; j < 3; j++) {
-        test = test || (verti[i] == vertj[j]);
-      }
-    }
-    return test;
-  }
-
-  void commonEdgeVec(Vec<3> &u, Vec<3> &v, Vec<3> &w, Vec<3> verti, Vec<3> vertj, const std::shared_ptr<MeshAccess>& mesh) {
-    Vec<3> cords1, cords2;
-    for(int i = 0; i < 3; i++) {
-      for(int j = 0; j < 3; j++) {
-        if (verti[i] == vertj[j] && verti[(i+1)%3] == vertj[(j+1)%3]) {
-          mesh->GetPoint(verti[i], cords1);
-          mesh->GetPoint(verti[(i+1)%3], cords2);
-          u = cords2-cords1;
-          mesh->GetPoint(verti[(i+2)%3], cords1);
-          v = cords1-cords2;
-          mesh->GetPoint(vertj[(j+2)%3], cords1);
-          w = cords1-cords2;
-          return;
-        }
-        if (verti[i] == vertj[j] && verti[(i+2)%3] == vertj[(j+2)%3]) {
-          mesh->GetPoint(verti[i], cords1);
-          mesh->GetPoint(verti[(i+2)%3], cords2);
-          u = cords2-cords1;
-          mesh->GetPoint(verti[(i+1)%3], cords1);
-          v = cords1-cords2;
-          mesh->GetPoint(vertj[(j+1)%3], cords1);
-          w = cords1-cords2;
-          return;
-        }
-        if (verti[i] == vertj[j] && verti[(i+1)%3] == vertj[(j+2)%3]) {
-          mesh->GetPoint(verti[i], cords1);
-          mesh->GetPoint(verti[(i+1)%3], cords2);
-          u = cords2-cords1;
-          mesh->GetPoint(verti[(i+2)%3], cords1);
-          v = cords1-cords2;
-          mesh->GetPoint(vertj[(j+1)%3], cords1);
-          w = cords1-cords2;
-          return;
-        }
-        if (verti[i] == vertj[j] && verti[(i+2)%3] == vertj[(j+1)%3]) {
-          mesh->GetPoint(verti[i], cords1);
-          mesh->GetPoint(verti[(i+2)%3], cords2);
-          u = cords2-cords1;
-          mesh->GetPoint(verti[(i+1)%3], cords1);
-          v = cords1-cords2;
-          mesh->GetPoint(vertj[(j+2)%3], cords1);
-          w = cords1-cords2;
-          return;
-        }
-      }
-    }
-  }
-
-  void commonEdgeVec2(Vec<3> &u, Vec<3> &v, Vec<3> &w, Vec<3> &nt, int* idmap, Vec<3> verti, Vec<3> vertj, const std::shared_ptr<MeshAccess>& mesh) {
-    Vec<3> cords1, cords2;
-    mesh->GetPoint(vertj[0], cords1);
-    mesh->GetPoint(vertj[1], cords2);
-    nt = cords2 - cords1;
-    mesh->GetPoint(vertj[2], cords2);
-    nt = Cross(nt, cords2 - cords1);
-    for(int i = 0; i < 3; i++) {
-      for(int j = 0; j < 3; j++) {
-        if (verti[i] == vertj[j] && verti[(i+1)%3] == vertj[(j+1)%3]) {
-          mesh->GetPoint(verti[i], cords1);
-          mesh->GetPoint(verti[(i+1)%3], cords2);
-          u = cords2-cords1;
-          mesh->GetPoint(verti[(i+2)%3], cords1);
-          v = cords1-cords2;
-          mesh->GetPoint(vertj[(j+2)%3], cords1);
-          w = cords1-cords2;
-          idmap[0] = j;
-          idmap[1] = (j+1)%3;
-          idmap[2] = (j+2)%3;
-          return;
-        }
-        if (verti[i] == vertj[j] && verti[(i+2)%3] == vertj[(j+2)%3]) {
-          mesh->GetPoint(verti[i], cords1);
-          mesh->GetPoint(verti[(i+2)%3], cords2);
-          u = cords2-cords1;
-          mesh->GetPoint(verti[(i+1)%3], cords1);
-          v = cords1-cords2;
-          mesh->GetPoint(vertj[(j+1)%3], cords1);
-          w = cords1-cords2;
-          idmap[0] = j;
-          idmap[1] = (j+2)%3;
-          idmap[2] = (j+1)%3;
-          return;
-        }
-        if (verti[i] == vertj[j] && verti[(i+1)%3] == vertj[(j+2)%3]) {
-          mesh->GetPoint(verti[i], cords1);
-          mesh->GetPoint(verti[(i+1)%3], cords2);
-          u = cords2-cords1;
-          mesh->GetPoint(verti[(i+2)%3], cords1);
-          v = cords1-cords2;
-          mesh->GetPoint(vertj[(j+1)%3], cords1);
-          w = cords1-cords2;
-          idmap[0] = j;
-          idmap[1] = (j+2)%3;
-          idmap[2] = (j+1)%3;
-          return;
-        }
-        if (verti[i] == vertj[j] && verti[(i+2)%3] == vertj[(j+1)%3]) {
-          mesh->GetPoint(verti[i], cords1);
-          mesh->GetPoint(verti[(i+2)%3], cords2);
-          u = cords2-cords1;
-          mesh->GetPoint(verti[(i+1)%3], cords1);
-          v = cords1-cords2;
-          mesh->GetPoint(vertj[(j+2)%3], cords1);
-          w = cords1-cords2;
-          idmap[0] = j;
-          idmap[1] = (j+1)%3;
-          idmap[2] = (j+2)%3;
-          return;
-        }
-      }
-    }
-  }
-
-  void commonVertexVec(Vec<3> &r1, Vec<3> &r2, Vec<3> &rt1, Vec<3> &rt2, Vec<3> verti, Vec<3> vertj, const std::shared_ptr<MeshAccess>& mesh) {
-    Vec<3> cords1, cords2;
-    for(int i = 0; i < 3; i++) {
-      for(int j = 0; j < 3; j++) {
-        if (verti[i] == vertj[j]) {
-          mesh->GetPoint(verti[i], cords1);
-          mesh->GetPoint(verti[(i+1)%3], cords2);
-          r1 = cords2 - cords1;
-          mesh->GetPoint(verti[(i+2)%3], cords1);
-          r2 = cords1 - cords2;
-          mesh->GetPoint(vertj[j], cords1);
-          mesh->GetPoint(vertj[(j+1)%3], cords2);
-          rt1 = cords2 - cords1;
-          mesh->GetPoint(vertj[(j+2)%3], cords1);
-          rt2 = cords1 - cords2;
-          return;
-        }
-      }
-    }
-  }
-
-  void commonVertexVec2(Vec<3> &r1, Vec<3> &r2, Vec<3> &rt1, Vec<3> &rt2, Vec<3> &nt, int* idmap, Vec<3> verti, Vec<3> vertj, const std::shared_ptr<MeshAccess>& mesh) {
-    Vec<3> cords1, cords2;
-    mesh->GetPoint(vertj[0], cords1);
-    mesh->GetPoint(vertj[1], cords2);
-    nt = cords2 - cords1;
-    mesh->GetPoint(vertj[2], cords2);
-    nt = Cross(nt, cords2 - cords1);
-    for(int i = 0; i < 3; i++) {
-      for(int j = 0; j < 3; j++) {
-        if (verti[i] == vertj[j]) {
-          idmap[0] = i;
-          if (verti[(i+1)%3] < verti[(i+2)%3]) {
-            idmap[1] = (i+1)%3;
-            idmap[2] = (i+2)%3;
-          }
-          else{
-            idmap[1] = (i+2)%3;
-            idmap[2] = (i+1)%3;
-          }
-          mesh->GetPoint(verti[idmap[0]], cords1);
-          mesh->GetPoint(verti[idmap[1]], cords2);
-          r1 = cords2 - cords1;
-          mesh->GetPoint(verti[idmap[2]], cords1);
-          r2 = cords1 - cords2;
-
-          idmap[0] = j;
-          if (vertj[(j+1)%3] < vertj[(j+2)%3]) {
-            idmap[1] = (j+1)%3;
-            idmap[2] = (j+2)%3;
-          }
-          else{
-            idmap[1] = (j+2)%3;
-            idmap[2] = (j+1)%3;
-          }
-          mesh->GetPoint(vertj[idmap[0]], cords1);
-          mesh->GetPoint(vertj[idmap[1]], cords2);
-          rt1 = cords2 - cords1;
-          mesh->GetPoint(vertj[idmap[2]], cords1);
-          rt2 = cords1 - cords2;
-          return;
-        }
-      }
-    }
-  }
-
-
-
-
-  //static bool commonEdge(Vec<3> verti, Vec<3> vertj);
-
-  SingleLayerPotential :: SingleLayerPotential(shared_ptr<FESpace> aspace)
-    : space(aspace) 
+  
+  SingleLayerPotential :: SingleLayerPotential(shared_ptr<FESpace> aspace, int _intorder)
+    : space(aspace), intorder(_intorder)
   {
     auto mesh = space->GetMeshAccess();
     // setup global-2-boundary mappings;
@@ -254,9 +49,9 @@ namespace ngbem
     ComputeGaussRule(numGaussPoints, xi, wi);  
 
     
-    IntegrationRule irsegm(ET_SEGM, 10);
-    IntegrationRule irhex (ET_HEX, 10);    
-    IntegrationRule irtrig(ET_TRIG, 10); // order=4
+    IntegrationRule irsegm(ET_SEGM, intorder);
+    IntegrationRule irhex (ET_HEX, intorder);    
+    IntegrationRule irtrig(ET_TRIG, intorder); // order=4
 
     
     Array<Vec<4>> identic_Duffies;
@@ -397,10 +192,11 @@ namespace ngbem
                     evaluator->CalcMatrix(felj, mipy, Trans(shapej.AsMatrix(felj.GetNDof(),1)), lh);
                     
                     double fac = mipx.GetMeasure()*mipy.GetMeasure()*identic_weights[k];
-                    elmat += fac*kernel* shapei * Trans(shapej);
+                    elmat += fac*kernel* shapej * Trans(shapei);
                   }
-                
-                // cout << "new elmat = " << endl << elmat << endl;
+
+                // elmat = 0.0;
+                // cout << "single panel elmat = " << endl << elmat << endl;
                 break;
               }
             case 2: //common edge
@@ -423,7 +219,7 @@ namespace ngbem
                     }
                 int vpermx[3] = { edges[cex][0], edges[cex][1], -1 };
                 vpermx[2] = 3-vpermx[0]-vpermx[1];
-                int vpermy[3] = { edges[cey][0], edges[cey][1], -1 };
+                int vpermy[3] = { edges[cey][1], edges[cey][0], -1 };
                 vpermy[2] = 3-vpermy[0]-vpermy[1];
                 
                 int ivpermx[3], ivpermy[3];
@@ -460,8 +256,12 @@ namespace ngbem
                     evaluator->CalcMatrix(felj, mipy, Trans(shapej.AsMatrix(felj.GetNDof(),1)), lh);
                     
                     double fac = mipx.GetMeasure()*mipy.GetMeasure() * common_edge_weights[k];
-                    elmat += fac*kernel* shapei * Trans(shapej);
+                    elmat += fac*kernel* shapej * Trans(shapei);
                   }
+
+                // cout.precision(12);                
+                // cout << "common edge: " << endl << elmat << endl;
+                // elmat = 0.0;
                 break;
               }
 
@@ -482,9 +282,7 @@ namespace ngbem
                     }
                 
                 int vpermx[3] = { cvx, (cvx+1)%3, (cvx+2)%3 };
-                vpermx[2] = 3-vpermx[0]-vpermx[1];
                 int vpermy[3] = { cvy, (cvy+1)%3, (cvy+2)%3 };
-                vpermy[2] = 3-vpermy[0]-vpermy[1];
                 
                 int ivpermx[3], ivpermy[3];
                 for (int i = 0; i < 3; i++)
@@ -500,10 +298,10 @@ namespace ngbem
                     
                     Vec<3> lamx (xy(0)-xy(1), xy(1), 1-xy(0));   // other ref-triangle
                     Vec<3> lamy (xy(2)-xy(3), xy(3), 1-xy(2));
-                    // lamx0, lamx1 ... common edge
+                    // lam2 .. singular vertex
                     
-                    IntegrationPoint xhat(lamx(ivpermx[0]), lamx(ivpermx[1]), 0, 0);
-                    IntegrationPoint yhat(lamy(ivpermy[0]), lamy(ivpermy[1]), 0, 0);
+                    IntegrationPoint xhat(lamx(ivpermx[2]), lamx(ivpermx[0]), 0, 0);
+                    IntegrationPoint yhat(lamy(ivpermy[2]), lamy(ivpermy[0]), 0, 0);
                     
                     MappedIntegrationPoint<2,3> mipx(xhat, trafoi);
                     MappedIntegrationPoint<2,3> mipy(yhat, trafoj);
@@ -519,8 +317,12 @@ namespace ngbem
                     evaluator->CalcMatrix(felj, mipy, Trans(shapej.AsMatrix(felj.GetNDof(),1)), lh);
                     
                     double fac = mipx.GetMeasure()*mipy.GetMeasure()*common_vertex_weights[k];
-                    elmat += fac*kernel* shapei * Trans(shapej);
+                    elmat += fac*kernel* shapej * Trans(shapei);
                   }
+
+                // cout.precision(12);
+                // cout << "common vertex: " << endl << elmat << endl;
+                // elmat = 0.0;
                 break;
               }
 
@@ -598,8 +400,10 @@ namespace ngbem
                       kernel_shapesj.Col(ix) += fac*kernel*shapesj.Col(iy);
                     }
                 
-                elmat += shapesi * Trans(kernel_shapesj);
-
+                // elmat += shapesi * Trans(kernel_shapesj);
+                elmat += kernel_shapesj * Trans(shapesi);
+                // cout << "disjoint panel " << endl << elmat << endl;
+                // elmat = 0.0;
                 break;
               }
             default:
@@ -608,7 +412,7 @@ namespace ngbem
           
           for (int ii = 0; ii < dnumsi.Size(); ii++)
             for (int jj = 0; jj < dnumsj.Size(); jj++)
-              matrix(mapglob2bnd[dnumsi[ii]], mapglob2bnd[dnumsj[jj]]) += elmat(ii, jj);
+              matrix(mapglob2bnd[dnumsj[jj]], mapglob2bnd[dnumsi[ii]]) += elmat(jj, ii);
         }
   }
 
@@ -620,8 +424,9 @@ namespace ngbem
 
 
 
-  DoubleLayerPotential :: DoubleLayerPotential (shared_ptr<FESpace> aspace, shared_ptr<FESpace> bspace)
-    : space(aspace), space2(bspace)
+  DoubleLayerPotential :: DoubleLayerPotential (shared_ptr<FESpace> aspace, shared_ptr<FESpace> bspace,
+                                                int _intorder)
+    : space(aspace), space2(bspace), intorder(_intorder)
   {
 
     auto mesh = space->GetMeshAccess();
@@ -686,55 +491,10 @@ namespace ngbem
     //cout << "CalcElementMatrix: " << endl;
     matrix = 0; 
 
-    int intOrder = 5;
-    int intCase;
 
-    Array<DofId> dnumsi, dnumsj;
-    Array<double> xi, wi, xi2, wi2;
-
-    ComputeGaussRule(intOrder, xi, wi);
-    ComputeGaussRule(2, xi2, wi2);
-
-    Array<double> quadTriPoints1, quadTriPoints2, quadTriWeights;
-    quadTriPoints1.SetSize(7);
-    quadTriPoints2.SetSize(7);
-    quadTriWeights.SetSize(7);
-    quadTriPoints1[0] = 0.333333333333333;
-    quadTriPoints2[0] = 0.333333333333333;
-
-    quadTriPoints1[1] = 0.470142064105115;
-    quadTriPoints2[1] = 0.470142064105115;
-
-    quadTriPoints1[2] = 0.470142064105115;
-    quadTriPoints2[2] = 0.05971587178977;
-
-    quadTriPoints1[3] = 0.05971587178977;
-    quadTriPoints2[3] = 0.470142064105115;
-
-    quadTriPoints1[4] = 0.101286507323456;
-    quadTriPoints2[4] = 0.101286507323456;
-
-    quadTriPoints1[5] = 0.101286507323456;
-    quadTriPoints2[5] = 0.797426985353087;
-
-    quadTriPoints1[6] = 0.797426985353087;
-    quadTriPoints2[6] = 0.101286507323456;
-
-    quadTriWeights[0] = 0.1125;
-    quadTriWeights[1] = 0.066197076394253;
-    quadTriWeights[2] = 0.066197076394253;
-    quadTriWeights[3] = 0.066197076394253;
-    quadTriWeights[4] = 0.0629695902724135;
-    quadTriWeights[5] = 0.0629695902724135;
-    quadTriWeights[6] = 0.0629695902724135;
-
-
-
-
-    
-    IntegrationRule irsegm(ET_SEGM, 10);
-    IntegrationRule irhex (ET_HEX, 10);    
-    IntegrationRule irtrig(ET_TRIG, 10); // order=4
+    IntegrationRule irsegm(ET_SEGM, intorder);
+    IntegrationRule irhex (ET_HEX, intorder);    
+    IntegrationRule irtrig(ET_TRIG, intorder); // order=4
 
     
     Array<Vec<4>> identic_Duffies;
@@ -810,7 +570,7 @@ namespace ngbem
 
     auto evaluator = space->GetEvaluator(BND);
     auto evaluator2 = space2->GetEvaluator(BND);
-
+    // cout << "type(eval2) = " << typeid(*evaluator2).name() << endl
     
     for (int i = 0; i < mesh->GetNSE(); i++)
       for (int j = 0; j < mesh2->GetNSE(); j++)
@@ -1117,358 +877,17 @@ namespace ngbem
             for (int jj = 0; jj < dnumsj.Size(); jj++)
               matrix(mapglob2bnd2[dnumsj[jj]], mapglob2bnd[dnumsi[ii]]) += elmat(jj,ii);
 
-
-#ifdef OLD
-          
-          {
-          
-          Ngs_Element ngsEli = mesh->GetElement(ei);
-          auto tmp_verti = ngsEli.Vertices();
-          Vec<3> verti;
-          verti[0] = tmp_verti[0];
-          verti[1] = tmp_verti[1];
-          verti[2] = tmp_verti[2];
-
-          //cout << verti << endl;
-          Ngs_Element ngsElj = mesh2->GetElement(ej);
-          auto tmp_vertj = ngsElj.Vertices();
-          Vec<3> vertj;
-          vertj[0] = tmp_vertj[0];
-          vertj[1] = tmp_vertj[1];
-          vertj[2] = tmp_vertj[2];
-          //cout << vertj << endl;
-          
-          BaseScalarFiniteElement &feli = dynamic_cast<BaseScalarFiniteElement &>(space->GetFE(ei, lh));
-          //cout << feli << endl;
-          BaseScalarFiniteElement &felj = dynamic_cast<BaseScalarFiniteElement &>(space2->GetFE(ej, lh));
-          //cout << felj << endl;
-
-          ElementTransformation &trafoi = mesh->GetTrafo(ei, lh);
-          ElementTransformation &trafoj = mesh2->GetTrafo(ej, lh);
-          Array<DofId> dnumsi, dnumsj;
-          space->GetDofNrs(ei, dnumsi); // mapping to global dof
-          space2->GetDofNrs(ej, dnumsj);
-
-          //cout << dnumsi.Size() << endl;
-          //cout << dnumsj.Size() << endl;
-          //  return;
-
-          Matrix elmat(feli.GetNDof(), felj.GetNDof()); // e.g. 3 x 1
-          elmat = 0;
-          /*
-            for (auto d : dnumsi)
-            cout << d;
-
-            cout << " x ";
-
-            for (auto d : dnumsj)
-            cout << d;
-
-            cout << endl;
-          */
-          intCase = -1;
-          // 2d cases
-          if (space->GetSpatialDimension() == 2) {
-            if (i == j)
-              intCase = 0;
-            else if (verti[0] == vertj[0] || verti[0] == vertj[1] ||
-                     verti[1] == vertj[0] || verti[1] == vertj[1])
-              intCase = 1;
-            else
-              intCase = 2;
-          }
-
-          // 3d cases
-          if (space->GetSpatialDimension() == 3) {
-            if (i == j)
-              intCase = 0;
-            else if (commonEdge(verti, vertj))
-              intCase = 1;
-            else if (commonVertex(verti, vertj)) 
-              intCase = 2;
-            else
-              intCase = 3;
-          }
-
-          //cout << "Case: " << intCase << endl;
-
-          // 3d cases
-          if (intCase == 0) {
-
-          }
-          else if (intCase == 1) {
-            //common edge
-          
-            double elmat1, elmat2, elmat3;
-            int idmap[3];
-            Vec<3> u, v, w, Ji;
-            commonEdgeVec2(u, v, w, Ji, idmap, verti, vertj, mesh);
-            /*cout << u << endl << v << endl << w << endl;
-              cout << "u" << u << endl;
-              cout << "v" << v << endl;
-              cout << "w" << w << endl;
-            */
-            double J = L2Norm(Cross(u, v));
-            //Vec<3> Ji = Cross(u, w);
-            double JT = L2Norm(Ji);
-
-            double n1 = Ji[0]/JT, n2 = Ji[1]/JT, n3 = Ji[2]/JT;
-            //cout << "nt " << n1 << " " << n2 << " " << " " << n3 << endl;
-            J *= JT;
-
-            Vec<3> xy;
-            elmat1 = 0;
-            elmat2 = 0;
-            elmat3 = 0;
-
-            double eta1 = 0.5;
-            for (int k=0; k < xi.Size(); k++)
-              {
-                double eta2 = xi[k];
-                double weta2 = wi[k];
-                double eta12 = eta1*eta2;
-                for (int l=0; l < xi.Size(); l++)
-                  {
-                    double eta3 = xi[l];
-                    double weta3 = wi[l];
-                    double eta123 = eta12*eta3;
-                    xy = eta2*(eta3*(u+w)-w)+v;
-                    double normxy = L2Norm(xy);
-                    double xyn = xy[0]*n1+xy[1]*n2+xy[2]*n3;
-                    double H = xyn/normxy/normxy/normxy;
-                    double I1ij = wi2[0]*xi2[0]*(1.0-xi2[0]*(1.0-eta123));
-                    I1ij+= wi2[1]*xi2[1]*(1.0-xi2[1]*(1.0-eta123));
-                    I1ij *= H;
-                    double I2ij = wi2[0]*xi2[0] * xi2[0]*(1.0-eta12);
-                    I2ij += wi2[1]*xi2[1] * xi2[1]*(1.0-eta12);
-                    I2ij *= H;
-                    double I3ij = wi2[0]*xi2[0] * xi2[0]*eta12*(1.0-eta3);
-                    I3ij += wi2[1]*xi2[1] * xi2[1]*eta12*(1.0-eta3);
-                    I3ij *= H;
-              
-                    xy = -eta2*(u+v+eta3*w)+v;
-                    normxy = L2Norm(xy);
-                    xyn = xy[0]*n1+xy[1]*n2+xy[2]*n3;
-                    H = xyn/normxy/normxy/normxy;
-                    I1ij += wi2[0]*xi2[0] * (1.0-xi2[0]) * H;
-                    I1ij += wi2[1]*xi2[1] * (1.0-xi2[1]) * H;
-                    I2ij += wi2[0]*xi2[0] * xi2[0]*(1.0-eta123) * H;
-                    I2ij += wi2[1]*xi2[1] * xi2[1]*(1.0-eta123) * H;
-                    I3ij += wi2[0]*xi2[0] * xi2[0]*eta123 * H;
-                    I3ij += wi2[1]*xi2[1] * xi2[1]*eta123 * H;
-              
-                    xy = eta2*(v-eta3*(u+v))-w;
-                    normxy = L2Norm(xy);
-                    xyn = xy[0]*n1+xy[1]*n2+xy[2]*n3;
-                    H = xyn/normxy/normxy/normxy;
-                    I1ij += wi2[0]*xi2[0] * (1.0-xi2[0]) * H;
-                    I1ij += wi2[1]*xi2[1] * (1.0-xi2[1]) * H;
-                    I2ij += wi2[0]*xi2[0] * xi2[0]*(1.0-eta1) * H;
-                    I2ij += wi2[1]*xi2[1] * xi2[1]*(1.0-eta1) * H;
-                    I3ij += wi2[0]*xi2[0] * xi2[0]*eta1 * H;
-                    I3ij += wi2[1]*xi2[1] * xi2[1]*eta1 * H;
-              
-                    xy = -eta2*(w+eta3*(u+v))+v;
-                    normxy = L2Norm(xy);
-                    xyn = xy[0]*n1+xy[1]*n2+xy[2]*n3;
-                    H = xyn/normxy/normxy/normxy;
-                    I1ij += wi2[0]*xi2[0] * (1.0-xi2[0]) * H;
-                    I1ij += wi2[1]*xi2[1] * (1.0-xi2[1]) * H;
-                    I2ij += wi2[0]*xi2[0] * xi2[0]*(1.0-eta12) * H;
-                    I2ij += wi2[1]*xi2[1] * xi2[1]*(1.0-eta12) * H;
-                    I3ij += wi2[0]*xi2[0] * xi2[0]*eta12 * H;
-                    I3ij += wi2[1]*xi2[1] * xi2[1]*eta12 * H;
-              
-                    I1ij *= eta2;
-                    I2ij *= eta2;
-                    I3ij *= eta2;
-              
-                    xy = eta2*(u+w)+eta3*v-w;
-                    normxy = L2Norm(xy);
-                    xyn = xy[0]*n1+xy[1]*n2+xy[2]*n3;
-                    H = xyn/normxy/normxy/normxy;
-                    I1ij += wi2[0]*xi2[0]*(1.0-xi2[0]*(1.0-eta12)) * H;
-                    I1ij += wi2[1]*xi2[1]*(1.0-xi2[1]*(1.0-eta12)) * H;
-                    I2ij += wi2[0]*xi2[0] * xi2[0]*(1.0-eta1) * H;
-                    I2ij += wi2[1]*xi2[1] * xi2[1]*(1.0-eta1) * H;
-                    I3ij += wi2[0]*xi2[0] * xi2[0]*eta1*(1.0-eta2) * H;
-                    I3ij += wi2[1]*xi2[1] * xi2[1]*eta1*(1.0-eta2) * H;
-
-                    elmat1 += weta2*weta3*I1ij;
-                    elmat2 += weta2*weta3*I2ij;
-                    elmat3 += weta2*weta3*I3ij;
-                  }
-              }
-
-            elmat(idmap[0],0) = elmat1 * J / 4 / M_PI;
-            elmat(idmap[1],0) = elmat2 * J / 4 / M_PI;
-            elmat(idmap[2],0) = elmat3 * J / 4 / M_PI;
-          
-            //cout << I << endl;
-            //cout << 3 << "-d , P: " << p1 << p2 << p3 << endl;
-          }
-          else if (intCase == 2) {
-            //common vertex
-          
-            Vec<3> u, v, w, z, J1;
-            double elmat1, elmat2, elmat3;
-            int idmap[3];
-            commonVertexVec2(u, v, w, z, J1, idmap, verti, vertj, mesh);
-            /*cout << "u" << u << endl;
-              cout << "v" << v << endl;
-              cout << "w" << w << endl;
-              cout << "z" << z << endl;
-              cout << r1 << endl << r2 << endl << rt1 << endl << rt2 << endl;*/
-            double J = L2Norm(Cross(u, v));
-            double JT = L2Norm(J1);
-            double n1 = J1[0]/JT, n2 = J1[1]/JT, n3 = J1[2]/JT;
-            //cout << "nt" << n1 << " " << n2 << " " << " " << n3 << endl;
-            J *= JT;
-
-            Vec<3> xy;
-            elmat1 = 0;
-            elmat2 = 0;
-            elmat3 = 0;
-
-            for (int k = 0; k < xi.Size(); k++)
-              {
-                double eta1 = xi[k];
-                double weta1 = wi[k];
-                for (int l = 0; l < xi.Size(); l++)
-                  {
-                    double eta2 = xi[l];
-                    double weta2 = wi[l];
-                    for (int m = 0; m < xi.Size(); m++)
-                      {
-                        double eta3 = xi[m];
-                        double weta3 = wi[m];
-                        xy = u+eta1*v-eta2*(w+eta3*z);
-                        double normxy = L2Norm(xy);
-                        double xyn = xy[0]*n1+xy[1]*n2+xy[2]*n3;
-                        double H = xyn/normxy/normxy/normxy;
-                        double I1ijk = wi2[0]*xi2[0]*(1.0-xi2[0]*eta2);
-                        I1ijk += wi2[1]*xi2[1]*(1.0-xi2[1]*eta2);
-                        I1ijk *= H;
-                        double I2ijk = wi2[0]*xi2[0]*xi2[0]*eta2*(1.0-eta3);
-                        I2ijk += wi2[1]*xi2[1]*xi2[1]*eta2*(1.0-eta3);
-                        I2ijk *= H;
-                        double I3ijk = wi2[0]*xi2[0]*xi2[0]*eta2*eta3;
-                        I3ijk += wi2[1]*xi2[1]*xi2[1]*eta2*eta3;
-                        I3ijk *= H;
-                
-                        xy = eta2*(u+eta3*v)-(w+eta1*z);
-                        normxy = L2Norm(xy);
-                        xyn = xy[0]*n1+xy[1]*n2+xy[2]*n3;
-                        H = xyn/normxy/normxy/normxy;
-                        I1ijk += wi2[0]*xi2[0]*(1.0-xi2[0]) * H;
-                        I1ijk += wi2[1]*xi2[1]*(1.0-xi2[1]) * H;
-                        I2ijk += wi2[0]*xi2[0]*xi2[0]*(1.0-eta1) * H;
-                        I2ijk += wi2[1]*xi2[1]*xi2[1]*(1.0-eta1) * H;
-                        I3ijk += wi2[0]*xi2[0]*xi2[0]*eta1 * H;
-                        I3ijk += wi2[1]*xi2[1]*xi2[1]*eta1 * H;
-                
-                        elmat1 += weta1*weta2*weta3 * eta2 * I1ijk;
-                        elmat2 += weta1*weta2*weta3 * eta2 * I2ijk;
-                        elmat3 += weta1*weta2*weta3 * eta2 * I3ijk;
-                      }
-                  }
-              }
-
-            elmat(idmap[0],0) = J * elmat1 / 4.0 / M_PI;
-            elmat(idmap[1],0) = J * elmat2 / 4.0 / M_PI;
-            elmat(idmap[2],0) = J * elmat3 / 4.0 / M_PI;
-            //cout << "idmap:" << idmap[0] << idmap[1] << idmap[2] << endl;
-
-            // cout << "old: common vertex elmat = " << elmat << endl;
-            elmat = 0.0;
-            //cout << I << endl;
-            //cout << 3 << "-d , P: " << p1 << p2 << p3 << endl;
-          }
-          else {
-            //disjoint panels
-          
-            Vec<3> A,u,v,B,w,z,nt;
-            mesh->GetPoint(verti[0], A);
-            mesh->GetPoint(verti[1], u);
-            mesh->GetPoint(verti[2], v);
-            mesh->GetPoint(vertj[0], B);
-            mesh->GetPoint(vertj[1], w);
-            mesh->GetPoint(vertj[2], z);
-            u = u - A;
-            v = v - A;
-            w = w - B;
-            z = z - B;
-          
-            nt = Cross(w,z);
-            double J = L2Norm(nt);
-            nt = 1/J * nt;
-            J *= L2Norm(Cross(u, v));
-
-            for (int k=0; k<7; k++)
-              {
-                double ksi1 = quadTriPoints1[k];
-                double ksi2 = quadTriPoints2[k];
-                double wksi = quadTriWeights[k];
-                double x1 = A[0]+ksi1*u[0]+ksi2*v[0];
-                double x2 = A[1]+ksi1*u[1]+ksi2*v[1];
-                double x3 = A[2]+ksi1*u[2]+ksi2*v[2];
-                for (int l=0; l<7; l++)
-                  {
-                    double eta1 = quadTriPoints1[l];
-                    double eta2 = quadTriPoints2[l];
-                    double weta = quadTriWeights[l];
-                    double xy1 = x1-B[0]-eta1*w[0]-eta2*z[0];
-                    double xy2 = x2-B[1]-eta1*w[1]-eta2*z[1];
-                    double xy3 = x3-B[2]-eta1*w[2]-eta2*z[2];
-                    double normxy = sqrt(xy1*xy1+xy2*xy2+xy3*xy3);
-                    double xyn = xy1*nt[0]+xy2*nt[1]+xy3*nt[2];
-                    double H = xyn/normxy/normxy/normxy;
-                    elmat(0,0) += wksi*weta * (1.0f-eta1-eta2) * H;
-                    elmat(1,0) += wksi*weta * eta1 * H;
-                    elmat(2,0) += wksi*weta * eta2 * H;
-                  }
-              }
-
-            elmat(0,0) = J * elmat(0,0) / 4.0 / M_PI;
-            elmat(1,0) = J * elmat(1,0) / 4.0 / M_PI;
-            elmat(2,0) = J * elmat(2,0) / 4.0 / M_PI;
-            // cout << "old: disjoint elmat = " << elmat << endl;
-            // cout << "i = " << i << ", dnumsi = " << dnumsi << endl;
-            elmat = 0;
-          
-          }
-
-          // feli.GetNDof() == dnumsi.Size()
-          /*
-            cout << elmat << endl;
-            cout << i << endl << "x" << endl;
-            cout << vertj[0] << endl;
-            cout << vertj[1] << endl;
-            cout << vertj[2] << endl;
-          */
-
-          for(int jj = 0; jj < 3; jj++)
-            matrix(i, vertj[jj]) += elmat(jj, 0);
-
-          /*for (int ii = 0; ii < dnumsi.Size(); ii++)    // 3
-            for (int jj = 0; jj < dnumsj.Size(); jj++)  // 1
-            matrix(mapglob2bnd2[dnumsj[jj]], mapglob2bnd[dnumsi[ii]]) += elmat(ii, jj);
-          */
-        }
-#endif          
         }
   }
 
   void DoubleLayerPotential :: GetDofNrs(Array<int> &dnums) const
   {
     dnums = mapbnd2glob;
-    //cout << "GetDOFNrs: " << dnums << endl;
   }
 
   void DoubleLayerPotential ::  GetDofNrs2(Array<int> &dnums) const   
   {
     dnums = mapbnd2glob2;
-    //cout << "GetDOFNrs2: " << dnums << endl;
   }
 
 }
