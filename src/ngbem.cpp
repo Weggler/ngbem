@@ -537,7 +537,7 @@ namespace ngbem
                 auto & miry = trafoj(irtrig, lh);
                 FlatMatrix<> shapesi(feli.GetNDof(), irtrig.Size(), lh);
                 FlatMatrix<> shapesj(felj.GetNDof(), irtrig.Size(), lh);
-                FlatMatrix<> kernel_shapesj(felj.GetNDof(), irtrig.Size(), lh);
+                FlatMatrix<double,ColMajor> kernel_shapesj(felj.GetNDof(), irtrig.Size(), lh);
                 
                 
                 // feli.CalcShape (irtrig, shapesi);
@@ -547,16 +547,20 @@ namespace ngbem
                 
                 RegionTimer r2(t_disjoint2);
                 kernel_shapesj = 0;
+                FlatVector<> kernel_iy(irtrig.Size(), lh);
                 for (int ix = 0; ix < irtrig.Size(); ix++)
-                  for (int iy = 0; iy < irtrig.Size(); iy++)
-                    {
-                      Vec<3> x = mirx[ix].GetPoint();
-                      Vec<3> y = miry[iy].GetPoint();
-                    
-                      double kernel = 1.0 / (4*M_PI*L2Norm(x-y));
-                      double fac = mirx[ix].GetWeight()*miry[iy].GetWeight();
-                      kernel_shapesj.Col(ix) += fac*kernel*shapesj.Col(iy);
-                    }
+                  {
+                    for (int iy = 0; iy < irtrig.Size(); iy++)
+                      {
+                        Vec<3> x = mirx[ix].GetPoint();
+                        Vec<3> y = miry[iy].GetPoint();
+                        
+                        double kernel = 1.0 / (4*M_PI*L2Norm(x-y));
+                        double fac = mirx[ix].GetWeight()*miry[iy].GetWeight();
+                        kernel_iy(iy) = fac*kernel;
+                      }
+                    kernel_shapesj.Col(ix) = shapesj * kernel_iy;
+                  }
                 
                 RegionTimer r3(t_disjoint3);
                 elmat += kernel_shapesj * Trans(shapesi);
