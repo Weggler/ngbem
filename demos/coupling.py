@@ -32,8 +32,8 @@ vs = surfL2.TestFunction()
 uH1 = fesH1.TrialFunction()
 vH1 = fesH1.TestFunction()
 
-SingleLayerPotential(V)
-DoubleLayerPotential(KI)
+SingleLayerPotentialOperator(V)
+DoubleLayerPotentialOperator(KI)
 
 A += grad(uH1) * grad(vH1) * dx 
 B += - us * vH1 * ds
@@ -65,14 +65,14 @@ np_V = sp.csr_matrix((vals,(rows,cols)), shape=V.mat.shape).todense()
 np_rhs1=rhs1.vec.FV().NumPy()
 np_rhs2=rhs2.vec.FV().NumPy()
 
-print(A.mat.shape)
-print(np_A.shape)
-print(B.mat.shape)
-print(np_B.shape)
-print(KI.mat.shape)
-print(np_KI.shape)
-print(V.mat.shape)
-print(np_V.shape)
+#print(A.mat.shape)
+#print(np_A.shape)
+#print(B.mat.shape)
+#print(np_B.shape)
+#print(KI.mat.shape)
+#print(np_KI.shape)
+#print(V.mat.shape)
+#print(np_V.shape)
 
 M = np.block([[np_A,np_B], [-np_KI, np_V]])
 rhs = np.block([np_rhs1, np_rhs2])
@@ -81,12 +81,11 @@ sol = np.linalg.solve(M, rhs)
 sol1.vec.FV().NumPy()[:] = sol[0:np_rhs1.shape[0]]
 sol2.vec.FV().NumPy()[:] = sol[np_rhs1.shape[0]:]
 
-print(sol1.vec)
-print(sol2.vec)
-
-print(sqrt (Integrate ( sol1 * sol1, mesh)))
-print(sqrt (Integrate ( sol2 * sol2, mesh, BND)))
-
+#print(sol1.vec)
+#print(sol2.vec)
+#
+#print(sqrt (Integrate ( sol1 * sol1, mesh)))
+#print(sqrt (Integrate ( sol2 * sol2, mesh, BND)))
 
 
 # we want to solve a system [ A  B] x [u] = [rhs]
