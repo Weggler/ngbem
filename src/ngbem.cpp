@@ -16,7 +16,7 @@ namespace ngbem
     Array<Vec<4>> Duffies;
     Array<double> weights;
 
-    // Sauter-Schwab integration points:
+    // Sauter-Schwab integration points in triangle [(0,0), (1,0), (1,1)]
     // page 240 German edition    
     for (auto ipeta : irhex)
       for (auto ipxi : irsegm)
@@ -36,6 +36,8 @@ namespace ngbem
             weights.Append (xi*xi*xi*e1*e1*e2 * ipeta.Weight()*ipxi.Weight());
         }
 
+	
+    // trafo to [(0,0), (1,0), (0,1)]
     Array<Vec<2>> ipx, ipy;
     for (auto ip : Duffies)
       {
@@ -57,8 +59,7 @@ namespace ngbem
     Array<Vec<4>> Duffies;
     Array<double> weights;
 
-    // Sauter-Schwab integration points:
-    
+    // Sauter-Schwab integration points: [(0,0), (1,0), (1,1)]
     for (auto ipeta : irhex)
       for (auto ipxi : irsegm)
         {
@@ -73,6 +74,7 @@ namespace ngbem
             weights.Append (xi*xi*xi*e2  * ipeta.Weight()*ipxi.Weight());
         }
 
+    // trafo to [(0,0), (1,0), (0,1)]
     Array<Vec<2>> ipx, ipy;
     for (auto ip : Duffies)
       {
@@ -94,7 +96,7 @@ namespace ngbem
     Array<Vec<4>> Duffies;
     Array<double> weights;
 
-    // Sauter-Schwab integration points:
+    // Sauter-Schwab integration points: [(0,0), (1,0), (1,1)]
     for (auto ipeta : irhex)
       for (auto ipxi : irsegm)
         {
@@ -126,14 +128,13 @@ namespace ngbem
   }
 
 
-
   
   
-  
-  SingleLayerPotential :: SingleLayerPotential(shared_ptr<FESpace> aspace, int _intorder)
+  SingleLayerPotentialOperator :: SingleLayerPotentialOperator(shared_ptr<FESpace> aspace, int _intorder)
     : space(aspace), intorder(_intorder)
   {
     auto mesh = space->GetMeshAccess();
+
     // setup global-2-boundary mappings;
     BitArray bnddofs(space->GetNDof());
     bnddofs.Clear();
@@ -157,7 +158,7 @@ namespace ngbem
     // cout << "bnddofs: " << bnddofs << endl;
   }
 
-  void SingleLayerPotential ::
+  void SingleLayerPotentialOperator ::
   CalcElementMatrix(FlatMatrix<double> matrix,  // matrix dim = ndof_bnd x ndof_bnd
                     LocalHeap &lh) const
   {
@@ -214,6 +215,7 @@ namespace ngbem
           elmat = 0;
 
           
+          // get number of common nodes for integration rule
           int n_common_vertices = 0;
           for (auto vi : verti)
             if (vertj.Contains(vi))
@@ -270,6 +272,8 @@ namespace ngbem
                           break;
                       }
                     }
+
+                // permute vertices st common edge comes first
                 int vpermx[3] = { edges[cex][0], edges[cex][1], -1 };
                 vpermx[2] = 3-vpermx[0]-vpermx[1];
                 int vpermy[3] = { edges[cey][1], edges[cey][0], -1 };
@@ -284,13 +288,6 @@ namespace ngbem
                      << vertj[vpermy[2]] << endl;
                 */
                   
-                int ivpermx[3], ivpermy[3];
-                for (int i = 0; i < 3; i++)
-                  {
-                    ivpermx[vpermx[i]] = i;
-                    ivpermy[vpermy[i]] = i;
-                  }
-                
                 
                 elmat = 0.0;
                 for (int k = 0; k < common_edge_weight.Size(); k++)
@@ -298,18 +295,12 @@ namespace ngbem
                     Vec<2> xk = common_edge_x[k];
                     Vec<2> yk = common_edge_y[k];
 
-                    /*
-                    Vec<3> lamx (xk(0), xk(1), 1-xk(0)-xk(1));
-                    Vec<3> lamy (yk(0), yk(1), 1-yk(0)-yk(1));
-                    // lamx0, lamx2 ... common edge
 
-                    IntegrationPoint xhat(lamx(ivpermx[0]), lamx(ivpermx[1]), 0, 0);
-                    IntegrationPoint yhat(lamy(ivpermy[0]), lamy(ivpermy[1]), 0, 0);
-                    */
-                    
                     Vec<3> lamx (1-xk(0)-xk(1), xk(0), xk(1) );
                     Vec<3> lamy (1-yk(0)-yk(1), yk(0), yk(1) );
 
+			
+                    // consider permutation 
                     Vec<3> plamx, plamy;
                     for (int i = 0; i < 3; i++)
                       {
@@ -319,9 +310,6 @@ namespace ngbem
                     
                     IntegrationPoint xhat(plamx(0), plamx(1), 0, 0);
                     IntegrationPoint yhat(plamy(0), plamy(1), 0, 0);
-
-
-                    
                     
                     MappedIntegrationPoint<2,3> mipx(xhat, trafoi);
                     MappedIntegrationPoint<2,3> mipy(yhat, trafoj);
@@ -362,27 +350,11 @@ namespace ngbem
                 int vpermx[3] = { cvx, (cvx+1)%3, (cvx+2)%3 };
                 int vpermy[3] = { cvy, (cvy+1)%3, (cvy+2)%3 };
                 
-                int ivpermx[3], ivpermy[3];
-                for (int i = 0; i < 3; i++)
-                  {
-                    ivpermx[vpermx[i]] = i;
-                    ivpermy[vpermy[i]] = i;
-                  }
-                
                 elmat = 0.0;
                 for (int k = 0; k < common_vertex_weight.Size(); k++)
                   {
                     Vec<2> xk = common_vertex_x[k];
                     Vec<2> yk = common_vertex_y[k];
-
-                    /*
-                    Vec<3> lamx (xk(0), xk(1), 1-xk(0)-xk(1));
-                    Vec<3> lamy (yk(0), yk(1), 1-yk(0)-yk(1));
-                    // lam2 .. barycentric at singular vertex
-                    
-                    IntegrationPoint xhat(lamx(ivpermx[2]), lamx(ivpermx[0]), 0, 0);
-                    IntegrationPoint yhat(lamy(ivpermy[2]), lamy(ivpermy[0]), 0, 0);
-                    */
 
                     Vec<3> lamx (1-xk(0)-xk(1), xk(0), xk(1) );
                     Vec<3> lamy (1-yk(0)-yk(1), yk(0), yk(1) );
@@ -518,14 +490,14 @@ namespace ngbem
   }
 
   
-  void SingleLayerPotential :: GetDofNrs(Array<int> &dnums) const
+  void SingleLayerPotentialOperator :: GetDofNrs(Array<int> &dnums) const
   {
     dnums = mapbnd2glob;
   }
 
 
 
-  DoubleLayerPotential :: DoubleLayerPotential (shared_ptr<FESpace> aspace, shared_ptr<FESpace> bspace,
+  DoubleLayerPotentialOperator :: DoubleLayerPotentialOperator (shared_ptr<FESpace> aspace, shared_ptr<FESpace> bspace,
                                                 int _intorder)
     : space(aspace), space2(bspace), intorder(_intorder)
   {
@@ -582,19 +554,19 @@ namespace ngbem
     // cout << "mapbnd2glob2: " << mapbnd2glob2 << endl;
   }
 
-  void DoubleLayerPotential ::
-  CalcElementMatrix(FlatMatrix<double> matrix, // matrix dim = ndof_bnd x ndof_bnd2
+  void DoubleLayerPotentialOperator ::
+  CalcElementMatrix(FlatMatrix<double> matrix, // matrix dim = ndof_bnd_H1 x ndof_bnd_L2
                     LocalHeap &lh) const
   {
     auto mesh = space->GetMeshAccess();    // trialspace = H1
     auto mesh2 = space2->GetMeshAccess();  // testspace = L2
     
-    static Timer tall("SingleLayer - all");
-    static Timer t_identic("SingleLayer - identic panel");
-    static Timer t_common_vertex("SingleLayer - common vertex");        
-    static Timer t_common_edge("SingleLayer - common edge");        
-    static Timer t_disjoint("SingleLayer - disjoint");
-    static Timer t_disjoint2("SingleLayer - disjoint2");        
+    static Timer tall("DoubleLayer - all");
+    static Timer t_identic("DoubleLayer - identic panel");
+    static Timer t_common_vertex("DoubleLayer - common vertex");        
+    static Timer t_common_edge("DoubleLayer - common edge");        
+    static Timer t_disjoint("DoubleLayer - disjoint");
+    static Timer t_disjoint2("DoubleLayer - disjoint2");        
     RegionTimer reg(tall);
 
 
@@ -644,8 +616,6 @@ namespace ngbem
           FlatMatrix elmat(felj.GetNDof(), feli.GetNDof(), lh); 
           elmat = 0;
 
-
-          
           int n_common_vertices = 0;
           for (auto vi : verti)
             if (vertj.Contains(vi))
@@ -710,24 +680,19 @@ namespace ngbem
                 int vpermy[3] = { edges[cey][1], edges[cey][0], -1 }; // common edge gets first
                 vpermy[2] = 3-vpermy[0]-vpermy[1];
                 
-                int ivpermx[3], ivpermy[3];
-                for (int i = 0; i < 3; i++)
-                  {
-                    ivpermx[vpermx[i]] = i;
-                    ivpermy[vpermy[i]] = i;
-                  }
-                
                 
                 elmat = 0.0;
                 for (int k = 0; k < common_edge_weight.Size(); k++)
                   {
 
-                    Vec<2> xk = common_edge_x[k]; // int point in master element STAS
-                    Vec<2> yk = common_edge_y[k]; // int point in master element STAS
+                    Vec<2> xk = common_edge_x[k]; // int point in [(0,0), (1,0), (0,1)] 
+                    Vec<2> yk = common_edge_y[k]; // int point in [(0,0), (1,0), (0,1)] 
 
                     Vec<3> lamx (1-xk(0)-xk(1), xk(0), xk(1) ); 
                     Vec<3> lamy (1-yk(0)-yk(1), yk(0), yk(1) );
 
+			
+                    // consider permuation 
                     Vec<3> plamx, plamy;
                     for (int i = 0; i < 3; i++)
                       {
@@ -735,33 +700,8 @@ namespace ngbem
                         plamy(vpermy[i]) = lamy(i);
                       }
 
-/*
-
-// Lucy: ich würde es hier mit einer Fallunterscheidung machen ... 
-			if(cex == 0) // map STAS 1st edge to NG 1st edge
-			{ 
-			}
-			if(cex == 1) // map STAS 1st edge to NG 2nd edge
-			{ 
-			}
-			if(cex == 2) // map STAS 1st edge to NG 3rd edge
-			{ 
-			}
-				
-			if(cey == 0)
-			{ 
-			}
-			if(cey == 1)
-			{ 
-			}
-			if(cey == 2)
-			{ 
-			}
-*/
-                    IntegrationPoint xhat(plamx(0), plamx(1), 0, 0); // int point in master ngsolve
+                    IntegrationPoint xhat(plamx(0), plamx(1), 0, 0); // int point in [(0,1),(1,0),(0,0)]
                     IntegrationPoint yhat(plamy(0), plamy(1), 0, 0);
-				
-                    
                     
                     MappedIntegrationPoint<2,3> mipx(xhat, trafoi);
                     MappedIntegrationPoint<2,3> mipy(yhat, trafoj);
@@ -806,13 +746,6 @@ namespace ngbem
                 int vpermy[3] = { cvy, (cvy+1)%3, (cvy+2)%3 };
                 vpermy[2] = 3-vpermy[0]-vpermy[1];
                 
-                int ivpermx[3], ivpermy[3];
-                for (int i = 0; i < 3; i++)
-                  {
-                    ivpermx[vpermx[i]] = i;
-                    ivpermy[vpermy[i]] = i;
-                  }
-                
                 elmat = 0.0;
                 for (int k = 0; k < common_vertex_weight.Size(); k++)
                   {
@@ -839,7 +772,6 @@ namespace ngbem
                     Vec<3> x = mipx.Point();
                     Vec<3> y = mipy.Point();
                     
-
                     Vec<3> nx = mipx.GetNV();
                     double nxy = InnerProduct(nx, (x-y));
                     double normxy = L2Norm(x-y);
@@ -911,12 +843,12 @@ namespace ngbem
         }
   }
 
-  void DoubleLayerPotential :: GetDofNrs(Array<int> &dnums) const
+  void DoubleLayerPotentialOperator :: GetDofNrs(Array<int> &dnums) const
   {
     dnums = mapbnd2glob;
   }
 
-  void DoubleLayerPotential ::  GetDofNrs2(Array<int> &dnums) const   
+  void DoubleLayerPotentialOperator ::  GetDofNrs2(Array<int> &dnums) const   
   {
     dnums = mapbnd2glob2;
   }

@@ -1,4 +1,4 @@
-#  testfile for checking integration
+#  testfile for checking integration 
 
 import sys
 sys.path.append('../build')
@@ -19,28 +19,28 @@ u,v = fes.TnT()
 uH1, vH1 = fesh1.TnT()
 
 b8 = BilinearForm(trialspace=fesh1, testspace=fes)
-DoubleLayerPotential(b8, intorder=8)
+DoubleLayerPotentialOperator(b8, intorder=8)
 b8.Assemble();
 
 b10 = BilinearForm(trialspace=fesh1, testspace=fes)
-DoubleLayerPotential(b10, intorder=10)
+DoubleLayerPotentialOperator(b10, intorder=10)
 b10.Assemble();
 # print (b.mat)
 
 b12 = BilinearForm(trialspace=fesh1, testspace=fes)
-DoubleLayerPotential(b12, intorder=12)
+DoubleLayerPotentialOperator(b12, intorder=12)
 b12.Assemble();
 
 b14 = BilinearForm(trialspace=fesh1, testspace=fes)
-DoubleLayerPotential(b14, intorder=14)
+DoubleLayerPotentialOperator(b14, intorder=14)
 b14.Assemble();
 
 b16 = BilinearForm(trialspace=fesh1, testspace=fes)
-DoubleLayerPotential(b16, intorder=16)
+DoubleLayerPotentialOperator(b16, intorder=16)
 b16.Assemble()
 
 b18 = BilinearForm(trialspace=fesh1, testspace=fes)
-DoubleLayerPotential(b18, intorder=18)
+DoubleLayerPotentialOperator(b18, intorder=18)
 b18.Assemble();
 
 
