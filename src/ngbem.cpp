@@ -443,7 +443,7 @@ namespace ngbem
                 }
                 */
 
-                
+                /*
                 // shapes+geom out of loop, matrix multiplication
                 auto & mirx = trafoi(irtrig, lh);
                 auto & miry = trafoj(irtrig, lh);
@@ -456,7 +456,7 @@ namespace ngbem
                 // felj.CalcShape (irtrig, shapesj);
                 evaluator -> CalcMatrix(feli, mirx, Trans(shapesi), lh);
                 evaluator -> CalcMatrix(felj, miry, Trans(shapesj), lh);
-                
+                 
                 RegionTimer r2(t_disjoint2);
                 kernel_shapesj = 0;
                 for (int ix = 0; ix < irtrig.Size(); ix++)
@@ -471,7 +471,38 @@ namespace ngbem
                     }
                 
                 elmat += kernel_shapesj * Trans(shapesi);
+                */
 
+
+                auto & mirx = trafoi(irtrig, lh);
+                auto & miry = trafoj(irtrig, lh);
+                FlatMatrix<> shapesi(feli.GetNDof(), irtrig.Size(), lh);
+                FlatMatrix<> shapesj(felj.GetNDof(), irtrig.Size(), lh);
+                
+                evaluator -> CalcMatrix(feli, mirx, Trans(shapesi), lh);
+                evaluator -> CalcMatrix(felj, miry, Trans(shapesj), lh);
+                
+                RegionTimer r2(t_disjoint2);
+
+                FlatMatrix<> kernel_ixiy(irtrig.Size(), irtrig.Size(), lh);
+                for (int ix = 0; ix < irtrig.Size(); ix++)
+                  {
+                    for (int iy = 0; iy < irtrig.Size(); iy++)
+                      {
+                        Vec<3> x = mirx[ix].GetPoint();
+                        Vec<3> y = miry[iy].GetPoint();
+                        
+                        double kernel = 1.0 / (4*M_PI*L2Norm(x-y));
+                        double fac = mirx[ix].GetWeight()*miry[iy].GetWeight();
+                        kernel_ixiy(ix, iy) = fac*kernel;
+                      }
+                  }
+
+                FlatMatrix<double> kernel_shapesj(felj.GetNDof(), irtrig.Size(), lh);
+                kernel_shapesj = shapesj * Trans(kernel_ixiy);
+                elmat += kernel_shapesj * Trans(shapesi);
+
+                
                 // cout << "disjoint panel " << endl << elmat << endl;
                 break;
               }
