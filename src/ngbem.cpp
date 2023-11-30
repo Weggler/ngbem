@@ -128,12 +128,98 @@ namespace ngbem
   }
 
 
+  tuple<Array<Vec<3>>, Array<double>> ComputeClusterData (shared_ptr<FESpace> space,
+                    LocalHeap &lh) 
+  {
+    Array<Vec<3>> clcoord;
+    Array<double> clweight;
+
+    clcoord.Append ( Vec<3>(0,0,0));
+    clweight.Append (1);
+
+    auto mesh = space->GetMeshAccess();
+
+
+    cout << mesh->GetNP() << endl;
+    cout << mesh->GetNV() << endl;
+    cout << mesh->GetNEdges() << endl;
+    cout << mesh->GetNSE()    << endl;
+
+    // run through all surface elements 
+    for (int i = 0; i < mesh->GetNSE(); i++)
+    {
+          HeapReset hr(lh);
+          ElementId ei(BND, i);
+
+          auto verti = mesh->GetElement(ei).Vertices();
+
+    	  //cout << mesh->GetElement(ei).Vertices() << endl;
+    	  cout << mesh->GetElement(ei).Edges() << endl;
+    	  //cout << mesh->GetElement(ei).Nr() << endl;
+
+          
+          BaseScalarFiniteElement &feli = dynamic_cast<BaseScalarFiniteElement &>(space->GetFE(ei, lh));
+	  auto order = feli.Order();
+
+          ElementTransformation &trafoi = mesh->GetTrafo(ei, lh);
+          
+          Array<DofId> dnumsi;
+          space->GetDofNrs(ei, dnumsi); // global dofs
+	  //if(
+          //    throw Exception ("not possible");
+
+    	  //cout << dnumsi << endl;
+    	  //cout << ei << endl;
+    	  //cout << order << endl;
+	
+
+          //FlatMatrix<double,ColMajor> mshapei(1, feli.GetNDof(), lh);
+
+	  // same for trias and quad
+
+    	//first_edge_dof.SetSize (n_edge+1);
+    	//for (int i = 0; i < n_edge; i++, ii+=order-1)
+    	//  first_edge_dof[i] = ii;
+    	//first_edge_dof[n_edge] = ii;
+    	//  
+    	//first_cell_dof.SetSize (n_cell+1);
+    	//    int i = 0;
+    	//    for (auto ei:ma->Elements(VOL) ) // nur für 2D Code sinnvoll 
+    	//    {
+    	//    	if(ma->GetElement(ei).GetType() == ET_TRIG)
+    	//    	{
+    	//			first_cell_dof[i] = ii;
+    	//    		ii+=(order-1)*(order-2)/2; // uniform order 
+    	//    		i++;
+    	//    	}
+    	//    	if(ma->GetElement(ei).GetType() == ET_QUAD)
+    	//    	{
+    	//			first_cell_dof[i] = ii;
+    	//    		ii+=(order-1)*(order-1); // uniform order
+    	//    		i++;
+    	//    	}
+    	//    }
+    	//	first_cell_dof[n_cell] = ii; // oder ii-1 ?
+
+    	      
+    }
+   
+    return tuple { clcoord, clweight };
+  }
   
   
   SingleLayerPotentialOperator :: SingleLayerPotentialOperator(shared_ptr<FESpace> aspace, int _intorder)
     : space(aspace), intorder(_intorder)
   {
     auto mesh = space->GetMeshAccess();
+
+    LocalHeap locheap (1000000);
+    auto [ cl_coord, cl_weight ] =
+      ComputeClusterData(space, locheap);
+   
+    cout << "cl_coord: " << cl_coord[0] << endl;
+    cout << cl_weight << endl;
+
 
     // setup global-2-boundary mappings;
     BitArray bnddofs(space->GetNDof());
