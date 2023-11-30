@@ -133,76 +133,125 @@ namespace ngbem
   {
     Array<Vec<3>> clcoord;
     Array<double> clweight;
-
-    clcoord.Append ( Vec<3>(0,0,0));
-    clweight.Append (1);
+    Array<int> clcounter;
+    Array<DofId> mapglob2bnd;
+    Array<DofId> mapbnd2glob;
 
     auto mesh = space->GetMeshAccess();
+  
+    // setup global-2-boundary mappings;
+    BitArray bnddofs(space->GetNDof());
+    bnddofs.Clear();
+    for (int i = 0; i < mesh->GetNE(BND); i++)
+      {
+        Array<DofId> dnums;
+        space->GetDofNrs(ElementId(BND, i), dnums);
+        for (auto d : dnums) 
+          bnddofs.SetBit(d);
+      }
+    mapglob2bnd.SetSize(space->GetNDof());
+    mapglob2bnd = -1;
+    int ndof = 0;
+    for (int i = 0; i < space->GetNDof(); i++)
+      if (bnddofs.Test(i))
+        {
+          mapglob2bnd[i] = mapbnd2glob.Size();
+          mapbnd2glob.Append(i);
+	  ndof++;
+        }
 
+    clcoord.SetSize(ndof);
+    clcoord = 0;
+    clweight.SetSize(ndof);
+    clweight = 0;
+    clcounter.SetSize(ndof);
+    clcounter = 0;
 
-    cout << mesh->GetNP() << endl;
-    cout << mesh->GetNV() << endl;
-    cout << mesh->GetNEdges() << endl;
-    cout << mesh->GetNSE()    << endl;
+    // run through all surface elements: clweights and counter
+    for (int i = 0; i < mesh->GetNSE(); i++)
+    {
+          ElementId ei(BND, i);
 
-    // run through all surface elements 
+          Array<DofId> dnumsi;
+          space->GetDofNrs(ei, dnumsi); // local dofs
+	  for (int ii = 0; ii < dnumsi.Size(); ii++)
+	  {
+          	clweight[mapglob2bnd[dnumsi[ii]]] += mesh->SurfaceElementVolume(i);
+          	clcounter[mapglob2bnd[dnumsi[ii]]] += 1;
+	  }
+    }
+
+    // run through all surface elements: clcoord 
     for (int i = 0; i < mesh->GetNSE(); i++)
     {
           HeapReset hr(lh);
           ElementId ei(BND, i);
 
-          auto verti = mesh->GetElement(ei).Vertices();
+	  Array<IntegrationPoint> xhat;
+	  xhat.Append ( Vec<2> (1, 0) );
+	  xhat.Append ( Vec<2> (0, 1) );
+	  xhat.Append ( Vec<2> (0, 0) );
+	  xhat.Append ( Vec<2> (0.5, 0.5) );
+	  xhat.Append ( Vec<2> (0, 0.5) );
+	  xhat.Append ( Vec<2> (0.5, 0) );
+	  xhat.Append ( Vec<2> (1./3, 1./3) );
 
-    	  //cout << mesh->GetElement(ei).Vertices() << endl;
-    	  cout << mesh->GetElement(ei).Edges() << endl;
-    	  //cout << mesh->GetElement(ei).Nr() << endl;
-
-          
-          BaseScalarFiniteElement &feli = dynamic_cast<BaseScalarFiniteElement &>(space->GetFE(ei, lh));
-	  auto order = feli.Order();
+	  Array<Vec<3>> mipx;
+	  mipx.SetSize(7);
 
           ElementTransformation &trafoi = mesh->GetTrafo(ei, lh);
-          
+	  for (int j=0; j<7; j++)
+	  {
+	        MappedIntegrationPoint<2,3> mip(xhat[j], trafoi);
+          	mipx[j] = mip.Point(); 
+	  }
+
           Array<DofId> dnumsi;
-          space->GetDofNrs(ei, dnumsi); // global dofs
-	  //if(
-          //    throw Exception ("not possible");
+          space->GetDofNrs(ei, dnumsi); // local dofs
+	  int vertcounter = 0;
+	  int edgecounter = 0;
+	  for (int ii = 0; ii < dnumsi.Size(); ii++)
+	  {
+	        int clc = clcounter[mapglob2bnd[dnumsi[ii]]];
+	        if(clc  > 2) // vertex dof
+	        {
+	           clcoord[mapglob2bnd[dnumsi[ii]]] = mipx[vertcounter];
+	           vertcounter++;
+	        }
+	        if(clc  == 2) // edge dof
+	        {
+	           edgecounter++;
+	        }
+	        if(clc  == 1) // mdle dof
+	        {
+	           clcoord[mapglob2bnd[dnumsi[ii]]] = mipx[6];
+	        }
+          }
 
-    	  //cout << dnumsi << endl;
-    	  //cout << ei << endl;
-    	  //cout << order << endl;
-	
-
-          //FlatMatrix<double,ColMajor> mshapei(1, feli.GetNDof(), lh);
-
-	  // same for trias and quad
-
-    	//first_edge_dof.SetSize (n_edge+1);
-    	//for (int i = 0; i < n_edge; i++, ii+=order-1)
-    	//  first_edge_dof[i] = ii;
-    	//first_edge_dof[n_edge] = ii;
-    	//  
-    	//first_cell_dof.SetSize (n_cell+1);
-    	//    int i = 0;
-    	//    for (auto ei:ma->Elements(VOL) ) // nur für 2D Code sinnvoll 
-    	//    {
-    	//    	if(ma->GetElement(ei).GetType() == ET_TRIG)
-    	//    	{
-    	//			first_cell_dof[i] = ii;
-    	//    		ii+=(order-1)*(order-2)/2; // uniform order 
-    	//    		i++;
-    	//    	}
-    	//    	if(ma->GetElement(ei).GetType() == ET_QUAD)
-    	//    	{
-    	//			first_cell_dof[i] = ii;
-    	//    		ii+=(order-1)*(order-1); // uniform order
-    	//    		i++;
-    	//    	}
-    	//    }
-    	//	first_cell_dof[n_cell] = ii; // oder ii-1 ?
-
-    	      
+	  int edgeoffset = edgecounter/3;
+	  edgecounter = 0;
+	  for (int ii = 0; ii < dnumsi.Size(); ii++)
+	  {
+	        int clc = clcounter[mapglob2bnd[dnumsi[ii]]];
+	        if(clc  == 2) // edge dof
+	        {
+	           for (int offset = 0; offset < edgeoffset; offset++)
+	           {
+	           	clcoord[mapglob2bnd[dnumsi[ii+offset]]] = mipx[3+edgecounter];
+	           }
+		   
+	           edgecounter++;
+	           ii +=edgeoffset-1;
+	        }
+          }
     }
+	for (int i = 0; i < ndof; i++)
+	{
+          	clweight[i] /= (double) clcounter[i];
+		//cout << i << ":" << clweight[i] << "\t" << clcounter[i] << endl;
+		//cout << i << ":" << clcoord[i] << endl;
+	}
+
    
     return tuple { clcoord, clweight };
   }
@@ -217,8 +266,8 @@ namespace ngbem
     auto [ cl_coord, cl_weight ] =
       ComputeClusterData(space, locheap);
    
-    cout << "cl_coord: " << cl_coord[0] << endl;
-    cout << cl_weight << endl;
+    //cout << "cl_coord: " << cl_coord[0] << endl;
+    //cout << cl_weight << endl;
 
 
     // setup global-2-boundary mappings;
