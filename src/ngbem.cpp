@@ -2,7 +2,7 @@
 #include <cmath>
 
 #include "ngbem.hpp"
-
+#include "hmat.hpp"
 
 namespace ngbem
 {
@@ -126,149 +126,12 @@ namespace ngbem
 
     return tuple { ipx, ipy, weights };
   }
-
-
-  tuple<Array<Vec<3>>, Array<double>> ComputeClusterData (shared_ptr<FESpace> space,
-                    LocalHeap &lh) 
-  {
-    Array<Vec<3>> clcoord;
-    Array<double> clweight;
-    Array<int> clcounter;
-    Array<DofId> mapglob2bnd;
-    Array<DofId> mapbnd2glob;
-
-    auto mesh = space->GetMeshAccess();
-  
-    // setup global-2-boundary mappings;
-    BitArray bnddofs(space->GetNDof());
-    bnddofs.Clear();
-    for (int i = 0; i < mesh->GetNE(BND); i++)
-      {
-        Array<DofId> dnums;
-        space->GetDofNrs(ElementId(BND, i), dnums);
-        for (auto d : dnums) 
-          bnddofs.SetBit(d);
-      }
-    mapglob2bnd.SetSize(space->GetNDof());
-    mapglob2bnd = -1;
-    int ndof = 0;
-    for (int i = 0; i < space->GetNDof(); i++)
-      if (bnddofs.Test(i))
-        {
-          mapglob2bnd[i] = mapbnd2glob.Size();
-          mapbnd2glob.Append(i);
-	  ndof++;
-        }
-
-    clcoord.SetSize(ndof);
-    clcoord = 0;
-    clweight.SetSize(ndof);
-    clweight = 0;
-    clcounter.SetSize(ndof);
-    clcounter = 0;
-
-    // run through all surface elements: clweights and counter
-    for (int i = 0; i < mesh->GetNSE(); i++)
-    {
-          ElementId ei(BND, i);
-
-          Array<DofId> dnumsi;
-          space->GetDofNrs(ei, dnumsi); // local dofs
-	  for (int ii = 0; ii < dnumsi.Size(); ii++)
-	  {
-          	clweight[mapglob2bnd[dnumsi[ii]]] += mesh->SurfaceElementVolume(i);
-          	clcounter[mapglob2bnd[dnumsi[ii]]] += 1;
-	  }
-    }
-
-    // run through all surface elements: clcoord 
-    for (int i = 0; i < mesh->GetNSE(); i++)
-    {
-          HeapReset hr(lh);
-          ElementId ei(BND, i);
-
-	  Array<IntegrationPoint> xhat;
-	  xhat.Append ( Vec<2> (1, 0) );
-	  xhat.Append ( Vec<2> (0, 1) );
-	  xhat.Append ( Vec<2> (0, 0) );
-	  xhat.Append ( Vec<2> (0.5, 0.5) );
-	  xhat.Append ( Vec<2> (0, 0.5) );
-	  xhat.Append ( Vec<2> (0.5, 0) );
-	  xhat.Append ( Vec<2> (1./3, 1./3) );
-
-	  Array<Vec<3>> mipx;
-	  mipx.SetSize(7);
-
-          ElementTransformation &trafoi = mesh->GetTrafo(ei, lh);
-	  for (int j=0; j<7; j++)
-	  {
-	        MappedIntegrationPoint<2,3> mip(xhat[j], trafoi);
-          	mipx[j] = mip.Point(); 
-	  }
-
-          Array<DofId> dnumsi;
-          space->GetDofNrs(ei, dnumsi); // local dofs
-	  int vertcounter = 0;
-	  int edgecounter = 0;
-	  for (int ii = 0; ii < dnumsi.Size(); ii++)
-	  {
-	        int clc = clcounter[mapglob2bnd[dnumsi[ii]]];
-	        if(clc  > 2) // vertex dof
-	        {
-	           clcoord[mapglob2bnd[dnumsi[ii]]] = mipx[vertcounter];
-	           vertcounter++;
-	        }
-	        if(clc  == 2) // edge dof
-	        {
-	           edgecounter++;
-	        }
-	        if(clc  == 1) // mdle dof
-	        {
-	           clcoord[mapglob2bnd[dnumsi[ii]]] = mipx[6];
-	        }
-          }
-
-	  int edgeoffset = edgecounter/3;
-	  edgecounter = 0;
-	  for (int ii = 0; ii < dnumsi.Size(); ii++)
-	  {
-	        int clc = clcounter[mapglob2bnd[dnumsi[ii]]];
-	        if(clc  == 2) // edge dof
-	        {
-	           for (int offset = 0; offset < edgeoffset; offset++)
-	           {
-	           	clcoord[mapglob2bnd[dnumsi[ii+offset]]] = mipx[3+edgecounter];
-	           }
-		   
-	           edgecounter++;
-	           ii +=edgeoffset-1;
-	        }
-          }
-    }
-	for (int i = 0; i < ndof; i++)
-	{
-          	clweight[i] /= (double) clcounter[i];
-		//cout << i << ":" << clweight[i] << "\t" << clcounter[i] << endl;
-		//cout << i << ":" << clcoord[i] << endl;
-	}
-
-   
-    return tuple { clcoord, clweight };
-  }
   
   
   SingleLayerPotentialOperator :: SingleLayerPotentialOperator(shared_ptr<FESpace> aspace, int _intorder)
-    : space(aspace), intorder(_intorder)
+    : space(aspace), intorder(_intorder), cluster_tree(space, 20)
   {
     auto mesh = space->GetMeshAccess();
-
-    LocalHeap locheap (1000000);
-    auto [ cl_coord, cl_weight ] =
-      ComputeClusterData(space, locheap);
-   
-    //cout << "cl_coord: " << cl_coord[0] << endl;
-    //cout << cl_weight << endl;
-
 
     // setup global-2-boundary mappings;
     BitArray bnddofs(space->GetNDof());
@@ -288,9 +151,9 @@ namespace ngbem
         {
           mapglob2bnd[i] = mapbnd2glob.Size();
           mapbnd2glob.Append(i);
-        }
-    // cout << "dim: " << space->GetSpatialDimension() << endl;
-    // cout << "bnddofs: " << bnddofs << endl;
+        }    
+
+    //cout << "dim: " << space->GetSpatialDimension() << endl;
   }
 
   void SingleLayerPotentialOperator ::

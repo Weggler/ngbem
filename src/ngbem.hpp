@@ -1,7 +1,7 @@
 #ifndef NGBEM_hpp
 #define NGBEM_hpp
 
-
+#include "hmat.hpp"
 
 namespace ngbem
 {
@@ -14,6 +14,8 @@ namespace ngbem
     Array<DofId> mapglob2bnd;
     Array<DofId> mapbnd2glob;
     int intorder;
+    ClusterTree cluster_tree;
+
   public:
     SingleLayerPotentialOperator(shared_ptr<FESpace> aspace, int intorder);
 
