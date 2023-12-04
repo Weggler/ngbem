@@ -9,7 +9,7 @@ namespace ngbem
   struct Cluster
   {
     long Level;
-    long Father, Son1, Son2;
+    long Parent, Child1, Child2;
     long Number;
     long PermuPos;
     long BasisElement;

@@ -270,14 +270,14 @@ namespace ngbem
     for (int k = 0; k < 9; k++)
       Clusters[IClu].EVec[k] = A[k];
 
-    // If the size cluster is smaller than leafsize, it becomes a leaf (no sons)
+    // If the size cluster is smaller than leafsize, it becomes a leaf (no children)
     if (NClu <= leafsize)
       {
-	Clusters[IClu].Son1 =- 1;
-	Clusters[IClu].Son2 =- 1;
+	Clusters[IClu].Child1 =- 1;
+	Clusters[IClu].Child2 =- 1;
 	return;
       }
-    // Otherwise we divide the cluster into two sons
+    // Otherwise we divide the cluster into two children
     else
       {
 	int Num1 = 0, Num2 = 0;
@@ -307,27 +307,27 @@ namespace ngbem
 	// Non-separable cluster
 	if (Num1 == 0 || Num2 == 0)
 	  {
-	    Clusters[IClu].Son1 = -1;
-	    Clusters[IClu].Son2 = -1;
+	    Clusters[IClu].Child1 = -1;
+	    Clusters[IClu].Child2 = -1;
 	    return;
 	  }
-	// Separable cluster with two sons
+	// Separable cluster with two children
 	else
 	  {
 	    // Provide hierarchical information
 	    struct Cluster cl1, cl2;
 	    int IClu1 = *NClusters;
-	    Clusters[IClu].Son1 = IClu1;
+	    Clusters[IClu].Child1 = IClu1;
 	    cl1.Level = Clusters[IClu].Level + 1;
-	    cl1.Father = IClu;
+	    cl1.Parent = IClu;
 	    cl1.Number = Num1;
 	    cl1.PermuPos = ClBegin;
 	    Clusters.Append(cl1);
 
 	    int IClu2 = *NClusters + 1;
-	    Clusters[IClu].Son2 = IClu2;
+	    Clusters[IClu].Child2 = IClu2;
 	    cl2.Level = Clusters[IClu].Level + 1;
-	    cl2.Father = IClu;
+	    cl2.Parent = IClu;
 	    cl2.Number = Num2;
 	    cl2.PermuPos = ClBegin + Num1;
 	    Clusters.Append(cl2);
@@ -354,7 +354,7 @@ namespace ngbem
     /* Initial data */
     struct Cluster cl1;
     cl1.Level = 0;
-    cl1.Father = -1;
+    cl1.Parent = -1;
     cl1.Number = n_dof;
     cl1.PermuPos = 0;
     Clusters.Append(cl1);
