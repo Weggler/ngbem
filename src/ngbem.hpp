@@ -14,7 +14,10 @@ namespace ngbem
     Array<DofId> mapglob2bnd;
     Array<DofId> mapbnd2glob;
     int intorder;
+
     ClusterTree cluster_tree;
+    Array<Array<int>> elems4dof; // contains list of elems contributing to bnd-dof 
+
 
   public:
     SingleLayerPotentialOperator(shared_ptr<FESpace> aspace, int intorder);
@@ -22,7 +25,12 @@ namespace ngbem
     void CalcElementMatrix(FlatMatrix<double> matrix, // matrix dim = ndof_bnd x ndof_bnd
                            LocalHeap &lh) const override;
 
+    void CalcBlockMatrix(FlatMatrix<double> &matrix, Array<DofId> &setI, Array<DofId> &setJ, // matrix dim = size(setI) x size(setJ)
+                           LocalHeap &lh);
+
     void GetDofNrs(Array<int> &dnums) const override;
+
+
   };
 
 
