@@ -14,12 +14,13 @@ from libbem import *
 #mesh = Mesh( OCCGeometry(sp).GenerateMesh(maxh=0.5)).Curve(1)
 mesh = Mesh(unit_cube.GenerateMesh(maxh=1))
 
-#fes = SurfaceL2(mesh, order=1, dual_mapping=True)
-fes = H1(mesh, order=3)
-u,v = fes.TnT()
+fesL2 = SurfaceL2(mesh, order=2)
+fesH1 = H1(mesh, order=3)
+u,v = fesL2.TnT()
+uH1, vH1 = fesH1.TnT()
 
-a8 = BilinearForm(fes)
-SingleLayerPotentialOperator(a8, intorder=8)
-#a8.Assemble();
-# print (a8.mat)
+V = BilinearForm(fesL2)
+K = BilinearForm(trialspace=fesH1, testspace=fesL2)
+SingleLayerPotentialOperator(V, intorder=3)
+DoubleLayerPotentialOperator(K, intorder=3)
 

@@ -386,8 +386,8 @@ namespace ngbem
     // Generate a cluster tree
     n_cluster = Rja_ClusterTree(n_dof, G, X, arr_clusters, mapbnd2cluster, leafsize);
 
-    cout << "number of clusters: " << n_cluster << endl;
-    cout << "bnd2cluster: " << mapbnd2cluster << endl;
+    //cout << "number of clusters: " << n_cluster << endl;
+    //cout << "bnd2cluster: " << mapbnd2cluster << endl;
   }
 
 }

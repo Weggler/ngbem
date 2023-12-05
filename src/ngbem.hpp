@@ -25,8 +25,8 @@ namespace ngbem
     void CalcElementMatrix(FlatMatrix<double> matrix, // matrix dim = ndof_bnd x ndof_bnd
                            LocalHeap &lh) const override;
 
-    void CalcBlockMatrix(FlatMatrix<double> &matrix, Array<DofId> &setI, Array<DofId> &setJ, // matrix dim = size(setI) x size(setJ)
-                           LocalHeap &lh);
+    void CalcBlockMatrix(FlatMatrix<double> matrix, Array<DofId> &setI, Array<DofId> &setJ, // matrix dim = size(setI) x size(setJ)
+                           LocalHeap &lh) const;
 
     void GetDofNrs(Array<int> &dnums) const override;
 
@@ -46,11 +46,20 @@ namespace ngbem
     Array<DofId> mapglob2bnd2;
     Array<DofId> mapbnd2glob2;
     int intorder;
+
+    ClusterTree cluster_tree;
+    Array<Array<int>> elems4dof; // contains list of elems contributing to bnd-dof
+    ClusterTree cluster_tree2;
+    Array<Array<int>> elems4dof2; // contains list of elems contributing to bnd-dof 
+
   public:
     DoubleLayerPotentialOperator(shared_ptr<FESpace> aspace, shared_ptr<FESpace> bspace, int intorder);
 
     void CalcElementMatrix(FlatMatrix<double> matrix, // matrix dim = ndof_bnd x ndof_bnd2
                            LocalHeap &lh) const override;
+    
+    void CalcBlockMatrix(FlatMatrix<double> matrix, Array<DofId> &setI, Array<DofId> &setJ, // matrix dim = size(setI) x size(setJ)
+                           LocalHeap &lh) const;
 
     void GetDofNrs(Array<int> &dnums) const override; 
     void GetDofNrs2(Array<int> &dnums) const override;
