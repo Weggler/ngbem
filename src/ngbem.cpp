@@ -497,47 +497,68 @@ CalcBlockMatrix(FlatMatrix<double> matrix,  Array<DofId> &setI, Array<DofId> &se
       }
 }
 
-  // void SingleLayerPotentialOperator :: CalcFarFieldBlock(shared_ptr<LowRankMatrix> matrix, Array<DofId> &setI, Array<DofId> &setJ, LocalHeap &lh) const
-  // {
-  //   int m = setJ.Size();
-  //   int n = setI.Size();
-  //   int p = fmin(n, m);
-    
-  //   Matrix<double> A(m, n);
-  //   CalcBlockMatrix(A, setI, setJ, lh);
-    
-  //   Matrix<double, ColMajor> U(m, m), Vt(n, n);
+   void SingleLayerPotentialOperator :: CalcFarFieldBlock(shared_ptr<LowRankMatrix> matrix, Array<DofId> &setI, Array<DofId> &setJ, LocalHeap &lh) const
+   {
+     int m = setJ.Size();
+     int n = setI.Size();
+     int p = fmin(n, m);
+  
+     Matrix<double> A(m, n);
+     CalcBlockMatrix(A, setI, setJ, lh);
+  
+     Matrix<double, ColMajor> U(m, m), Vt(n, n);
 
-  //   // Calculate SVD
-  //   LapackSVD(MatrixView(A), MatrixView(U), MatrixView(Vt));
-  //   Matrix<double> S(m, n);
-  //   S = 0.;
-    
-  //   // Truncate according to eps. k is the rank
-  //   int k = 0;
-  //   while (A.Diag(0)(k) > param.eps && k < p)
-  //     {
-  // 	S.Diag(0)(k) = A.Diag(0)(k);
-  // 	k++;
-  //     }    
+     // Calculate SVD
+     LapackSVD(MatrixView(A), MatrixView(U), MatrixView(Vt));
+     Matrix<double> S(m, n);
+     S = 0.;
+  
+     // Truncate according to eps. k is the rank
+     int k = 0;
+     while (A.Diag(0)(k) > param.eps && k < p)
+       {
+   	S.Diag(0)(k) = A.Diag(0)(k);
+   	k++;
+       }    
 
-  //   // Multiply U with truncated singular values
-  //   U = U * S;
+     // Multiply U with truncated singular values
+     U = U * S;
 
-  //   // Truncate the matrices U and Vt
-  //   Matrix<double, ColMajor> U_trc(m, k), Vt_trc(k, n);
-  //   for (size_t j = 0; j < k; j++)
-  //     for (size_t i = 0; i < m; i++)
-  // 	U_trc(i, j) = U(i, j);
-  //   for (size_t j = 0; j < n; j++)
-  //     for (size_t i = 0; i < k; i++)
-  // 	Vt_trc(i, j) = Vt(i, j);
+     // Truncate the matrices U and Vt
+     Matrix<double, ColMajor> U_trc(m, k), Vt_trc(k, n);
+     for (size_t j = 0; j < k; j++)
+       for (size_t i = 0; i < m; i++)
+   	U_trc(i, j) = U(i, j);
+     for (size_t j = 0; j < n; j++)
+       for (size_t i = 0; i < k; i++)
+   	Vt_trc(i, j) = Vt(i, j);
 
-  //   auto Up = make_shared<Matrix<>>(U_trc);
-  //   auto Vp = make_shared<Matrix<>>(Vt_trc);
-  //   LowRankMatrix lowrank_mat(Up, Vp);
-  //   matrix = make_shared<LowRankMatrix>(lowrank_mat);
-  // }
+     auto Up = make_shared<Matrix<>>(U_trc);
+     auto Vp = make_shared<Matrix<>>(Vt_trc);
+     LowRankMatrix lowrank_mat(Up, Vp);
+     matrix = make_shared<LowRankMatrix>(lowrank_mat);
+   }
+
+void SingleLayerPotentialOperator ::  CalcHMatrix( HMatrix hmatrix, LocalHeap &lh, struct BEMParameters &param) const
+{
+	auto matList = hmatrix.GetMatList();
+	for (int k = 0; k< matList.Size(); k++)
+	{
+		if(matList[k].isNearField)
+		{
+			// allozieren der Matrix Matrix<> matrix(matList[k].
+			// berechnen der Matrix CalcBlockMatrix(
+			// übergeben des BEMBlocks in die Liste 
+			// heap reset
+		}
+		else
+		{
+			// berechnen der Matrix CalcFarFieldBock
+			// übergeben des BEMBlocks in die Liste 
+			// heap reset
+		}
+	}
+}
 
 void SingleLayerPotentialOperator :: GetDofNrs(Array<int> &dnums) const
 {

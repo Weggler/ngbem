@@ -20,7 +20,7 @@ namespace ngbem
     double Centre[3];
     double DiagLength;
   };
-  
+
   /** Cluster tree.
       A cluster tree is a binary tree of the index set of the FE space associated
       with its geometrical information, i.e. the physical support points of the
@@ -65,11 +65,13 @@ namespace ngbem
      */
     const double eta;
     
-    /** The hierarchical matrix realized as a BlockMatrix. */
-    shared_ptr<BaseMatrix> mat;
+    /** The hierarchical matrix realized as list of admissible and inadmissible blocks. */
+    Array<BEMBlock> matList;
     
   public:
     HMatrix(shared_ptr<ClusterTree> row_ct, shared_ptr<ClusterTree> col_ct, double eta);
+
+    shared_ptr<Array<BEMBlock>> GetMatList() const {  return make_shared<Array<BEMBlock>>(matList); }
 
     /** Matrix-vector-multiply-add: \f$y = y + s A B^\top y \f$. */
     //void MultAdd (double s, const BaseVector & x, BaseVector & y) const override;
@@ -84,12 +86,24 @@ namespace ngbem
     //virtual AutoVector CreateColVector () const;
   };
 
+  class BEMBlock
+  {
+	bool isNearField;
+	Array<DofId> setI;
+	Array<DofId> setJ;
+
+	shared_ptr<BaseMatrix> matrix;
+	
+	public:
+	BEMBlock(Array<DofId> setI, Array<DofId> setJ, bool isNearField);
+  }
+
   /** Low-rank matrix
       A low-rank matrix \f$C\f$ of dimension \$fn\times m\$f has the form
       \f$ C = A B^\top \f$, where \f$A, B\f$ are matrices of dimensions
       \$fn\times r\$f and \f$m \times r \f$ with \$fr<m,n\f$.
    */
-  class LowRankMatrix 
+  class LowRankMatrix : BaseMatrix 
   {
     /** Height of the matrix #A. */
     size_t m;
@@ -114,8 +128,8 @@ namespace ngbem
     virtual int VHeight() const { return m; }
     virtual int VWidth() const { return n; }
 
-    //virtual AutoVector CreateRowVector () const override;
-    //virtual AutoVector CreateColVector () const override;
+    virtual AutoVector CreateRowVector () const override;
+    virtual AutoVector CreateColVector () const override;
   };
 
 }

@@ -404,7 +404,8 @@ namespace ngbem
     return fmin(Cluster1.Radius, Cluster2.Radius) < eta * dist;
   }
 
-  shared_ptr<BaseMatrix> HMatrix_help (Array<struct Cluster> &row_arr, Array<struct Cluster> &col_arr,
+  /*
+shared_ptr<BaseMatrix> HMatrix_help (Array<struct Cluster> &row_arr, Array<struct Cluster> &col_arr,
 				       Cluster &row_cluster, Cluster &col_cluster, double eta)
   {
     // Inadmissible block -> dense matrix
@@ -438,11 +439,53 @@ namespace ngbem
       }
 
   }
+*/
+
+void HMatrix_help (ClusterTree &row_ct, ClusterTree &col_ct,
+			long i, long j, double eta, Array<BEMBlock> matList)
+  {
+
+    auto row_cluster = row_ct.arr_clusters[i];
+    auto col_cluster = col_ct.arr_clusters[j];
+    bool isNearField;
+
+    if (row_cluster.Child1 == -1 || col_cluster.Child1 == -1)
+	isNearField = true;
+    else if(Rja_AdmissiblePair(row_cluster, col_cluster, eta))
+	isNearField = false;
+    else 
+    {
+	
+	HMatrix_help(row_ct, col_ct, row_cluster.Child1, col_cluster.Child1, eta, matList);
+	HMatrix_help(row_ct, col_ct, row_cluster.Child1, col_cluster.Child2, eta, matList);
+	HMatrix_help(row_ct, col_ct, row_cluster.Child2, col_cluster.Child1, eta, matList);
+	HMatrix_help(row_ct, col_ct, row_cluster.Child2, col_cluster.Child2, eta, matList);
+	
+	return;
+	}
+	
+	Array<DofId> setI;	
+	setI.SetSize(row_cluster.Number);
+	for (int k=0; k<setI.Size(); k++)
+		setI[k] = row_ct.mapbnd2cluster[row_cluster.PermuPos+k];
+
+	Array<DofId> setJ;	
+	setJ.SetSize(col_cluster.Number);
+	for (int k=0; k<setJ.Size(); k++)
+		setJ[k] = col_ct.mapbnd2cluster[col_cluster.PermuPos+k];
+
+	matList.Append( BEMBlock( setI, setJ, isNearField) );
+  }
   
   HMatrix :: HMatrix(shared_ptr<ClusterTree> _row_ct, shared_ptr<ClusterTree> _col_ct, double _eta) : row_ct(_row_ct), col_ct(_col_ct), eta(_eta)
   {    
-    mat = HMatrix_help(row_ct->arr_clusters, col_ct->arr_clusters, row_ct->arr_clusters[0], col_ct->arr_clusters[0], eta);
+    //mat = HMatrix_help(row_ct->arr_clusters, col_ct->arr_clusters, row_ct->arr_clusters[0], col_ct->arr_clusters[0], eta);
+    mat = HMatrix_help(row_ct, col_ct, 0, 0, eta, matList);
   }
+
+  BEMBlock :: BEMBlock(Array<DofId> _setI, Array<DofId> _setJ, bool _isNearField) : setI(_setI), setJ(_setJ), isNearField(_isNearField), matrix(nullptr) { }
+
+
 
   LowRankMatrix :: LowRankMatrix(shared_ptr<Matrix<>> _A, shared_ptr<Matrix<>> _Bt) :
     A(_A), Bt(_Bt), m(A->Height()), n(Bt->Height())
