@@ -7,6 +7,14 @@ namespace ngbem
 {
   using namespace ngcomp;
 
+  struct BEMParameters
+  {
+    const int intorder;
+    const int leafsize;
+    const double eta;
+    const double eps;
+    const char *method;
+  };
   
   class SingleLayerPotentialOperator : public SpecialElement
   {
@@ -14,10 +22,10 @@ namespace ngbem
     Array<DofId> mapglob2bnd;
     Array<DofId> mapbnd2glob;
     int intorder;
+    struct BEMParameters param;
 
     ClusterTree cluster_tree;
     Array<Array<int>> elems4dof; // contains list of elems contributing to bnd-dof 
-
 
   public:
     SingleLayerPotentialOperator(shared_ptr<FESpace> aspace, int intorder);
@@ -26,8 +34,12 @@ namespace ngbem
                            LocalHeap &lh) const override;
 
     void CalcBlockMatrix(FlatMatrix<double> matrix, Array<DofId> &setI, Array<DofId> &setJ, // matrix dim = size(setI) x size(setJ)
-                           LocalHeap &lh) const;
+			 LocalHeap &lh) const;
 
+    //void CalcFarFieldBlock(shared_ptr<LowRankMatrix> matrix, Array<DofId> &setI, Array<DofId> &setJ, LocalHeap &lh) const;
+    
+    //void CalcHMatrix(HMatrix hmatrix, LocalHeap &lh, struct BEMParameters &param) const;
+    
     void GetDofNrs(Array<int> &dnums) const override;
 
 

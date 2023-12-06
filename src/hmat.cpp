@@ -390,4 +390,80 @@ namespace ngbem
     //cout << "bnd2cluster: " << mapbnd2cluster << endl;
   }
 
+  /* Given two clusters, decide whether they are admissible or not. This routine
+     checks the distance between the centroids. */
+  int Rja_AdmissiblePair(Cluster &Cluster1, Cluster &Cluster2, double eta)
+  {
+    double diff[3] = {Cluster1.Centre[0] - Cluster2.Centre[0], Cluster1.Centre[1] - Cluster2.Centre[1],
+		      Cluster1.Centre[2] - Cluster2.Centre[2]};
+    double dist = sqrt(fmax(0., diff[0] * diff[0] + diff[1] * diff[1] + diff[2] * diff[2]));
+
+    // dist is the approximate distance between the clusters
+    dist = fmax(0., dist - Cluster1.Radius - Cluster2.Radius);
+
+    return fmin(Cluster1.Radius, Cluster2.Radius) < eta * dist;
+  }
+
+  shared_ptr<BaseMatrix> HMatrix_help (Array<struct Cluster> &row_arr, Array<struct Cluster> &col_arr,
+				       Cluster &row_cluster, Cluster &col_cluster, double eta)
+  {
+    // Inadmissible block -> dense matrix
+    if (row_cluster.Child1 == -1 || col_cluster.Child1 == -1)
+      {
+	Matrix<double> A;	
+	return make_shared<BaseMatrixFromMatrix>(A);
+      }
+    // Admissible block -> low-rank matrix
+    else if(Rja_AdmissiblePair(row_cluster, col_cluster, eta))
+      {
+	Matrix<double> A;	
+	return make_shared<BaseMatrixFromMatrix>(A);
+      }
+    // Hierarchical block matrix
+    else 
+      {
+	Array<Array<shared_ptr<BaseMatrix>>> amats;
+	amats.SetSize(2);
+	amats[0].SetSize(2);
+	amats[1].SetSize(2);
+	
+	amats[0][0] = HMatrix_help(row_arr, col_arr, row_arr[row_cluster.Child1], col_arr[col_cluster.Child1], eta);
+	amats[0][1] = HMatrix_help(row_arr, col_arr, row_arr[row_cluster.Child1], col_arr[col_cluster.Child2], eta);
+	amats[1][0] = HMatrix_help(row_arr, col_arr, row_arr[row_cluster.Child2], col_arr[col_cluster.Child1], eta);
+	amats[1][1] = HMatrix_help(row_arr, col_arr, row_arr[row_cluster.Child2], col_arr[col_cluster.Child2], eta);
+
+	BlockMatrix block(amats);
+	
+	return make_shared<BlockMatrix>(block);
+      }
+
+  }
+  
+  HMatrix :: HMatrix(shared_ptr<ClusterTree> _row_ct, shared_ptr<ClusterTree> _col_ct, double _eta) : row_ct(_row_ct), col_ct(_col_ct), eta(_eta)
+  {    
+    mat = HMatrix_help(row_ct->arr_clusters, col_ct->arr_clusters, row_ct->arr_clusters[0], col_ct->arr_clusters[0], eta);
+  }
+
+  LowRankMatrix :: LowRankMatrix(shared_ptr<Matrix<>> _A, shared_ptr<Matrix<>> _Bt) :
+    A(_A), Bt(_Bt), m(A->Height()), n(Bt->Height())
+  {
+    if (A->Width() == Bt->Width())
+      rank = A->Width();
+    else
+      throw Exception ("Low-rank matrix: ranks incompatible");
+  }
+  
+  void LowRankMatrix :: MultAdd (double s, const BaseVector & x, BaseVector & y) const
+  {
+    // Vector<> tmp = x.FV<double>();
+    // tmp *= s;
+    y.FV<double>() += s * (*A) * (*Bt) * x.FV<double>();
+  }
+
+  void LowRankMatrix :: MultTransAdd (double s, const BaseVector & x, BaseVector & y) const
+  {
+    // Vector<> tmp = x.FV<double>();
+    // tmp *= s;
+    y.FV<double>() += s * Trans(*Bt) * Trans(*A) * x.FV<double>();
+  }
 }

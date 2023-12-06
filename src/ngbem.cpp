@@ -6,6 +6,10 @@
 
 namespace ngbem
 {
+  extern void LapackSVD (SliceMatrix<> A,
+                         SliceMatrix<double, ColMajor> U,
+                         SliceMatrix<double, ColMajor> V);
+
 
   // x, y in triangle [(0,0), (1,0), (0,1)]
   tuple<Array<Vec<2>>, Array<Vec<2>>, Array<double>> IdenticPanelIntegrationRule (int order)
@@ -128,7 +132,7 @@ namespace ngbem
   }
   
   SingleLayerPotentialOperator :: SingleLayerPotentialOperator(shared_ptr<FESpace> aspace, int _intorder)
-    : space(aspace), intorder(_intorder), cluster_tree(space, 20)
+    : space(aspace), intorder(_intorder), param({_intorder, 40, 1.0, 1e-4, "svd"}), cluster_tree(space, param.leafsize)
   {
     auto mesh = space->GetMeshAccess();
 
@@ -168,6 +172,8 @@ namespace ngbem
 	    elems4dof[mapglob2bnd[dnumsi[ii]]].Append(i);
 	  }
       }
+    
+    HMatrix hmat(make_shared<ClusterTree>(cluster_tree), make_shared<ClusterTree>(cluster_tree), 2.0);
     //cout << "elems4dof: " << elems4dof << endl;
   }
 
@@ -491,11 +497,52 @@ CalcBlockMatrix(FlatMatrix<double> matrix,  Array<DofId> &setI, Array<DofId> &se
       }
 }
 
+  // void SingleLayerPotentialOperator :: CalcFarFieldBlock(shared_ptr<LowRankMatrix> matrix, Array<DofId> &setI, Array<DofId> &setJ, LocalHeap &lh) const
+  // {
+  //   int m = setJ.Size();
+  //   int n = setI.Size();
+  //   int p = fmin(n, m);
+    
+  //   Matrix<double> A(m, n);
+  //   CalcBlockMatrix(A, setI, setJ, lh);
+    
+  //   Matrix<double, ColMajor> U(m, m), Vt(n, n);
+
+  //   // Calculate SVD
+  //   LapackSVD(MatrixView(A), MatrixView(U), MatrixView(Vt));
+  //   Matrix<double> S(m, n);
+  //   S = 0.;
+    
+  //   // Truncate according to eps. k is the rank
+  //   int k = 0;
+  //   while (A.Diag(0)(k) > param.eps && k < p)
+  //     {
+  // 	S.Diag(0)(k) = A.Diag(0)(k);
+  // 	k++;
+  //     }    
+
+  //   // Multiply U with truncated singular values
+  //   U = U * S;
+
+  //   // Truncate the matrices U and Vt
+  //   Matrix<double, ColMajor> U_trc(m, k), Vt_trc(k, n);
+  //   for (size_t j = 0; j < k; j++)
+  //     for (size_t i = 0; i < m; i++)
+  // 	U_trc(i, j) = U(i, j);
+  //   for (size_t j = 0; j < n; j++)
+  //     for (size_t i = 0; i < k; i++)
+  // 	Vt_trc(i, j) = Vt(i, j);
+
+  //   auto Up = make_shared<Matrix<>>(U_trc);
+  //   auto Vp = make_shared<Matrix<>>(Vt_trc);
+  //   LowRankMatrix lowrank_mat(Up, Vp);
+  //   matrix = make_shared<LowRankMatrix>(lowrank_mat);
+  // }
+
 void SingleLayerPotentialOperator :: GetDofNrs(Array<int> &dnums) const
 {
   dnums = mapbnd2glob;
 }
-
 
 // aspace - H1, bspace - L2
 DoubleLayerPotentialOperator :: DoubleLayerPotentialOperator (shared_ptr<FESpace> aspace, shared_ptr<FESpace> bspace,
