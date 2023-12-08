@@ -472,18 +472,19 @@ namespace ngbem
   void BEMBlock :: MultAdd (double s, const BaseVector & x, BaseVector & y) const
   {
     // Get only vector entries related to the index sets
-    FlatVector<> xp, yp;
+    VVector<> xp(setI.Size()), yp(setJ.Size());
     
-    x.GetIndirect(setI, xp);
-    y.GetIndirect(setJ, yp);
+    x.GetIndirect(setI, xp.FV());
+    y.GetIndirect(setJ, yp.FV());
     
     // We need something like BaseVectorFromVector
-    S_BaseVectorPtr<> xp_base(setI.Size(), x.EntrySize(), xp.Data());
-    S_BaseVectorPtr<> yp_base(setJ.Size(), y.EntrySize(), yp.Data());
+    // S_BaseVectorPtr<> xp_base(setI.Size(), x.EntrySize(), xp.Data());
+    // S_BaseVectorPtr<> yp_base(setJ.Size(), y.EntrySize(), yp.Data());
 
-    matrix->MultAdd(s, xp_base, yp_base);
+    // matrix->MultAdd(s, xp_base, yp_base);
+    matrix->MultAdd(s, xp, yp);
         
-    y.SetIndirect(setJ, yp);
+    y.SetIndirect(setJ, yp.FV<double>());
   }
 
   void BEMBlock :: MultTransAdd (double s, const BaseVector & x, BaseVector & y) const
