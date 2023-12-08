@@ -380,14 +380,40 @@ namespace ngbem
     // Number of dofs, i.e. length of index set
     int n_dof = G.Size();
 
-    // Mapping from FE ordering of dofs to cluster ordering of dofs
-    mapbnd2cluster.SetSize(n_dof);
+    // Mapping from cluster ordering of dofs to global ordering of dofs
+    mapcluster2glob.SetSize(n_dof);
 
     // Generate a cluster tree
-    n_cluster = Rja_ClusterTree(n_dof, G, X, arr_clusters, mapbnd2cluster, leafsize);
+    n_cluster = Rja_ClusterTree(n_dof, G, X, arr_clusters, mapcluster2glob, leafsize);
 
+    // We need to link between boundary indices and global indices
+    // setup global-2-boundary mappings;
+    auto mesh = space->GetMeshAccess();
+    Array<DofId> mapbnd2glob, mapglob2bnd;
+    BitArray bnddofs(space->GetNDof());
+    bnddofs.Clear();
+    for (int i = 0; i < mesh->GetNE(BND); i++)
+      {
+        Array<DofId> dnums;
+        space->GetDofNrs(ElementId(BND, i), dnums);
+        for (auto d : dnums) 
+          bnddofs.SetBit(d);
+      }
+    
+    mapglob2bnd.SetSize(space->GetNDof());
+    mapglob2bnd = -1;
+    for (int i = 0; i < space->GetNDof(); i++)
+      if (bnddofs.Test(i))
+        {
+          mapglob2bnd[i] = mapbnd2glob.Size();
+          mapbnd2glob.Append(i);
+        }    
+
+    for (int i = 0; i < n_dof; i++)
+      mapcluster2glob[i] = mapbnd2glob[mapcluster2glob[i]];
+    
     //cout << "number of clusters: " << n_cluster << endl;
-    //cout << "bnd2cluster: " << mapbnd2cluster << endl;
+    //cout << "cluster2glob: " << mapcluster2glob << endl;
   }
 
   /* Given two clusters, decide whether they are admissible or not. This routine
@@ -405,92 +431,88 @@ namespace ngbem
   }
 
   /*
-shared_ptr<BaseMatrix> HMatrix_help (Array<struct Cluster> &row_arr, Array<struct Cluster> &col_arr,
-				       Cluster &row_cluster, Cluster &col_cluster, double eta)
-  {
+    shared_ptr<BaseMatrix> HMatrix_help (Array<struct Cluster> &row_arr, Array<struct Cluster> &col_arr,
+    Cluster &row_cluster, Cluster &col_cluster, double eta)
+    {
     // Inadmissible block -> dense matrix
     if (row_cluster.Child1 == -1 || col_cluster.Child1 == -1)
-      {
-	Matrix<double> A;	
-	return make_shared<BaseMatrixFromMatrix>(A);
-      }
+    {
+    Matrix<double> A;	
+    return make_shared<BaseMatrixFromMatrix>(A);
+    }
     // Admissible block -> low-rank matrix
     else if(Rja_AdmissiblePair(row_cluster, col_cluster, eta))
-      {
-	Matrix<double> A;	
-	return make_shared<BaseMatrixFromMatrix>(A);
-      }
+    {
+    Matrix<double> A;	
+    return make_shared<BaseMatrixFromMatrix>(A);
+    }
     // Hierarchical block matrix
     else 
-      {
-	Array<Array<shared_ptr<BaseMatrix>>> amats;
-	amats.SetSize(2);
-	amats[0].SetSize(2);
-	amats[1].SetSize(2);
-	
-	amats[0][0] = HMatrix_help(row_arr, col_arr, row_arr[row_cluster.Child1], col_arr[col_cluster.Child1], eta);
-	amats[0][1] = HMatrix_help(row_arr, col_arr, row_arr[row_cluster.Child1], col_arr[col_cluster.Child2], eta);
-	amats[1][0] = HMatrix_help(row_arr, col_arr, row_arr[row_cluster.Child2], col_arr[col_cluster.Child1], eta);
-	amats[1][1] = HMatrix_help(row_arr, col_arr, row_arr[row_cluster.Child2], col_arr[col_cluster.Child2], eta);
-
-	BlockMatrix block(amats);
-	
-	return make_shared<BlockMatrix>(block);
-      }
-
-  }
-*/
-
-void HMatrix_help (ClusterTree &row_ct, ClusterTree &col_ct,
-			long i, long j, double eta, Array<BEMBlock> matList)
-  {
-
-    auto row_cluster = row_ct.arr_clusters[i];
-    auto col_cluster = col_ct.arr_clusters[j];
-    bool isNearField;
-
-    if (row_cluster.Child1 == -1 || col_cluster.Child1 == -1)
-	isNearField = true;
-    else if(Rja_AdmissiblePair(row_cluster, col_cluster, eta))
-	isNearField = false;
-    else 
     {
+    Array<Array<shared_ptr<BaseMatrix>>> amats;
+    amats.SetSize(2);
+    amats[0].SetSize(2);
+    amats[1].SetSize(2);
 	
-	HMatrix_help(row_ct, col_ct, row_cluster.Child1, col_cluster.Child1, eta, matList);
-	HMatrix_help(row_ct, col_ct, row_cluster.Child1, col_cluster.Child2, eta, matList);
-	HMatrix_help(row_ct, col_ct, row_cluster.Child2, col_cluster.Child1, eta, matList);
-	HMatrix_help(row_ct, col_ct, row_cluster.Child2, col_cluster.Child2, eta, matList);
-	
-	return;
-	}
-	
-	Array<DofId> setI;	
-	setI.SetSize(row_cluster.Number);
-	for (int k=0; k<setI.Size(); k++)
-		setI[k] = row_ct.mapbnd2cluster[row_cluster.PermuPos+k];
+    amats[0][0] = HMatrix_help(row_arr, col_arr, row_arr[row_cluster.Child1], col_arr[col_cluster.Child1], eta);
+    amats[0][1] = HMatrix_help(row_arr, col_arr, row_arr[row_cluster.Child1], col_arr[col_cluster.Child2], eta);
+    amats[1][0] = HMatrix_help(row_arr, col_arr, row_arr[row_cluster.Child2], col_arr[col_cluster.Child1], eta);
+    amats[1][1] = HMatrix_help(row_arr, col_arr, row_arr[row_cluster.Child2], col_arr[col_cluster.Child2], eta);
 
-	Array<DofId> setJ;	
-	setJ.SetSize(col_cluster.Number);
-	for (int k=0; k<setJ.Size(); k++)
-		setJ[k] = col_ct.mapbnd2cluster[col_cluster.PermuPos+k];
+    BlockMatrix block(amats);
+	
+    return make_shared<BlockMatrix>(block);
+    }
 
-	matList.Append( BEMBlock( setI, setJ, isNearField) );
+    }
+  */
+  
+  BEMBlock :: BEMBlock(Array<DofId> &_setI, Array<DofId> &_setJ, bool _isNearField) : setI(_setI), setJ(_setJ), isNearField(_isNearField), matrix(nullptr) { }
+
+  void BEMBlock :: MultAdd (double s, const BaseVector & x, BaseVector & y) const
+  {
+    // Get only vector entries related to the index sets
+    FlatVector<> xp, yp;
+    
+    x.GetIndirect(setI, xp);
+    y.GetIndirect(setJ, yp);
+    
+    // We need something like BaseVectorFromVector
+    S_BaseVectorPtr<> xp_base(setI.Size(), x.EntrySize(), xp.Data());
+    S_BaseVectorPtr<> yp_base(setJ.Size(), y.EntrySize(), yp.Data());
+
+    matrix->MultAdd(s, xp_base, yp_base);
+        
+    y.SetIndirect(setJ, yp);
+  }
+
+  void BEMBlock :: MultTransAdd (double s, const BaseVector & x, BaseVector & y) const
+  {
+    // Get only vector entries related to the index sets
+    FlatVector<> xp, yp;
+    x.GetIndirect(setI, xp);
+    y.GetIndirect(setJ, yp);
+    
+    // We something like BaseVectorFromVector
+    S_BaseVectorPtr<> xp_base(setI.Size(), x.EntrySize(), xp.Data());
+    S_BaseVectorPtr<> yp_base(setJ.Size(), y.EntrySize(), yp.Data());
+    matrix->MultTransAdd(s, xp_base, yp_base);
+
+    y.SetIndirect(setJ, yp);
+  }
+
+  LowRankMatrix :: LowRankMatrix() :
+    A(nullptr), Bt(nullptr), m(0), n(0), rank(0)
+  {
   }
   
-  HMatrix :: HMatrix(shared_ptr<ClusterTree> _row_ct, shared_ptr<ClusterTree> _col_ct, double _eta) : row_ct(_row_ct), col_ct(_col_ct), eta(_eta)
-  {    
-    //mat = HMatrix_help(row_ct->arr_clusters, col_ct->arr_clusters, row_ct->arr_clusters[0], col_ct->arr_clusters[0], eta);
-    mat = HMatrix_help(row_ct, col_ct, 0, 0, eta, matList);
-  }
-
-  BEMBlock :: BEMBlock(Array<DofId> _setI, Array<DofId> _setJ, bool _isNearField) : setI(_setI), setJ(_setJ), isNearField(_isNearField), matrix(nullptr) { }
-
-
-
   LowRankMatrix :: LowRankMatrix(shared_ptr<Matrix<>> _A, shared_ptr<Matrix<>> _Bt) :
-    A(_A), Bt(_Bt), m(A->Height()), n(Bt->Height())
+    A(_A), Bt(_Bt)
   {
-    if (A->Width() == Bt->Width())
+    m = A->Height();
+    n = Bt->Width();
+
+    if (A->Width() == Bt->Height())
       rank = A->Width();
     else
       throw Exception ("Low-rank matrix: ranks incompatible");
@@ -509,4 +531,89 @@ void HMatrix_help (ClusterTree &row_ct, ClusterTree &col_ct,
     // tmp *= s;
     y.FV<double>() += s * Trans(*Bt) * Trans(*A) * x.FV<double>();
   }
+
+  AutoVector LowRankMatrix :: CreateRowVector () const
+  {
+    // missing parallel: 1 dof for all
+    shared_ptr<BaseVector> sp = make_shared<VVector<double>>(n);   
+    return sp;
+  }
+  
+  AutoVector LowRankMatrix :: CreateColVector () const
+  {
+    shared_ptr<BaseVector> sp = make_shared<VVector<double>>(m);   
+    return sp;
+  }
+  
+  void HMatrix_help (ClusterTree &row_ct, ClusterTree &col_ct,
+		     long i, long j, double eta, Array<BEMBlock> &matList)
+  {
+
+    auto row_cluster = row_ct.arr_clusters[i];
+    auto col_cluster = col_ct.arr_clusters[j];
+    bool isNearField;
+
+    if (row_cluster.Child1 == -1 || col_cluster.Child1 == -1)
+      isNearField = true;
+    else if(Rja_AdmissiblePair(row_cluster, col_cluster, eta))
+      isNearField = false;
+    else 
+      {
+	
+	HMatrix_help(row_ct, col_ct, row_cluster.Child1, col_cluster.Child1, eta, matList);
+	HMatrix_help(row_ct, col_ct, row_cluster.Child1, col_cluster.Child2, eta, matList);
+	HMatrix_help(row_ct, col_ct, row_cluster.Child2, col_cluster.Child1, eta, matList);
+	HMatrix_help(row_ct, col_ct, row_cluster.Child2, col_cluster.Child2, eta, matList);
+	
+	return;
+      }
+
+    Array<DofId> setI;	
+    setI.SetSize(row_cluster.Number);
+    for (int k=0; k<setI.Size(); k++)
+      setI[k] = row_ct.mapcluster2glob[row_cluster.PermuPos+k];
+
+    Array<DofId> setJ;	
+    setJ.SetSize(col_cluster.Number);
+    for (int k=0; k<setJ.Size(); k++)
+      setJ[k] = col_ct.mapcluster2glob[col_cluster.PermuPos+k];
+    
+    matList.Append(BEMBlock(setI, setJ, isNearField));
+  }
+  
+  HMatrix :: HMatrix(shared_ptr<ClusterTree> _row_ct, shared_ptr<ClusterTree> _col_ct, double _eta, int _width_vol_dof, int _height_vol_dof) : row_ct(_row_ct), col_ct(_col_ct), eta(_eta), width_vol_dof(_width_vol_dof), height_vol_dof(_height_vol_dof)
+  {    
+    //mat = HMatrix_help(row_ct->arr_clusters, col_ct->arr_clusters, row_ct->arr_clusters[0], col_ct->arr_clusters[0], eta);
+    HMatrix_help(*row_ct, *col_ct, 0, 0, eta, matList);
+  }
+    
+  void HMatrix :: MultAdd (double s, const BaseVector & x, BaseVector & y) const
+  {
+    for (int i = 0; i < matList.Size(); i++)
+      {
+	matList[i].MultAdd(s, x, y);
+      }
+  }
+
+  void HMatrix :: MultTransAdd (double s, const BaseVector & x, BaseVector & y) const
+  {
+    for (int i = 0; i < matList.Size(); i++)
+      {
+	matList[i].MultTransAdd(s, x, y);
+      }
+  }
+
+  AutoVector HMatrix :: CreateRowVector () const
+  {
+    // missing parallel: 1 dof for all
+    shared_ptr<BaseVector> sp = make_shared<VVector<double>>(width_vol_dof);   
+    return sp;
+  }
+  
+  AutoVector HMatrix :: CreateColVector () const
+  {
+    shared_ptr<BaseVector> sp = make_shared<VVector<double>>(height_vol_dof);   
+    return sp;
+  }
+
 }

@@ -4,12 +4,15 @@
 #include "ngbem.hpp"
 #include "hmat.hpp"
 
-namespace ngbem
+namespace ngbla
 {
   extern void LapackSVD (SliceMatrix<> A,
                          SliceMatrix<double, ColMajor> U,
                          SliceMatrix<double, ColMajor> V);
+}
 
+namespace ngbem
+{
 
   // x, y in triangle [(0,0), (1,0), (0,1)]
   tuple<Array<Vec<2>>, Array<Vec<2>>, Array<double>> IdenticPanelIntegrationRule (int order)
@@ -160,6 +163,512 @@ namespace ngbem
     //cout << "dofs: " << mapbnd2glob << endl;
 
     // run through dofs of surface elements and add elem dynamically wrt dofs
+    elems4dof.SetSize(space->GetNDof());
+    for (int i = 0; i < mesh->GetNSE(); i++)
+      {
+	ElementId ei(BND, i);
+
+	Array<DofId> dnumsi;
+	space->GetDofNrs(ei, dnumsi); 
+	for (int ii = 0; ii < dnumsi.Size(); ii++)
+	  {
+	    elems4dof[dnumsi[ii]].Append(i);
+	  }
+      }
+
+    HMatrix hmat(make_shared<ClusterTree>(cluster_tree), make_shared<ClusterTree>(cluster_tree), 2.0, space->GetNDof(), space->GetNDof());
+    LocalHeap lh(10000000);
+
+    CalcHMatrix(hmat, lh, param);
+    cout << "HMatrix done " << endl;
+    HeapReset hr(lh);    
+    
+    Matrix<double> dense(mapglob2bnd.Size(), mapglob2bnd.Size());
+    CalcElementMatrix(dense, lh);
+    cout << "dense: " << dense.Height() << " x " << dense.Width() << endl;
+    //cout << "elems4dof: " << elems4dof << endl;
+
+    // Test with vector
+    Vector<double> x(space->GetNDof()), y(space->GetNDof());
+    x = 1.;
+    y = 0.;
+    y = dense * x;
+
+    cout << "y = " << y << endl;
+    
+    S_BaseVectorPtr<> x_base(space->GetNDof(), 1, x.Data());
+    S_BaseVectorPtr<> y_base(space->GetNDof(), 1, y.Data());    
+    
+    hmat.MultAdd(-1., x_base, y_base);
+
+    double err = 0.;
+    for (int i = 0; i < y.Size(); i++)
+      err += y(i) * y(i);
+    
+    cout << "error " << sqrt(err) << endl;
+  }
+
+  void SingleLayerPotentialOperator ::
+  CalcElementMatrix(FlatMatrix<double> matrix,  // matrix dim = ndof_bnd x ndof_bnd
+		    LocalHeap &lh) const
+  {
+    Array<int> range;
+    for (int i = 0; i < mapbnd2glob.Size(); i++)
+      {
+	range.Append(i);
+      }
+    CalcBlockMatrix(matrix, range, range, lh);
+  }
+
+  /* compute single layer matrix for dof set I and J  - global boundry dof numbers*/
+  void SingleLayerPotentialOperator ::
+  CalcBlockMatrix(FlatMatrix<double> matrix,  Array<DofId> &setI, Array<DofId> &setJ,
+		  LocalHeap &lh) const
+  {
+
+    static Timer tall("SingleLayer - block");
+    static Timer t_identic("SingleLayer - identic panel");
+    static Timer t_common_vertex("SingleLayer - common vertex");        
+    static Timer t_common_edge("SingleLayer - common edge");        
+    static Timer t_disjoint("SingleLayer - disjoint");
+    static Timer t_disjoint2("SingleLayer - disjoint2");        
+    RegionTimer reg(tall);
+
+
+    IntegrationRule irtrig(ET_TRIG, intorder); // order=4
+    
+    auto [ identic_panel_x, identic_panel_y, identic_panel_weight ] =
+      IdenticPanelIntegrationRule(intorder);
+
+    auto [ common_vertex_x, common_vertex_y, common_vertex_weight ] =
+      CommonVertexIntegrationRule(intorder);
+    
+    auto [ common_edge_x, common_edge_y, common_edge_weight ] =
+      CommonEdgeIntegrationRule(intorder);
+
+    auto mesh = space->GetMeshAccess();
+    auto evaluator = space->GetEvaluator(BND);
+
+    Array<int> tmp, tmp2;
+    Array<int> patchi, patchj;
+    Array<int> setIinv;
+    Array<int> setJinv;
+    setIinv.SetSize(space->GetNDof()); 
+    setJinv.SetSize(space->GetNDof());
+
+    setIinv = -1;
+    setJinv = -1;
+  
+    for (int i = 0; i < setI.Size(); i++)
+      {
+	setIinv[setI[i]] = i;
+	tmp.Append(elems4dof[ setI[i] ]);
+      }
+    QuickSort( tmp );
+    for (int i = 0; i < tmp.Size(); i++)
+      {
+	patchi.Append(tmp[i]);
+	int tmpi = tmp[i];
+	while (tmp[i] == tmpi && i < tmp.Size()) 
+	  i++;
+	i--;
+      }
+    int ni = patchi.Size(); 
+  
+    for (int j = 0; j < setJ.Size(); j++)
+      {
+	setJinv[setJ[j]] = j;
+	tmp2.Append(elems4dof[ setJ[j] ]);
+      }
+    QuickSort( tmp2 );
+    for (int j = 0; j < tmp2.Size(); j++)
+      {
+	patchj.Append(tmp2[j]);
+	int tmpj = tmp2[j];
+	while (tmp2[j] == tmpj && j < tmp2.Size()) 
+	  j++;
+	j--;
+      }
+    int nj = patchj.Size(); 
+
+    matrix = 0; 
+  
+    for (int i = 0; i < ni; i++)
+      for (int j = 0; j < nj; j++)
+	{
+	  HeapReset hr(lh);
+	  ElementId ei(BND, patchi[i]);
+	  ElementId ej(BND, patchj[j]);
+        
+	  auto verti = mesh->GetElement(ei).Vertices();
+	  auto vertj = mesh->GetElement(ej).Vertices();          
+          
+	  BaseScalarFiniteElement &feli = dynamic_cast<BaseScalarFiniteElement &>(space->GetFE(ei, lh));
+	  BaseScalarFiniteElement &felj = dynamic_cast<BaseScalarFiniteElement &>(space->GetFE(ej, lh));
+        
+	  ElementTransformation &trafoi = mesh->GetTrafo(ei, lh);
+	  ElementTransformation &trafoj = mesh->GetTrafo(ej, lh);
+          
+	  Array<DofId> dnumsi, dnumsj;
+	  space->GetDofNrs(ei, dnumsi); // mapping to global dof
+	  space->GetDofNrs(ej, dnumsj);
+        
+	  FlatMatrix<double,ColMajor> mshapei(1, feli.GetNDof(), lh);
+	  FlatMatrix<double,ColMajor> mshapej(1, felj.GetNDof(), lh);
+        
+	  FlatMatrix elmat(feli.GetNDof(), felj.GetNDof(), lh); // e.g. 3 x 3
+	  elmat = 0;
+          
+	  // get number of common nodes for integration rule
+	  int n_common_vertices = 0;
+	  for (auto vi : verti)
+	    if (vertj.Contains(vi))
+	      n_common_vertices++;
+        
+	  switch (n_common_vertices)
+	    {
+	    case 3: //identical panel
+	      {
+		RegionTimer reg(t_identic);    
+                
+		elmat = 0.0;
+		for (int k = 0; k < identic_panel_weight.Size(); k++)
+		  {
+		    IntegrationPoint xhat (identic_panel_x[k]);
+		    IntegrationPoint yhat (identic_panel_y[k]);
+                    
+		    MappedIntegrationPoint<2,3> mipx(xhat, trafoi);
+		    MappedIntegrationPoint<2,3> mipy(yhat, trafoj);
+                    
+		    Vec<3> x = mipx.Point();
+		    Vec<3> y = mipy.Point();
+                    
+		    double kernel = 1.0 / (4*M_PI*L2Norm(x-y));
+        
+		    evaluator->CalcMatrix(feli, mipx, mshapei, lh);
+		    evaluator->CalcMatrix(felj, mipy, mshapej, lh);
+                    
+		    double fac = mipx.GetMeasure()*mipy.GetMeasure()*identic_panel_weight[k];
+		    elmat += fac*kernel* Trans(mshapej) * mshapei;
+		  }
+        
+		// cout << "single panel elmat = " << endl << elmat << endl;
+		break;
+	      }
+              
+	    case 2: //common edge
+	      {
+		RegionTimer reg(t_common_edge);    
+                
+		const EDGE * edges = ElementTopology::GetEdges (ET_TRIG);
+		int cex, cey;
+		for (int cx = 0; cx < 3; cx++)
+		  for (int cy = 0; cy < 3; cy++)
+		    {
+		      INT<2> ex (verti[edges[cx][0]], verti[edges[cx][1]]);
+		      INT<2> ey (vertj[edges[cy][0]], vertj[edges[cy][1]]);
+		      if (ex.Sort() == ey.Sort())
+			{
+			  cex = cx;
+			  cey = cy;
+			  break;
+			}
+		    }
+        
+		// permute vertices st common edge comes first
+		int vpermx[3] = { edges[cex][0], edges[cex][1], -1 };
+		vpermx[2] = 3-vpermx[0]-vpermx[1];
+		int vpermy[3] = { edges[cey][1], edges[cey][0], -1 };
+		vpermy[2] = 3-vpermy[0]-vpermy[1];
+                
+		elmat = 0.0;
+		for (int k = 0; k < common_edge_weight.Size(); k++)
+		  {
+		    Vec<2> xk = common_edge_x[k];
+		    Vec<2> yk = common_edge_y[k];
+        
+		    Vec<3> lamx (1-xk(0)-xk(1), xk(0), xk(1) );
+		    Vec<3> lamy (1-yk(0)-yk(1), yk(0), yk(1) );
+        
+		    // consider permutation 
+		    Vec<3> plamx, plamy;
+		    for (int i = 0; i < 3; i++)
+		      {
+			plamx(vpermx[i]) = lamx(i);
+			plamy(vpermy[i]) = lamy(i);
+		      }
+                    
+		    IntegrationPoint xhat(plamx(0), plamx(1), 0, 0);
+		    IntegrationPoint yhat(plamy(0), plamy(1), 0, 0);
+                    
+		    MappedIntegrationPoint<2,3> mipx(xhat, trafoi);
+		    MappedIntegrationPoint<2,3> mipy(yhat, trafoj);
+                    
+		    Vec<3> x = mipx.Point();
+		    Vec<3> y = mipy.Point();
+                    
+		    double kernel = 1.0 / (4*M_PI*L2Norm(x-y));
+                    
+		    evaluator->CalcMatrix(feli, mipx, mshapei, lh);
+		    evaluator->CalcMatrix(felj, mipy, mshapej, lh);
+                    
+		    double fac = mipx.GetMeasure()*mipy.GetMeasure() * common_edge_weight[k];
+		    elmat += fac*kernel* Trans(mshapej) * mshapei;
+		  }
+        
+		// cout.precision(12);                
+		// cout << "common edge: " << endl << elmat << endl;
+		break;
+	      }
+        
+	    case 1: //common vertex
+	      {
+		RegionTimer reg(t_common_vertex);    
+                
+		int cvx=-1, cvy=-1;
+		for (int cx = 0; cx < 3; cx++)
+		  for (int cy = 0; cy < 3; cy++)
+		    {
+		      if (verti[cx] == vertj[cy])
+			{
+			  cvx = cx;
+			  cvy = cy;
+			  break;
+			}
+		    }
+                
+		int vpermx[3] = { cvx, (cvx+1)%3, (cvx+2)%3 };
+		int vpermy[3] = { cvy, (cvy+1)%3, (cvy+2)%3 };
+                
+		elmat = 0.0;
+		for (int k = 0; k < common_vertex_weight.Size(); k++)
+		  {
+		    Vec<2> xk = common_vertex_x[k];
+		    Vec<2> yk = common_vertex_y[k];
+        
+		    Vec<3> lamx (1-xk(0)-xk(1), xk(0), xk(1) );
+		    Vec<3> lamy (1-yk(0)-yk(1), yk(0), yk(1) );
+        
+		    Vec<3> plamx, plamy;
+		    for (int i = 0; i < 3; i++)
+		      {
+			plamx(vpermx[i]) = lamx(i);
+			plamy(vpermy[i]) = lamy(i);
+		      }
+                    
+		    IntegrationPoint xhat(plamx(0), plamx(1), 0, 0);
+		    IntegrationPoint yhat(plamy(0), plamy(1), 0, 0);
+                    
+		    MappedIntegrationPoint<2,3> mipx(xhat, trafoi);
+		    MappedIntegrationPoint<2,3> mipy(yhat, trafoj);
+                    
+		    Vec<3> x = mipx.Point();
+		    Vec<3> y = mipy.Point();
+                    
+		    double kernel = 1.0 / (4*M_PI*L2Norm(x-y));
+        
+		    evaluator->CalcMatrix(feli, mipx, mshapei, lh);
+		    evaluator->CalcMatrix(felj, mipy, mshapej, lh);
+                    
+		    double fac = mipx.GetMeasure()*mipy.GetMeasure()*common_vertex_weight[k];
+		    elmat += fac*kernel* Trans(mshapej) * mshapei;
+		  }
+        
+		// cout.precision(12);
+		// cout << "common vertex: " << endl << elmat << endl;
+		break;
+	      }
+        
+	    case 0: //disjoint panels
+	      {
+		RegionTimer r(t_disjoint);    
+                
+		elmat = 0.0;
+        
+		auto & mirx = trafoi(irtrig, lh);
+		auto & miry = trafoj(irtrig, lh);
+		FlatMatrix<> shapesi(feli.GetNDof(), irtrig.Size(), lh);
+		FlatMatrix<> shapesj(felj.GetNDof(), irtrig.Size(), lh);
+                
+		evaluator -> CalcMatrix(feli, mirx, Trans(shapesi), lh);
+		evaluator -> CalcMatrix(felj, miry, Trans(shapesj), lh);
+                
+		RegionTimer r2(t_disjoint2);
+        
+		FlatMatrix<> kernel_ixiy(irtrig.Size(), irtrig.Size(), lh);
+		for (int ix = 0; ix < irtrig.Size(); ix++)
+		  {
+		    for (int iy = 0; iy < irtrig.Size(); iy++)
+		      {
+			Vec<3> x = mirx[ix].GetPoint();
+			Vec<3> y = miry[iy].GetPoint();
+                        
+			double kernel = 1.0 / (4*M_PI*L2Norm(x-y));
+			double fac = mirx[ix].GetWeight()*miry[iy].GetWeight();
+			kernel_ixiy(ix, iy) = fac*kernel;
+		      }
+		  }
+        
+		FlatMatrix<double> kernel_shapesj(felj.GetNDof(), irtrig.Size(), lh);
+		kernel_shapesj = shapesj * Trans(kernel_ixiy);
+		elmat += kernel_shapesj * Trans(shapesi);
+        
+		// cout << "disjoint panel " << endl << elmat << endl;
+		break;
+	      }
+	    default:
+	      throw Exception ("not possible");
+	    }
+          
+	  for (int ii = 0; ii < dnumsi.Size(); ii++)
+	    for (int jj = 0; jj < dnumsj.Size(); jj++)
+	      if(setJinv[dnumsj[jj]] != -1 && setIinv[dnumsi[ii]] != -1 )
+		matrix(setJinv[dnumsj[jj]], setIinv[dnumsi[ii]]) += elmat(jj, ii);
+        
+	}
+  }
+
+  shared_ptr<LowRankMatrix> SingleLayerPotentialOperator :: CalcFarFieldBlock(Array<DofId> &setI, Array<DofId> &setJ, LocalHeap &lh) const
+  {
+    int m = setJ.Size();
+    int n = setI.Size();
+    int p = fmin(n, m);
+  
+    Matrix<double> A(m, n);
+    CalcBlockMatrix(A, setI, setJ, lh);
+
+    /** @warning Workaround because dgesvd_ has double free error, when matrix
+	is not square. .*/
+    Matrix<double, ColMajor> U(m, p), Vt(p, n);
+    U = 0;
+    Vt = 0.;
+    if (p == m)
+      {
+	U.Diag() = 1.;
+	Vt = A;
+      }
+    else
+      {
+	U = A;
+	Vt.Diag() = 1.;
+      }
+
+    shared_ptr<Matrix<>> Up = make_shared<Matrix<>>(U);
+    shared_ptr<Matrix<>> Vp = make_shared<Matrix<>>(Vt);
+    LowRankMatrix lowrank_mat(Up, Vp);
+    
+    return make_shared<LowRankMatrix>(lowrank_mat);
+    
+    //Matrix<double, ColMajor> U(m), Vt(n);
+    
+    // // Calculate SVD (LAPACKSVD is buggy)
+    // //LapackSVD(MatrixView(A), MatrixView(U), MatrixView(Vt));
+    // Vector<> S(p);
+    // Array<double> work(n * m + 100);
+    // integer info;
+    // char jobu = 'A', jobv = 'A';
+    // integer lda = A.Dist(), ldu = U.Dist(), ldv = Vt.Dist();
+    // integer lwork = work.Size();
+    
+    // dgesvd_ ( &jobu, &jobv, &m, &n, A.Data(), &lda,
+    //           S.Data(),
+    //           U.Data(), &ldu, Vt.Data(), &ldv,
+    //           work.Data(), &lwork, 
+    //           &info);
+    
+    // //Truncate according to eps. k is the rank
+    // int k = 1;
+    // for (int j = 1; j < p; j++)
+    //   {
+    // 	if (S(j) < param.eps)
+    // 	  S(j) = 0.;
+    // 	else
+    // 	  k++;
+    //   }
+    
+    // // Multiply U with truncated singular values    
+    // // Truncate the matrices U and Vt
+    // Matrix<double, ColMajor> U_trc(m, k), Vt_trc(k, n);
+    // for (size_t j = 0; j < k; j++)
+    //   for (size_t i = 0; i < m; i++)
+    // 	U_trc(i, j) = U(i, j) * S(j);
+    // for (size_t j = 0; j < n; j++)
+    //   for (size_t i = 0; i < k; i++)
+    // 	Vt_trc(i, j) = Vt(i, j);
+
+    // shared_ptr<Matrix<>> Up = make_shared<Matrix<>>(U_trc);
+    // shared_ptr<Matrix<>> Vp = make_shared<Matrix<>>(Vt_trc);
+    // LowRankMatrix lowrank_mat(Up, Vp);
+    
+    // return make_shared<LowRankMatrix>(lowrank_mat);
+  }
+
+  void SingleLayerPotentialOperator :: CalcHMatrix(HMatrix hmatrix, LocalHeap &lh, struct BEMParameters &param) const
+  {
+    auto matList = hmatrix.GetMatList();
+    for (int k = 0; k< matList->Size(); k++)
+      {
+	// matList is an array of BEM blocks
+	BEMBlock block = (*matList)[k];
+	auto mat = block.GetMat();
+	auto setI = block.GetI();
+	auto setJ = block.GetJ();
+	
+	if(block.IsNearField())
+	  {
+	    // Compute dense block
+	    Matrix<> near(setJ->Size(), setI->Size());
+	    CalcBlockMatrix(near, *setI, *setJ, lh);	    
+	    *mat = make_shared<BaseMatrixFromMatrix>(near);
+	    //cout << "near " << near.Height() << " x " << near.Width() << endl;
+	  }
+	else
+	  {
+	    // Compute low-rank block
+	    shared_ptr<LowRankMatrix> far = CalcFarFieldBlock(*setI, *setJ, lh);
+	    // cout << "far-pointer " << far << endl;
+	    // cout << "far " << far->VHeight() << " x " << far->VRank() << " x " << far->VWidth() << endl;
+	    // *mat = far;
+	  }
+
+	HeapReset hr(lh);
+      }
+  }
+
+  void SingleLayerPotentialOperator :: GetDofNrs(Array<int> &dnums) const
+  {
+    dnums = mapbnd2glob;
+  }
+
+  // aspace - H1, bspace - L2
+  DoubleLayerPotentialOperator :: DoubleLayerPotentialOperator (shared_ptr<FESpace> aspace, shared_ptr<FESpace> bspace,
+								int _intorder)
+    : space(aspace), space2(bspace), intorder(_intorder), cluster_tree(aspace, 20), cluster_tree2(bspace, 20)
+  {
+
+    auto mesh = space->GetMeshAccess();
+    auto mesh2 = space2->GetMeshAccess();
+    
+    // setup global-2-boundary mappings;
+    BitArray bnddofs(space->GetNDof());
+    bnddofs.Clear();
+    for (int i = 0; i < mesh->GetNSE(); i++)
+      {
+	Array<DofId> dnums;
+	space->GetDofNrs(ElementId(BND, i), dnums);
+	for (auto d : dnums)
+	  bnddofs.SetBit(d);
+      }
+    mapglob2bnd.SetSize(space->GetNDof());
+    mapglob2bnd = -1;
+    for (int i = 0; i < space->GetNDof(); i++)
+      if (bnddofs.Test(i))
+	{
+	  mapglob2bnd[i] = mapbnd2glob.Size();
+	  mapbnd2glob.Append(i);
+	}
+
+    // run through dofs of surface elements and add elem dynamically wrt dofs
     elems4dof.SetSize(mapbnd2glob.Size());
     for (int i = 0; i < mesh->GetNSE(); i++)
       {
@@ -172,838 +681,404 @@ namespace ngbem
 	    elems4dof[mapglob2bnd[dnumsi[ii]]].Append(i);
 	  }
       }
+    //cout << "elems4dof: " << elems4dof << endl;
+
+    // cout << "dim1: " << space->GetSpatialDimension() << endl;
+    // cout << "bnddofs1: " << bnddofs << endl;
+    // cout << "mapglob2bnd: " << mapglob2bnd << endl;
+    // cout << "mapbnd2glob: " << mapbnd2glob << endl;
+
+    BitArray bnddofs2(space2->GetNDof());
+    bnddofs2.Clear();
+    for (int i = 0; i < mesh2->GetNSE(); i++)
+      {
+	Array<DofId> dnums;
+	space2->GetDofNrs(ElementId(BND, i), dnums);
+	for (auto d : dnums)
+	  bnddofs2.SetBit(d);
+      }
     
-    HMatrix hmat(make_shared<ClusterTree>(cluster_tree), make_shared<ClusterTree>(cluster_tree), 2.0);
+    mapglob2bnd2.SetSize(space2->GetNDof());
+    mapglob2bnd2 = -1;
+    for (int i = 0; i < space2->GetNDof(); i++)
+      if (bnddofs2.Test(i))
+	{
+	  mapglob2bnd2[i] = mapbnd2glob2.Size();
+	  mapbnd2glob2.Append(i);
+	}
+
+    // run through dofs of surface elements and add elem dynamically wrt dofs
+    elems4dof2.SetSize(mapbnd2glob2.Size());
+    for (int i = 0; i < mesh2->GetNSE(); i++)
+      {
+	ElementId ei(BND, i);
+
+	Array<DofId> dnumsi;
+	space2->GetDofNrs(ei, dnumsi); 
+	for (int ii = 0; ii < dnumsi.Size(); ii++)
+	  {
+	    elems4dof2[mapglob2bnd2[dnumsi[ii]]].Append(i);
+	  }
+      }
     //cout << "elems4dof: " << elems4dof << endl;
   }
 
-void SingleLayerPotentialOperator ::
-CalcElementMatrix(FlatMatrix<double> matrix,  // matrix dim = ndof_bnd x ndof_bnd
-		  LocalHeap &lh) const
-{
-    Array<int> range;
+  void DoubleLayerPotentialOperator ::
+  CalcElementMatrix(FlatMatrix<double> matrix, // matrix dim = ndof_bnd_L2 x ndof_bnd_H1
+		    LocalHeap &lh) const
+  {
+    Array<int> range, range2;
     for (int i = 0; i < mapbnd2glob.Size(); i++)
       {
 	range.Append(i);
       }
-    CalcBlockMatrix(matrix, range, range, lh);
-}
-
-/* compute single layer matrix for dof set I and J  - global boundry dof numbers*/
-void SingleLayerPotentialOperator ::
-CalcBlockMatrix(FlatMatrix<double> matrix,  Array<DofId> &setI, Array<DofId> &setJ,
-		LocalHeap &lh) const
-{
-
-  static Timer tall("SingleLayer - block");
-  static Timer t_identic("SingleLayer - identic panel");
-  static Timer t_common_vertex("SingleLayer - common vertex");        
-  static Timer t_common_edge("SingleLayer - common edge");        
-  static Timer t_disjoint("SingleLayer - disjoint");
-  static Timer t_disjoint2("SingleLayer - disjoint2");        
-  RegionTimer reg(tall);
-
-
-  IntegrationRule irtrig(ET_TRIG, intorder); // order=4
-    
-  auto [ identic_panel_x, identic_panel_y, identic_panel_weight ] =
-    IdenticPanelIntegrationRule(intorder);
-
-  auto [ common_vertex_x, common_vertex_y, common_vertex_weight ] =
-    CommonVertexIntegrationRule(intorder);
-    
-  auto [ common_edge_x, common_edge_y, common_edge_weight ] =
-    CommonEdgeIntegrationRule(intorder);
-
-  auto mesh = space->GetMeshAccess();
-  auto evaluator = space->GetEvaluator(BND);
-
-  Array<int> tmp, tmp2;
-  Array<int> patchi, patchj;
-  Array<int> setIinv;
-  Array<int> setJinv;
-  setIinv.SetSize( mapbnd2glob.Size() ); 
-  setJinv.SetSize( mapbnd2glob.Size() );
-
-  setIinv = -1;
-  setJinv = -1;
-  
-  for (int i = 0; i < setI.Size(); i++)
-    {
-      setIinv[setI[i]] = i;
-      tmp.Append(elems4dof[ setI[i] ]);
-    }
-  QuickSort( tmp );
-  for (int i = 0; i < tmp.Size(); i++)
-    {
-      patchi.Append(tmp[i]);
-      int tmpi = tmp[i];
-      while (tmp[i] == tmpi && i < tmp.Size()) 
-	i++;
-      i--;
-    }
-  int ni = patchi.Size(); 
-  
-  for (int j = 0; j < setJ.Size(); j++)
-    {
-      setJinv[setJ[j]] = j;
-      tmp2.Append(elems4dof[ setJ[j] ]);
-    }
-  QuickSort( tmp2 );
-  for (int j = 0; j < tmp2.Size(); j++)
-    {
-      patchj.Append(tmp2[j]);
-      int tmpj = tmp2[j];
-      while (tmp2[j] == tmpj && j < tmp2.Size()) 
-	j++;
-      j--;
-    }
-  int nj = patchj.Size(); 
-
-  matrix = 0; 
-  
-  for (int i = 0; i < ni; i++)
-    for (int j = 0; j < nj; j++)
+    for (int j = 0; j < mapbnd2glob2.Size(); j++)
       {
-	HeapReset hr(lh);
-	ElementId ei(BND, patchi[i]);
-	ElementId ej(BND, patchj[j]);
-        
-	auto verti = mesh->GetElement(ei).Vertices();
-	auto vertj = mesh->GetElement(ej).Vertices();          
+	range2.Append(j);
+      }
+    CalcBlockMatrix(matrix, range, range2, lh);
+  }
+
+  /* compute double layer matrix for dof set I and J  - global boundry dof numbers*/
+  void DoubleLayerPotentialOperator ::
+  CalcBlockMatrix(FlatMatrix<double> matrix, Array<DofId> &setI, Array<DofId> &setJ,
+		  LocalHeap &lh) const // setI - H1, setJ - L2
+  {
+    auto mesh = space->GetMeshAccess();    // trialspace = H1
+    auto mesh2 = space2->GetMeshAccess();  // testspace = L2
+    
+    static Timer tall("DoubleLayer - all");
+    static Timer t_identic("DoubleLayer - identic panel");
+    static Timer t_common_vertex("DoubleLayer - common vertex");        
+    static Timer t_common_edge("DoubleLayer - common edge");        
+    static Timer t_disjoint("DoubleLayer - disjoint");
+    static Timer t_disjoint2("DoubleLayer - disjoint2");        
+    RegionTimer reg(tall);
+
+
+    IntegrationRule irtrig(ET_TRIG, intorder); // order=4
+    
+    auto [ identic_panel_x, identic_panel_y, identic_panel_weight ] =
+      IdenticPanelIntegrationRule(intorder);
+
+    auto [ common_vertex_x, common_vertex_y, common_vertex_weight ] =
+      CommonVertexIntegrationRule(intorder);
+    
+    auto [ common_edge_x, common_edge_y, common_edge_weight ] =
+      CommonEdgeIntegrationRule(intorder);
+
+    //cout << "CalcElementMatrix: " << endl;
+    matrix = 0; 
+
+    auto evaluator = space->GetEvaluator(BND);
+    auto evaluator2 = space2->GetEvaluator(BND);
+    // cout << "type(eval2) = " << typeid(*evaluator2).name() << endl
+
+    Array<int> tmp, tmp2;
+    Array<int> patchi, patchj;
+    Array<int> setIinv;
+    Array<int> setJinv;
+    setIinv.SetSize( mapbnd2glob.Size() ); 
+    setJinv.SetSize( mapbnd2glob2.Size() );
+
+    setIinv = -1;
+    setJinv = -1;
+  
+    for (int i = 0; i < setI.Size(); i++)
+      {
+	setIinv[setI[i]] = i;
+	tmp.Append(elems4dof[ setI[i] ]);
+      }
+    QuickSort( tmp );
+    for (int i = 0; i < tmp.Size(); i++)
+      {
+	patchi.Append(tmp[i]);
+	int tmpi = tmp[i];
+	while (tmp[i] == tmpi && i < tmp.Size()) 
+	  i++;
+	i--;
+      }
+    int ni = patchi.Size(); 
+  
+    for (int j = 0; j < setJ.Size(); j++)
+      {
+	setJinv[setJ[j]] = j;
+	tmp2.Append(elems4dof2[ setJ[j] ]);
+      }
+    QuickSort( tmp2 );
+    for (int j = 0; j < tmp2.Size(); j++)
+      {
+	patchj.Append(tmp2[j]);
+	int tmpj = tmp2[j];
+	while (tmp2[j] == tmpj && j < tmp2.Size()) 
+	  j++;
+	j--;
+      }
+    int nj = patchj.Size(); 
+    
+    for (int i = 0; i < ni; i++)
+      for (int j = 0; j < nj; j++)
+	{
+	  HeapReset hr(lh);
+	  ElementId ei(BND, i);
+	  ElementId ej(BND, j);
+	  //cout << "bem elements: " << ei << ", " << ej << endl;
+
+	  auto verti = mesh->GetElement(ei).Vertices();
+	  auto vertj = mesh->GetElement(ej).Vertices();          
+
           
-	BaseScalarFiniteElement &feli = dynamic_cast<BaseScalarFiniteElement &>(space->GetFE(ei, lh));
-	BaseScalarFiniteElement &felj = dynamic_cast<BaseScalarFiniteElement &>(space->GetFE(ej, lh));
-        
-	ElementTransformation &trafoi = mesh->GetTrafo(ei, lh);
-	ElementTransformation &trafoj = mesh->GetTrafo(ej, lh);
+	  BaseScalarFiniteElement &feli = dynamic_cast<BaseScalarFiniteElement &>(space->GetFE(ei, lh));
+	  BaseScalarFiniteElement &felj = dynamic_cast<BaseScalarFiniteElement &>(space2->GetFE(ej, lh));
           
-	Array<DofId> dnumsi, dnumsj;
-	space->GetDofNrs(ei, dnumsi); // mapping to global dof
-	space->GetDofNrs(ej, dnumsj);
-        
-	FlatMatrix<double,ColMajor> mshapei(1, feli.GetNDof(), lh);
-	FlatMatrix<double,ColMajor> mshapej(1, felj.GetNDof(), lh);
-        
-	FlatMatrix elmat(feli.GetNDof(), felj.GetNDof(), lh); // e.g. 3 x 3
-	elmat = 0;
+	  ElementTransformation &trafoi = mesh->GetTrafo(ei, lh);
+	  ElementTransformation &trafoj = mesh->GetTrafo(ej, lh);
           
-	// get number of common nodes for integration rule
-	int n_common_vertices = 0;
-	for (auto vi : verti)
-	  if (vertj.Contains(vi))
-	    n_common_vertices++;
-        
-	switch (n_common_vertices)
-	  {
-	  case 3: //identical panel
+	  Array<DofId> dnumsi, dnumsj;
+	  space->GetDofNrs(ei, dnumsi); // mapping to global dof
+	  space2->GetDofNrs(ej, dnumsj);
+
+	  FlatVector<> shapei(feli.GetNDof(), lh);
+	  FlatVector<> shapej(felj.GetNDof(), lh);
+
+	  FlatMatrix elmat(felj.GetNDof(), feli.GetNDof(), lh); 
+	  elmat = 0;
+
+	  int n_common_vertices = 0;
+	  for (auto vi : verti)
+	    if (vertj.Contains(vi))
+	      n_common_vertices++;
+
+
+	  switch (n_common_vertices)
 	    {
-	      RegionTimer reg(t_identic);    
+	    case 3: //identical panel
+	      {
+		RegionTimer reg(t_identic);    
                 
-	      elmat = 0.0;
-	      for (int k = 0; k < identic_panel_weight.Size(); k++)
-		{
-		  IntegrationPoint xhat (identic_panel_x[k]);
-		  IntegrationPoint yhat (identic_panel_y[k]);
-                    
-		  MappedIntegrationPoint<2,3> mipx(xhat, trafoi);
-		  MappedIntegrationPoint<2,3> mipy(yhat, trafoj);
-                    
-		  Vec<3> x = mipx.Point();
-		  Vec<3> y = mipy.Point();
-                    
-		  double kernel = 1.0 / (4*M_PI*L2Norm(x-y));
-        
-		  evaluator->CalcMatrix(feli, mipx, mshapei, lh);
-		  evaluator->CalcMatrix(felj, mipy, mshapej, lh);
-                    
-		  double fac = mipx.GetMeasure()*mipy.GetMeasure()*identic_panel_weight[k];
-		  elmat += fac*kernel* Trans(mshapej) * mshapei;
-		}
-        
-	      // cout << "single panel elmat = " << endl << elmat << endl;
-	      break;
-	    }
-              
-	  case 2: //common edge
-	    {
-	      RegionTimer reg(t_common_edge);    
-                
-	      const EDGE * edges = ElementTopology::GetEdges (ET_TRIG);
-	      int cex, cey;
-	      for (int cx = 0; cx < 3; cx++)
-		for (int cy = 0; cy < 3; cy++)
+		elmat = 0.0;
+		for (int k = 0; k < identic_panel_weight.Size(); k++)
 		  {
-		    INT<2> ex (verti[edges[cx][0]], verti[edges[cx][1]]);
-		    INT<2> ey (vertj[edges[cy][0]], vertj[edges[cy][1]]);
-		    if (ex.Sort() == ey.Sort())
-		      {
-			cex = cx;
-			cey = cy;
-			break;
-                      }
+		    IntegrationPoint xhat (identic_panel_x[k]);
+		    IntegrationPoint yhat (identic_panel_y[k]);
+			
+		    MappedIntegrationPoint<2,3> mipx(xhat, trafoi);
+		    MappedIntegrationPoint<2,3> mipy(yhat, trafoj);
+                    
+		    Vec<3> x = mipx.Point();
+		    Vec<3> y = mipy.Point();
+
+		    Vec<3> nx = mipx.GetNV();
+		    double nxy = InnerProduct(nx, (x-y));
+		    double normxy = L2Norm(x-y);
+		    double kernel = nxy / (4*M_PI*normxy*normxy*normxy);
+                    
+		    // feli.CalcShape (xhat, shapei);
+		    // felj.CalcShape (yhat, shapej);
+		    evaluator->CalcMatrix(feli, mipx, Trans(shapei.AsMatrix(feli.GetNDof(),1)), lh);
+		    evaluator2->CalcMatrix(felj, mipy, Trans(shapej.AsMatrix(felj.GetNDof(),1)), lh);
+                    
+		    double fac = mipx.GetMeasure()*mipy.GetMeasure()*identic_panel_weight[k];
+		    elmat += fac*kernel* shapej * Trans(shapei);
 		  }
-        
-	      // permute vertices st common edge comes first
-	      int vpermx[3] = { edges[cex][0], edges[cex][1], -1 };
-	      vpermx[2] = 3-vpermx[0]-vpermx[1];
-	      int vpermy[3] = { edges[cey][1], edges[cey][0], -1 };
-	      vpermy[2] = 3-vpermy[0]-vpermy[1];
                 
-	      elmat = 0.0;
-	      for (int k = 0; k < common_edge_weight.Size(); k++)
-		{
-		  Vec<2> xk = common_edge_x[k];
-		  Vec<2> yk = common_edge_y[k];
-        
-		  Vec<3> lamx (1-xk(0)-xk(1), xk(0), xk(1) );
-		  Vec<3> lamy (1-yk(0)-yk(1), yk(0), yk(1) );
-        
-		  // consider permutation 
-		  Vec<3> plamx, plamy;
-		  for (int i = 0; i < 3; i++)
+		// cout << "new elmat = " << endl << elmat << endl;
+		break;
+	      }
+	    case 2: //common edge
+	      {
+		RegionTimer reg(t_common_edge);    
+                
+		const EDGE * edges = ElementTopology::GetEdges (ET_TRIG); // 0 1 | 1 2 | 2 0 
+		int cex, cey;
+		for (int cx = 0; cx < 3; cx++)
+		  for (int cy = 0; cy < 3; cy++)
 		    {
-		      plamx(vpermx[i]) = lamx(i);
-		      plamy(vpermy[i]) = lamy(i);
+		      INT<2> ex (verti[edges[cx][0]], verti[edges[cx][1]]); 
+		      INT<2> ey (vertj[edges[cy][0]], vertj[edges[cy][1]]); 
+		      if (ex.Sort() == ey.Sort()) 
+			{
+			  cex = cx;  // -> "common" edge number triangle i
+			  cey = cy;  // -> "common" edge number triangle j
+			  break;
+			}
 		    }
-                    
-		  IntegrationPoint xhat(plamx(0), plamx(1), 0, 0);
-		  IntegrationPoint yhat(plamy(0), plamy(1), 0, 0);
-                    
-		  MappedIntegrationPoint<2,3> mipx(xhat, trafoi);
-		  MappedIntegrationPoint<2,3> mipy(yhat, trafoj);
-                    
-		  Vec<3> x = mipx.Point();
-		  Vec<3> y = mipy.Point();
-                    
-		  double kernel = 1.0 / (4*M_PI*L2Norm(x-y));
-                    
-		  evaluator->CalcMatrix(feli, mipx, mshapei, lh);
-		  evaluator->CalcMatrix(felj, mipy, mshapej, lh);
-                    
-		  double fac = mipx.GetMeasure()*mipy.GetMeasure() * common_edge_weight[k];
-		  elmat += fac*kernel* Trans(mshapej) * mshapei;
-		}
-        
-	      // cout.precision(12);                
-	      // cout << "common edge: " << endl << elmat << endl;
-	      break;
-	    }
-        
-	  case 1: //common vertex
-	    {
-	      RegionTimer reg(t_common_vertex);    
+		int vpermx[3] = { edges[cex][0], edges[cex][1], -1 }; // common edge gets first
+		vpermx[2] = 3-vpermx[0]-vpermx[1]; 
+		int vpermy[3] = { edges[cey][1], edges[cey][0], -1 }; // common edge gets first
+		vpermy[2] = 3-vpermy[0]-vpermy[1];
                 
-	      int cvx=-1, cvy=-1;
-	      for (int cx = 0; cx < 3; cx++)
-		for (int cy = 0; cy < 3; cy++)
+                
+		elmat = 0.0;
+		for (int k = 0; k < common_edge_weight.Size(); k++)
 		  {
-		    if (verti[cx] == vertj[cy])
+
+		    Vec<2> xk = common_edge_x[k]; // int point in [(0,0), (1,0), (0,1)] 
+		    Vec<2> yk = common_edge_y[k]; // int point in [(0,0), (1,0), (0,1)] 
+
+		    Vec<3> lamx (1-xk(0)-xk(1), xk(0), xk(1) ); 
+		    Vec<3> lamy (1-yk(0)-yk(1), yk(0), yk(1) );
+
+			
+		    // consider permuation 
+		    Vec<3> plamx, plamy;
+		    for (int i = 0; i < 3; i++)
 		      {
-			cvx = cx;
-			cvy = cy;
-			break;
+			plamx(vpermx[i]) = lamx(i);
+			plamy(vpermy[i]) = lamy(i);
 		      }
+
+		    IntegrationPoint xhat(plamx(0), plamx(1), 0, 0); // int point in [(0,1),(1,0),(0,0)]
+		    IntegrationPoint yhat(plamy(0), plamy(1), 0, 0);
+                    
+		    MappedIntegrationPoint<2,3> mipx(xhat, trafoi);
+		    MappedIntegrationPoint<2,3> mipy(yhat, trafoj);
+                    
+		    Vec<3> x = mipx.Point();
+		    Vec<3> y = mipy.Point();
+
+		    Vec<3> nx = mipx.GetNV();
+		    double nxy = InnerProduct(nx, (x-y));
+		    double normxy = L2Norm(x-y);
+		    double kernel = nxy / (4*M_PI*normxy*normxy*normxy);
+                    
+		    // feli.CalcShape (xhat, shapei);
+		    // felj.CalcShape (yhat, shapej);
+		    evaluator->CalcMatrix(feli, mipx, Trans(shapei.AsMatrix(feli.GetNDof(),1)), lh);
+		    evaluator2->CalcMatrix(felj, mipy, Trans(shapej.AsMatrix(felj.GetNDof(),1)), lh);
+                    
+		    double fac = mipx.GetMeasure()*mipy.GetMeasure() * common_edge_weight[k];
+		    elmat += fac*kernel* shapej * Trans(shapei);
 		  }
+		break;
+	      }
+
+	    case 1: //common vertex
+	      {
+		RegionTimer reg(t_common_vertex);    
                 
-	      int vpermx[3] = { cvx, (cvx+1)%3, (cvx+2)%3 };
-	      int vpermy[3] = { cvy, (cvy+1)%3, (cvy+2)%3 };
-                
-	      elmat = 0.0;
-	      for (int k = 0; k < common_vertex_weight.Size(); k++)
-		{
-		  Vec<2> xk = common_vertex_x[k];
-		  Vec<2> yk = common_vertex_y[k];
-        
-		  Vec<3> lamx (1-xk(0)-xk(1), xk(0), xk(1) );
-		  Vec<3> lamy (1-yk(0)-yk(1), yk(0), yk(1) );
-        
-		  Vec<3> plamx, plamy;
-		  for (int i = 0; i < 3; i++)
+		int cvx=-1, cvy=-1;
+		for (int cx = 0; cx < 3; cx++)
+		  for (int cy = 0; cy < 3; cy++)
 		    {
-		      plamx(vpermx[i]) = lamx(i);
-		      plamy(vpermy[i]) = lamy(i);
+		      if (verti[cx] == vertj[cy])
+			{
+			  cvx = cx;
+			  cvy = cy;
+			  break;
+			}
 		    }
-                    
-		  IntegrationPoint xhat(plamx(0), plamx(1), 0, 0);
-		  IntegrationPoint yhat(plamy(0), plamy(1), 0, 0);
-                    
-		  MappedIntegrationPoint<2,3> mipx(xhat, trafoi);
-		  MappedIntegrationPoint<2,3> mipy(yhat, trafoj);
-                    
-		  Vec<3> x = mipx.Point();
-		  Vec<3> y = mipy.Point();
-                    
-		  double kernel = 1.0 / (4*M_PI*L2Norm(x-y));
-        
-		  evaluator->CalcMatrix(feli, mipx, mshapei, lh);
-		  evaluator->CalcMatrix(felj, mipy, mshapej, lh);
-                    
-		  double fac = mipx.GetMeasure()*mipy.GetMeasure()*common_vertex_weight[k];
-		  elmat += fac*kernel* Trans(mshapej) * mshapei;
-		}
-        
-	      // cout.precision(12);
-	      // cout << "common vertex: " << endl << elmat << endl;
-	      break;
-	    }
-        
-	  case 0: //disjoint panels
-	    {
-	      RegionTimer r(t_disjoint);    
+		// cout << "cvx = " << cvx << ", cvy = " << cvy << endl;
+		int vpermx[3] = { cvx, (cvx+1)%3, (cvx+2)%3 };
+		vpermx[2] = 3-vpermx[0]-vpermx[1];
+		int vpermy[3] = { cvy, (cvy+1)%3, (cvy+2)%3 };
+		vpermy[2] = 3-vpermy[0]-vpermy[1];
                 
-	      elmat = 0.0;
-        
-	      auto & mirx = trafoi(irtrig, lh);
-	      auto & miry = trafoj(irtrig, lh);
-	      FlatMatrix<> shapesi(feli.GetNDof(), irtrig.Size(), lh);
-	      FlatMatrix<> shapesj(felj.GetNDof(), irtrig.Size(), lh);
+		elmat = 0.0;
+		for (int k = 0; k < common_vertex_weight.Size(); k++)
+		  {
+                    
+		    Vec<2> xk = common_vertex_x[k];
+		    Vec<2> yk = common_vertex_y[k];
+
+		    Vec<3> lamx (1-xk(0)-xk(1), xk(0), xk(1) );
+		    Vec<3> lamy (1-yk(0)-yk(1), yk(0), yk(1) );
+
+		    Vec<3> plamx, plamy;
+		    for (int i = 0; i < 3; i++)
+		      {
+			plamx(vpermx[i]) = lamx(i);
+			plamy(vpermy[i]) = lamy(i);
+		      }
+                    
+		    IntegrationPoint xhat(plamx(0), plamx(1), 0, 0);
+		    IntegrationPoint yhat(plamy(0), plamy(1), 0, 0);
+                    
+		    MappedIntegrationPoint<2,3> mipx(xhat, trafoi);
+		    MappedIntegrationPoint<2,3> mipy(yhat, trafoj);
+                    
+		    Vec<3> x = mipx.Point();
+		    Vec<3> y = mipy.Point();
+                    
+		    Vec<3> nx = mipx.GetNV();
+		    double nxy = InnerProduct(nx, (x-y));
+		    double normxy = L2Norm(x-y);
+		    double kernel = nxy / (4*M_PI*normxy*normxy*normxy);
+
+		    // feli.CalcShape (xhat, shapei);
+		    // felj.CalcShape (yhat, shapej);
+		    evaluator->CalcMatrix(feli, mipx, Trans(shapei.AsMatrix(feli.GetNDof(),1)), lh);
+		    evaluator2->CalcMatrix(felj, mipy, Trans(shapej.AsMatrix(felj.GetNDof(),1)), lh);
+                    
+		    double fac = mipx.GetMeasure()*mipy.GetMeasure()*common_vertex_weight[k];
+		    elmat += fac*kernel* shapej * Trans(shapei);
+		  }
+		// cout << "new: common vertex elmat = " << elmat << endl;
+		break;
+	      }
+
+	    case 0: //disjoint panels
+	      {
+		RegionTimer r(t_disjoint);    
                 
-	      evaluator -> CalcMatrix(feli, mirx, Trans(shapesi), lh);
-	      evaluator -> CalcMatrix(felj, miry, Trans(shapesj), lh);
+		elmat = 0.0;
                 
-	      RegionTimer r2(t_disjoint2);
-        
-	      FlatMatrix<> kernel_ixiy(irtrig.Size(), irtrig.Size(), lh);
-	      for (int ix = 0; ix < irtrig.Size(); ix++)
-		{
+		// shapes+geom out of loop, matrix multiplication
+		MappedIntegrationRule<2,3> mirx(irtrig, trafoi, lh);
+		MappedIntegrationRule<2,3> miry(irtrig, trafoj, lh);
+                
+		FlatMatrix<> shapesi(feli.GetNDof(), irtrig.Size(), lh);
+		FlatMatrix<> shapesj(felj.GetNDof(), irtrig.Size(), lh);
+		FlatMatrix<> kernel_shapesj(felj.GetNDof(), irtrig.Size(), lh);
+                
+                
+		evaluator -> CalcMatrix(feli, mirx, Trans(shapesi), lh);
+		evaluator2 -> CalcMatrix(felj, miry, Trans(shapesj), lh);
+                
+		RegionTimer r2(t_disjoint2);
+		kernel_shapesj = 0;
+		for (int ix = 0; ix < irtrig.Size(); ix++)
 		  for (int iy = 0; iy < irtrig.Size(); iy++)
 		    {
 		      Vec<3> x = mirx[ix].GetPoint();
 		      Vec<3> y = miry[iy].GetPoint();
-                        
-		      double kernel = 1.0 / (4*M_PI*L2Norm(x-y));
-		      double fac = mirx[ix].GetWeight()*miry[iy].GetWeight();
-		      kernel_ixiy(ix, iy) = fac*kernel;
-		    }
-		}
-        
-	      FlatMatrix<double> kernel_shapesj(felj.GetNDof(), irtrig.Size(), lh);
-	      kernel_shapesj = shapesj * Trans(kernel_ixiy);
-	      elmat += kernel_shapesj * Trans(shapesi);
-        
-	      // cout << "disjoint panel " << endl << elmat << endl;
-	      break;
-	    }
-	  default:
-	    throw Exception ("not possible");
-	  }
-          
-	for (int ii = 0; ii < dnumsi.Size(); ii++)
-	  for (int jj = 0; jj < dnumsj.Size(); jj++)
-	    if(setJinv[ mapglob2bnd[dnumsj[jj]] ] != -1 && setIinv[ mapglob2bnd[dnumsi[ii]] ] != -1 )
-		matrix(setJinv[ mapglob2bnd[dnumsj[jj]] ], setIinv[ mapglob2bnd[dnumsi[ii]] ] ) += elmat(jj, ii);
-        
-      }
-}
-
-   void SingleLayerPotentialOperator :: CalcFarFieldBlock(shared_ptr<LowRankMatrix> matrix, Array<DofId> &setI, Array<DofId> &setJ, LocalHeap &lh) const
-   {
-     int m = setJ.Size();
-     int n = setI.Size();
-     int p = fmin(n, m);
-  
-     Matrix<double> A(m, n);
-     CalcBlockMatrix(A, setI, setJ, lh);
-  
-     Matrix<double, ColMajor> U(m, m), Vt(n, n);
-
-     // Calculate SVD
-     LapackSVD(MatrixView(A), MatrixView(U), MatrixView(Vt));
-     Matrix<double> S(m, n);
-     S = 0.;
-  
-     // Truncate according to eps. k is the rank
-     int k = 0;
-     while (A.Diag(0)(k) > param.eps && k < p)
-       {
-   	S.Diag(0)(k) = A.Diag(0)(k);
-   	k++;
-       }    
-
-     // Multiply U with truncated singular values
-     U = U * S;
-
-     // Truncate the matrices U and Vt
-     Matrix<double, ColMajor> U_trc(m, k), Vt_trc(k, n);
-     for (size_t j = 0; j < k; j++)
-       for (size_t i = 0; i < m; i++)
-   	U_trc(i, j) = U(i, j);
-     for (size_t j = 0; j < n; j++)
-       for (size_t i = 0; i < k; i++)
-   	Vt_trc(i, j) = Vt(i, j);
-
-     auto Up = make_shared<Matrix<>>(U_trc);
-     auto Vp = make_shared<Matrix<>>(Vt_trc);
-     LowRankMatrix lowrank_mat(Up, Vp);
-     matrix = make_shared<LowRankMatrix>(lowrank_mat);
-   }
-
-void SingleLayerPotentialOperator ::  CalcHMatrix( HMatrix hmatrix, LocalHeap &lh, struct BEMParameters &param) const
-{
-	auto matList = hmatrix.GetMatList();
-	for (int k = 0; k< matList.Size(); k++)
-	{
-		if(matList[k].isNearField)
-		{
-			// allozieren der Matrix Matrix<> matrix(matList[k].
-			// berechnen der Matrix CalcBlockMatrix(
-			// übergeben des BEMBlocks in die Liste 
-			// heap reset
-		}
-		else
-		{
-			// berechnen der Matrix CalcFarFieldBock
-			// übergeben des BEMBlocks in die Liste 
-			// heap reset
-		}
-	}
-}
-
-void SingleLayerPotentialOperator :: GetDofNrs(Array<int> &dnums) const
-{
-  dnums = mapbnd2glob;
-}
-
-// aspace - H1, bspace - L2
-DoubleLayerPotentialOperator :: DoubleLayerPotentialOperator (shared_ptr<FESpace> aspace, shared_ptr<FESpace> bspace,
-							      int _intorder)
-  : space(aspace), space2(bspace), intorder(_intorder), cluster_tree(aspace, 20), cluster_tree2(bspace, 20)
-{
-
-  auto mesh = space->GetMeshAccess();
-  auto mesh2 = space2->GetMeshAccess();
-    
-  // setup global-2-boundary mappings;
-  BitArray bnddofs(space->GetNDof());
-  bnddofs.Clear();
-  for (int i = 0; i < mesh->GetNSE(); i++)
-    {
-      Array<DofId> dnums;
-      space->GetDofNrs(ElementId(BND, i), dnums);
-      for (auto d : dnums)
-	bnddofs.SetBit(d);
-    }
-  mapglob2bnd.SetSize(space->GetNDof());
-  mapglob2bnd = -1;
-  for (int i = 0; i < space->GetNDof(); i++)
-    if (bnddofs.Test(i))
-      {
-	mapglob2bnd[i] = mapbnd2glob.Size();
-	mapbnd2glob.Append(i);
-      }
-
-  // run through dofs of surface elements and add elem dynamically wrt dofs
-  elems4dof.SetSize(mapbnd2glob.Size());
-  for (int i = 0; i < mesh->GetNSE(); i++)
-    {
-      ElementId ei(BND, i);
-
-      Array<DofId> dnumsi;
-      space->GetDofNrs(ei, dnumsi); 
-      for (int ii = 0; ii < dnumsi.Size(); ii++)
-	{
-	  elems4dof[mapglob2bnd[dnumsi[ii]]].Append(i);
-	}
-    }
-  //cout << "elems4dof: " << elems4dof << endl;
-
-  // cout << "dim1: " << space->GetSpatialDimension() << endl;
-  // cout << "bnddofs1: " << bnddofs << endl;
-  // cout << "mapglob2bnd: " << mapglob2bnd << endl;
-  // cout << "mapbnd2glob: " << mapbnd2glob << endl;
-
-  BitArray bnddofs2(space2->GetNDof());
-  bnddofs2.Clear();
-  for (int i = 0; i < mesh2->GetNSE(); i++)
-    {
-      Array<DofId> dnums;
-      space2->GetDofNrs(ElementId(BND, i), dnums);
-      for (auto d : dnums)
-	bnddofs2.SetBit(d);
-    }
-    
-  mapglob2bnd2.SetSize(space2->GetNDof());
-  mapglob2bnd2 = -1;
-  for (int i = 0; i < space2->GetNDof(); i++)
-    if (bnddofs2.Test(i))
-      {
-	mapglob2bnd2[i] = mapbnd2glob2.Size();
-	mapbnd2glob2.Append(i);
-      }
-
-    // run through dofs of surface elements and add elem dynamically wrt dofs
-  elems4dof2.SetSize(mapbnd2glob2.Size());
-  for (int i = 0; i < mesh2->GetNSE(); i++)
-    {
-      ElementId ei(BND, i);
-
-      Array<DofId> dnumsi;
-      space2->GetDofNrs(ei, dnumsi); 
-      for (int ii = 0; ii < dnumsi.Size(); ii++)
-	{
-	  elems4dof2[mapglob2bnd2[dnumsi[ii]]].Append(i);
-	}
-    }
-  //cout << "elems4dof: " << elems4dof << endl;
-}
-
-void DoubleLayerPotentialOperator ::
-CalcElementMatrix(FlatMatrix<double> matrix, // matrix dim = ndof_bnd_L2 x ndof_bnd_H1
-		  LocalHeap &lh) const
-{
-  Array<int> range, range2;
-  for (int i = 0; i < mapbnd2glob.Size(); i++)
-    {
-      range.Append(i);
-    }
-  for (int j = 0; j < mapbnd2glob2.Size(); j++)
-    {
-      range2.Append(j);
-    }
-  CalcBlockMatrix(matrix, range, range2, lh);
-}
-
-/* compute double layer matrix for dof set I and J  - global boundry dof numbers*/
-void DoubleLayerPotentialOperator ::
-CalcBlockMatrix(FlatMatrix<double> matrix, Array<DofId> &setI, Array<DofId> &setJ,
-		LocalHeap &lh) const // setI - H1, setJ - L2
-{
-  auto mesh = space->GetMeshAccess();    // trialspace = H1
-  auto mesh2 = space2->GetMeshAccess();  // testspace = L2
-    
-  static Timer tall("DoubleLayer - all");
-  static Timer t_identic("DoubleLayer - identic panel");
-  static Timer t_common_vertex("DoubleLayer - common vertex");        
-  static Timer t_common_edge("DoubleLayer - common edge");        
-  static Timer t_disjoint("DoubleLayer - disjoint");
-  static Timer t_disjoint2("DoubleLayer - disjoint2");        
-  RegionTimer reg(tall);
-
-
-  IntegrationRule irtrig(ET_TRIG, intorder); // order=4
-    
-  auto [ identic_panel_x, identic_panel_y, identic_panel_weight ] =
-    IdenticPanelIntegrationRule(intorder);
-
-  auto [ common_vertex_x, common_vertex_y, common_vertex_weight ] =
-    CommonVertexIntegrationRule(intorder);
-    
-  auto [ common_edge_x, common_edge_y, common_edge_weight ] =
-    CommonEdgeIntegrationRule(intorder);
-
-  //cout << "CalcElementMatrix: " << endl;
-  matrix = 0; 
-
-  auto evaluator = space->GetEvaluator(BND);
-  auto evaluator2 = space2->GetEvaluator(BND);
-  // cout << "type(eval2) = " << typeid(*evaluator2).name() << endl
-
-  Array<int> tmp, tmp2;
-  Array<int> patchi, patchj;
-  Array<int> setIinv;
-  Array<int> setJinv;
-  setIinv.SetSize( mapbnd2glob.Size() ); 
-  setJinv.SetSize( mapbnd2glob2.Size() );
-
-  setIinv = -1;
-  setJinv = -1;
-  
-  for (int i = 0; i < setI.Size(); i++)
-    {
-      setIinv[setI[i]] = i;
-      tmp.Append(elems4dof[ setI[i] ]);
-    }
-  QuickSort( tmp );
-  for (int i = 0; i < tmp.Size(); i++)
-    {
-      patchi.Append(tmp[i]);
-      int tmpi = tmp[i];
-      while (tmp[i] == tmpi && i < tmp.Size()) 
-	i++;
-      i--;
-    }
-  int ni = patchi.Size(); 
-  
-  for (int j = 0; j < setJ.Size(); j++)
-    {
-      setJinv[setJ[j]] = j;
-      tmp2.Append(elems4dof2[ setJ[j] ]);
-    }
-  QuickSort( tmp2 );
-  for (int j = 0; j < tmp2.Size(); j++)
-    {
-      patchj.Append(tmp2[j]);
-      int tmpj = tmp2[j];
-      while (tmp2[j] == tmpj && j < tmp2.Size()) 
-	j++;
-      j--;
-    }
-  int nj = patchj.Size(); 
-    
-  for (int i = 0; i < ni; i++)
-    for (int j = 0; j < nj; j++)
-      {
-	HeapReset hr(lh);
-	ElementId ei(BND, i);
-	ElementId ej(BND, j);
-	//cout << "bem elements: " << ei << ", " << ej << endl;
-
-	auto verti = mesh->GetElement(ei).Vertices();
-	auto vertj = mesh->GetElement(ej).Vertices();          
-
-          
-	BaseScalarFiniteElement &feli = dynamic_cast<BaseScalarFiniteElement &>(space->GetFE(ei, lh));
-	BaseScalarFiniteElement &felj = dynamic_cast<BaseScalarFiniteElement &>(space2->GetFE(ej, lh));
-          
-	ElementTransformation &trafoi = mesh->GetTrafo(ei, lh);
-	ElementTransformation &trafoj = mesh->GetTrafo(ej, lh);
-          
-	Array<DofId> dnumsi, dnumsj;
-	space->GetDofNrs(ei, dnumsi); // mapping to global dof
-	space2->GetDofNrs(ej, dnumsj);
-
-	FlatVector<> shapei(feli.GetNDof(), lh);
-	FlatVector<> shapej(felj.GetNDof(), lh);
-
-	FlatMatrix elmat(felj.GetNDof(), feli.GetNDof(), lh); 
-	elmat = 0;
-
-	int n_common_vertices = 0;
-	for (auto vi : verti)
-	  if (vertj.Contains(vi))
-	    n_common_vertices++;
-
-
-	switch (n_common_vertices)
-	  {
-	  case 3: //identical panel
-	    {
-	      RegionTimer reg(t_identic);    
-                
-	      elmat = 0.0;
-	      for (int k = 0; k < identic_panel_weight.Size(); k++)
-		{
-		  IntegrationPoint xhat (identic_panel_x[k]);
-		  IntegrationPoint yhat (identic_panel_y[k]);
-			
-		  MappedIntegrationPoint<2,3> mipx(xhat, trafoi);
-		  MappedIntegrationPoint<2,3> mipy(yhat, trafoj);
                     
-		  Vec<3> x = mipx.Point();
-		  Vec<3> y = mipy.Point();
-
-		  Vec<3> nx = mipx.GetNV();
-		  double nxy = InnerProduct(nx, (x-y));
-		  double normxy = L2Norm(x-y);
-		  double kernel = nxy / (4*M_PI*normxy*normxy*normxy);
-                    
-		  // feli.CalcShape (xhat, shapei);
-		  // felj.CalcShape (yhat, shapej);
-		  evaluator->CalcMatrix(feli, mipx, Trans(shapei.AsMatrix(feli.GetNDof(),1)), lh);
-		  evaluator2->CalcMatrix(felj, mipy, Trans(shapej.AsMatrix(felj.GetNDof(),1)), lh);
-                    
-		  double fac = mipx.GetMeasure()*mipy.GetMeasure()*identic_panel_weight[k];
-		  elmat += fac*kernel* shapej * Trans(shapei);
-		}
-                
-	      // cout << "new elmat = " << endl << elmat << endl;
-	      break;
-	    }
-	  case 2: //common edge
-	    {
-	      RegionTimer reg(t_common_edge);    
-                
-	      const EDGE * edges = ElementTopology::GetEdges (ET_TRIG); // 0 1 | 1 2 | 2 0 
-	      int cex, cey;
-	      for (int cx = 0; cx < 3; cx++)
-		for (int cy = 0; cy < 3; cy++)
-		  {
-		    INT<2> ex (verti[edges[cx][0]], verti[edges[cx][1]]); 
-		    INT<2> ey (vertj[edges[cy][0]], vertj[edges[cy][1]]); 
-		    if (ex.Sort() == ey.Sort()) 
-		      {
-			cex = cx;  // -> "common" edge number triangle i
-			cey = cy;  // -> "common" edge number triangle j
-			break;
-                      }
-		  }
-	      int vpermx[3] = { edges[cex][0], edges[cex][1], -1 }; // common edge gets first
-	      vpermx[2] = 3-vpermx[0]-vpermx[1]; 
-	      int vpermy[3] = { edges[cey][1], edges[cey][0], -1 }; // common edge gets first
-	      vpermy[2] = 3-vpermy[0]-vpermy[1];
-                
-                
-	      elmat = 0.0;
-	      for (int k = 0; k < common_edge_weight.Size(); k++)
-		{
-
-		  Vec<2> xk = common_edge_x[k]; // int point in [(0,0), (1,0), (0,1)] 
-		  Vec<2> yk = common_edge_y[k]; // int point in [(0,0), (1,0), (0,1)] 
-
-		  Vec<3> lamx (1-xk(0)-xk(1), xk(0), xk(1) ); 
-		  Vec<3> lamy (1-yk(0)-yk(1), yk(0), yk(1) );
-
-			
-		  // consider permuation 
-		  Vec<3> plamx, plamy;
-		  for (int i = 0; i < 3; i++)
-		    {
-		      plamx(vpermx[i]) = lamx(i);
-		      plamy(vpermy[i]) = lamy(i);
-		    }
-
-		  IntegrationPoint xhat(plamx(0), plamx(1), 0, 0); // int point in [(0,1),(1,0),(0,0)]
-		  IntegrationPoint yhat(plamy(0), plamy(1), 0, 0);
-                    
-		  MappedIntegrationPoint<2,3> mipx(xhat, trafoi);
-		  MappedIntegrationPoint<2,3> mipy(yhat, trafoj);
-                    
-		  Vec<3> x = mipx.Point();
-		  Vec<3> y = mipy.Point();
-
-		  Vec<3> nx = mipx.GetNV();
-		  double nxy = InnerProduct(nx, (x-y));
-		  double normxy = L2Norm(x-y);
-		  double kernel = nxy / (4*M_PI*normxy*normxy*normxy);
-                    
-		  // feli.CalcShape (xhat, shapei);
-		  // felj.CalcShape (yhat, shapej);
-		  evaluator->CalcMatrix(feli, mipx, Trans(shapei.AsMatrix(feli.GetNDof(),1)), lh);
-		  evaluator2->CalcMatrix(felj, mipy, Trans(shapej.AsMatrix(felj.GetNDof(),1)), lh);
-                    
-		  double fac = mipx.GetMeasure()*mipy.GetMeasure() * common_edge_weight[k];
-		  elmat += fac*kernel* shapej * Trans(shapei);
-		}
-	      break;
-	    }
-
-	  case 1: //common vertex
-	    {
-	      RegionTimer reg(t_common_vertex);    
-                
-	      int cvx=-1, cvy=-1;
-	      for (int cx = 0; cx < 3; cx++)
-		for (int cy = 0; cy < 3; cy++)
-		  {
-		    if (verti[cx] == vertj[cy])
-		      {
-			cvx = cx;
-			cvy = cy;
-			break;
-		      }
-		  }
-	      // cout << "cvx = " << cvx << ", cvy = " << cvy << endl;
-	      int vpermx[3] = { cvx, (cvx+1)%3, (cvx+2)%3 };
-	      vpermx[2] = 3-vpermx[0]-vpermx[1];
-	      int vpermy[3] = { cvy, (cvy+1)%3, (cvy+2)%3 };
-	      vpermy[2] = 3-vpermy[0]-vpermy[1];
-                
-	      elmat = 0.0;
-	      for (int k = 0; k < common_vertex_weight.Size(); k++)
-		{
-                    
-		  Vec<2> xk = common_vertex_x[k];
-		  Vec<2> yk = common_vertex_y[k];
-
-		  Vec<3> lamx (1-xk(0)-xk(1), xk(0), xk(1) );
-		  Vec<3> lamy (1-yk(0)-yk(1), yk(0), yk(1) );
-
-		  Vec<3> plamx, plamy;
-		  for (int i = 0; i < 3; i++)
-		    {
-		      plamx(vpermx[i]) = lamx(i);
-		      plamy(vpermy[i]) = lamy(i);
-		    }
-                    
-		  IntegrationPoint xhat(plamx(0), plamx(1), 0, 0);
-		  IntegrationPoint yhat(plamy(0), plamy(1), 0, 0);
-                    
-		  MappedIntegrationPoint<2,3> mipx(xhat, trafoi);
-		  MappedIntegrationPoint<2,3> mipy(yhat, trafoj);
-                    
-		  Vec<3> x = mipx.Point();
-		  Vec<3> y = mipy.Point();
-                    
-		  Vec<3> nx = mipx.GetNV();
-		  double nxy = InnerProduct(nx, (x-y));
-		  double normxy = L2Norm(x-y);
-		  double kernel = nxy / (4*M_PI*normxy*normxy*normxy);
-
-		  // feli.CalcShape (xhat, shapei);
-		  // felj.CalcShape (yhat, shapej);
-		  evaluator->CalcMatrix(feli, mipx, Trans(shapei.AsMatrix(feli.GetNDof(),1)), lh);
-		  evaluator2->CalcMatrix(felj, mipy, Trans(shapej.AsMatrix(felj.GetNDof(),1)), lh);
-                    
-		  double fac = mipx.GetMeasure()*mipy.GetMeasure()*common_vertex_weight[k];
-		  elmat += fac*kernel* shapej * Trans(shapei);
-		}
-	      // cout << "new: common vertex elmat = " << elmat << endl;
-	      break;
-	    }
-
-	  case 0: //disjoint panels
-	    {
-	      RegionTimer r(t_disjoint);    
-                
-	      elmat = 0.0;
-                
-              // shapes+geom out of loop, matrix multiplication
-	      MappedIntegrationRule<2,3> mirx(irtrig, trafoi, lh);
-	      MappedIntegrationRule<2,3> miry(irtrig, trafoj, lh);
-                
-	      FlatMatrix<> shapesi(feli.GetNDof(), irtrig.Size(), lh);
-	      FlatMatrix<> shapesj(felj.GetNDof(), irtrig.Size(), lh);
-	      FlatMatrix<> kernel_shapesj(felj.GetNDof(), irtrig.Size(), lh);
-                
-                
-	      evaluator -> CalcMatrix(feli, mirx, Trans(shapesi), lh);
-	      evaluator2 -> CalcMatrix(felj, miry, Trans(shapesj), lh);
-                
-	      RegionTimer r2(t_disjoint2);
-	      kernel_shapesj = 0;
-	      for (int ix = 0; ix < irtrig.Size(); ix++)
-		for (int iy = 0; iy < irtrig.Size(); iy++)
-		  {
-		    Vec<3> x = mirx[ix].GetPoint();
-		    Vec<3> y = miry[iy].GetPoint();
-                    
-		    Vec<3> nx = mirx[ix].GetNV();
-		    double nxy = InnerProduct(nx, (x-y));
-		    double normxy = L2Norm(x-y);
-		    double kernel = nxy / (4*M_PI*normxy*normxy*normxy);
+		      Vec<3> nx = mirx[ix].GetNV();
+		      double nxy = InnerProduct(nx, (x-y));
+		      double normxy = L2Norm(x-y);
+		      double kernel = nxy / (4*M_PI*normxy*normxy*normxy);
                       
-		    double fac = mirx[ix].GetWeight()*miry[iy].GetWeight();
-		    kernel_shapesj.Col(ix) += fac*kernel*shapesj.Col(iy);
-		  }
+		      double fac = mirx[ix].GetWeight()*miry[iy].GetWeight();
+		      kernel_shapesj.Col(ix) += fac*kernel*shapesj.Col(iy);
+		    }
                 
-	      elmat += kernel_shapesj * Trans(shapesi);
+		elmat += kernel_shapesj * Trans(shapesi);
 
-	      // cout << "new: disjoint elmat = " << elmat << endl;
-	      // cout << "dnumsj = " << dnumsj[0] << ", rowdof = " << mapglob2bnd2[dnumsj[0]] << endl;
-	      // cout << "dnumsi = " << dnumsi << endl;
-	      // elmat = 0.0;
-	      break;
+		// cout << "new: disjoint elmat = " << elmat << endl;
+		// cout << "dnumsj = " << dnumsj[0] << ", rowdof = " << mapglob2bnd2[dnumsj[0]] << endl;
+		// cout << "dnumsi = " << dnumsi << endl;
+		// elmat = 0.0;
+		break;
+	      }
+	    default:
+	      throw Exception ("not possible");
 	    }
-	  default:
-	    throw Exception ("not possible");
-	  }
 
-	for (int ii = 0; ii < dnumsi.Size(); ii++)
-	  for (int jj = 0; jj < dnumsj.Size(); jj++)
-	    if(setJinv[ mapglob2bnd2[dnumsj[jj]] ] != -1 && setIinv[ mapglob2bnd[dnumsi[ii]] ] != -1 )
-	      matrix(setJinv[ mapglob2bnd2[dnumsj[jj]] ], setIinv[ mapglob2bnd[dnumsi[ii]] ] ) += elmat(jj, ii);
-      }
-}
+	  for (int ii = 0; ii < dnumsi.Size(); ii++)
+	    for (int jj = 0; jj < dnumsj.Size(); jj++)
+	      if(setJinv[ mapglob2bnd2[dnumsj[jj]] ] != -1 && setIinv[ mapglob2bnd[dnumsi[ii]] ] != -1 )
+		matrix(setJinv[ mapglob2bnd2[dnumsj[jj]] ], setIinv[ mapglob2bnd[dnumsi[ii]] ] ) += elmat(jj, ii);
+	}
+  }
 
-void DoubleLayerPotentialOperator :: GetDofNrs(Array<int> &dnums) const
-{
-  dnums = mapbnd2glob;
-}
+  void DoubleLayerPotentialOperator :: GetDofNrs(Array<int> &dnums) const
+  {
+    dnums = mapbnd2glob;
+  }
 
-void DoubleLayerPotentialOperator ::  GetDofNrs2(Array<int> &dnums) const   
-{
-  dnums = mapbnd2glob2;
-}
+  void DoubleLayerPotentialOperator ::  GetDofNrs2(Array<int> &dnums) const   
+  {
+    dnums = mapbnd2glob2;
+  }
 
 }
