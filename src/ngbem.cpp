@@ -176,7 +176,7 @@ namespace ngbem
 	  }
       }
 
-    HMatrix hmat(make_shared<ClusterTree>(cluster_tree), make_shared<ClusterTree>(cluster_tree), 2.0, space->GetNDof(), space->GetNDof());
+    HMatrix hmat(make_shared<ClusterTree>(cluster_tree), make_shared<ClusterTree>(cluster_tree), param.eta, space->GetNDof(), space->GetNDof());
     hmatrix = make_shared<HMatrix>(hmat);
     LocalHeap lh(10000000);
     CalcHMatrix(hmat, lh, param);
@@ -199,6 +199,8 @@ namespace ngbem
     
     hmat.MultAdd(-1., x_base, y_base);
 
+    //cout << "dense : " << dense << endl;
+    
     double err = 0.;
     for (int i = 0; i < y.Size(); i++)
       err += y(i) * y(i);
@@ -220,7 +222,7 @@ namespace ngbem
 
   /* compute single layer matrix for dof set I and J  - global boundry dof numbers*/
   void SingleLayerPotentialOperator ::
-  CalcBlockMatrix(FlatMatrix<double> matrix,  const Array<DofId> &setI, const Array<DofId> &setJ,
+  CalcBlockMatrix(FlatMatrix<double> matrix, const Array<DofId> &trialdofs, const Array<DofId> &testdofs,
 		  LocalHeap &lh) const
   {
 
@@ -249,48 +251,48 @@ namespace ngbem
 
     Array<int> tmp, tmp2;
     Array<int> patchi, patchj;
-    Array<int> setIinv;
-    Array<int> setJinv;
-    setIinv.SetSize(space->GetNDof()); 
-    setJinv.SetSize(space->GetNDof());
+    Array<int> trialdofsinv;
+    Array<int> testdofsinv;
+    trialdofsinv.SetSize(space->GetNDof()); 
+    testdofsinv.SetSize(space->GetNDof());
 
-    setIinv = -1;
-    setJinv = -1;
+    trialdofsinv = -1;
+    testdofsinv = -1;
   
-    for (int i = 0; i < setI.Size(); i++)
+    for (int j = 0; j < trialdofs.Size(); j++)
       {
-	setIinv[setI[i]] = i;
-	tmp.Append(elems4dof[ setI[i] ]);
+	trialdofsinv[trialdofs[j]] = j;
+	tmp.Append(elems4dof[ trialdofs[j] ]);
       }
     QuickSort( tmp );
-    for (int i = 0; i < tmp.Size(); i++)
+    for (int j = 0; j < tmp.Size(); j++)
       {
-	patchi.Append(tmp[i]);
-	int tmpi = tmp[i];
-	while (tmp[i] == tmpi && i < tmp.Size()) 
-	  i++;
-	i--;
-      }
-    int ni = patchi.Size(); 
-  
-    for (int j = 0; j < setJ.Size(); j++)
-      {
-	setJinv[setJ[j]] = j;
-	tmp2.Append(elems4dof[ setJ[j] ]);
-      }
-    QuickSort( tmp2 );
-    for (int j = 0; j < tmp2.Size(); j++)
-      {
-	patchj.Append(tmp2[j]);
-	int tmpj = tmp2[j];
-	while (tmp2[j] == tmpj && j < tmp2.Size()) 
+	patchj.Append(tmp[j]);
+	int tmpj = tmp[j];
+	while (tmp[j] == tmpj && j < tmp.Size()) 
 	  j++;
 	j--;
       }
     int nj = patchj.Size(); 
+  
+    for (int i = 0; i < testdofs.Size(); i++)
+      {
+	testdofsinv[testdofs[i]] = i;
+	tmp2.Append(elems4dof[ testdofs[i] ]);
+      }
+    QuickSort( tmp2 );
+    for (int i = 0; i < tmp2.Size(); i++)
+      {
+	patchi.Append(tmp2[i]);
+	int tmpi = tmp2[i];
+	while (tmp2[i] == tmpi && i < tmp2.Size()) 
+	  i++;
+	i--;
+      }
+    int ni = patchi.Size(); 
 
     matrix = 0; 
-  
+
     for (int i = 0; i < ni; i++)
       for (int j = 0; j < nj; j++)
 	{
@@ -520,21 +522,21 @@ namespace ngbem
           
 	  for (int ii = 0; ii < dnumsi.Size(); ii++)
 	    for (int jj = 0; jj < dnumsj.Size(); jj++)
-	      if(setJinv[dnumsj[jj]] != -1 && setIinv[dnumsi[ii]] != -1 )
-		matrix(setJinv[dnumsj[jj]], setIinv[dnumsi[ii]]) += elmat(jj, ii);
+	      if(testdofsinv[dnumsi[ii]] != -1 && trialdofsinv[dnumsj[jj]] != -1 )
+		matrix(testdofsinv[dnumsi[ii]], trialdofsinv[dnumsj[jj]]) += elmat(ii, jj);
         
 	}
   }
 
   shared_ptr<LowRankMatrix> SingleLayerPotentialOperator ::
-  CalcFarFieldBlock(const Array<DofId> &setI, const Array<DofId> &setJ, LocalHeap &lh) const
+  CalcFarFieldBlock(const Array<DofId> &trialdofs, const Array<DofId> &testdofs, LocalHeap &lh) const
   {
-    int m = setJ.Size();
-    int n = setI.Size();
+    int m = testdofs.Size();
+    int n = trialdofs.Size();
     int p = min(n, m);
   
     Matrix<double> A(m, n);
-    CalcBlockMatrix(A, setI, setJ, lh);
+    CalcBlockMatrix(A, trialdofs, testdofs, lh);
     
     // Calculate SVD for A^\top = V S U^\top
     Matrix<double, ColMajor> V(n, p), Ut(p, m);
@@ -578,21 +580,21 @@ namespace ngbem
 	// matList is an array of BEM blocks
 	BEMBlock & block = matList[k];
 	// auto mat = block.GetMat();
-	auto & setI = block.GetI();
-	auto & setJ = block.GetJ();
+	auto & trialdofs = block.GetTrialDofs();
+	auto & testdofs = block.GetTestDofs();
 	
 	if(block.IsNearField())
 	  {
 	    // Compute dense block
-	    Matrix<> near(setJ.Size(), setI.Size());
-	    CalcBlockMatrix(near, setI, setJ, lh);	    
+	    Matrix<> near(testdofs.Size(), trialdofs.Size());
+	    CalcBlockMatrix(near, trialdofs, testdofs, lh);	    
 	    block.SetMat(make_shared<BaseMatrixFromMatrix>(near));
-	    //cout << "near " << near.Height() << " x " << near.Width() << endl;
+	    //cout << "near " << near << endl;
 	  }
 	else
 	  {
 	    // Compute low-rank block
-	    block.SetMat (CalcFarFieldBlock(setI, setJ, lh));	    
+	    block.SetMat (CalcFarFieldBlock(trialdofs, testdofs, lh));	    
 	  }
 
 	HeapReset hr(lh);
@@ -715,8 +717,8 @@ namespace ngbem
 
   /* compute double layer matrix for dof set I and J  - global boundry dof numbers*/
   void DoubleLayerPotentialOperator ::
-  CalcBlockMatrix(FlatMatrix<double> matrix, const Array<DofId> &setI, const Array<DofId> &setJ,
-		  LocalHeap &lh) const // setI - H1, setJ - L2
+  CalcBlockMatrix(FlatMatrix<double> matrix, const Array<DofId> &trialdofs, const Array<DofId> &testdofs,
+		  LocalHeap &lh) const // testdofs - H1, trialdofs - L2
   {
     auto mesh = space->GetMeshAccess();    // trialspace = H1
     auto mesh2 = space2->GetMeshAccess();  // testspace = L2
@@ -750,18 +752,18 @@ namespace ngbem
 
     Array<int> tmp, tmp2;
     Array<int> patchi, patchj;
-    Array<int> setIinv;
-    Array<int> setJinv;
-    setIinv.SetSize( mapbnd2glob.Size() ); 
-    setJinv.SetSize( mapbnd2glob2.Size() );
+    Array<int> testdofsinv;
+    Array<int> trialdofsinv;
+    testdofsinv.SetSize( mapbnd2glob.Size() ); 
+    trialdofsinv.SetSize( mapbnd2glob2.Size() );
 
-    setIinv = -1;
-    setJinv = -1;
+    testdofsinv = -1;
+    trialdofsinv = -1;
   
-    for (int i = 0; i < setI.Size(); i++)
+    for (int i = 0; i < testdofs.Size(); i++)
       {
-	setIinv[setI[i]] = i;
-	tmp.Append(elems4dof[ setI[i] ]);
+	testdofsinv[testdofs[i]] = i;
+	tmp.Append(elems4dof[ testdofs[i] ]);
       }
     QuickSort( tmp );
     for (int i = 0; i < tmp.Size(); i++)
@@ -774,10 +776,10 @@ namespace ngbem
       }
     int ni = patchi.Size(); 
   
-    for (int j = 0; j < setJ.Size(); j++)
+    for (int j = 0; j < trialdofs.Size(); j++)
       {
-	setJinv[setJ[j]] = j;
-	tmp2.Append(elems4dof2[ setJ[j] ]);
+	trialdofsinv[trialdofs[j]] = j;
+	tmp2.Append(elems4dof2[ trialdofs[j] ]);
       }
     QuickSort( tmp2 );
     for (int j = 0; j < tmp2.Size(); j++)
@@ -1040,8 +1042,8 @@ namespace ngbem
 
 	  for (int ii = 0; ii < dnumsi.Size(); ii++)
 	    for (int jj = 0; jj < dnumsj.Size(); jj++)
-	      if(setJinv[ mapglob2bnd2[dnumsj[jj]] ] != -1 && setIinv[ mapglob2bnd[dnumsi[ii]] ] != -1 )
-		matrix(setJinv[ mapglob2bnd2[dnumsj[jj]] ], setIinv[ mapglob2bnd[dnumsi[ii]] ] ) += elmat(jj, ii);
+	      if(trialdofsinv[ mapglob2bnd2[dnumsj[jj]] ] != -1 && testdofsinv[ mapglob2bnd[dnumsi[ii]] ] != -1 )
+		matrix(trialdofsinv[ mapglob2bnd2[dnumsj[jj]] ], testdofsinv[ mapglob2bnd[dnumsi[ii]] ] ) += elmat(jj, ii);
 	}
   }
 

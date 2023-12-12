@@ -429,77 +429,36 @@ namespace ngbem
 
     return fmin(Cluster1.Radius, Cluster2.Radius) < eta * dist;
   }
-
-  /*
-    shared_ptr<BaseMatrix> HMatrix_help (Array<struct Cluster> &row_arr, Array<struct Cluster> &col_arr,
-    Cluster &row_cluster, Cluster &col_cluster, double eta)
-    {
-    // Inadmissible block -> dense matrix
-    if (row_cluster.Child1 == -1 || col_cluster.Child1 == -1)
-    {
-    Matrix<double> A;	
-    return make_shared<BaseMatrixFromMatrix>(A);
-    }
-    // Admissible block -> low-rank matrix
-    else if(Rja_AdmissiblePair(row_cluster, col_cluster, eta))
-    {
-    Matrix<double> A;	
-    return make_shared<BaseMatrixFromMatrix>(A);
-    }
-    // Hierarchical block matrix
-    else 
-    {
-    Array<Array<shared_ptr<BaseMatrix>>> amats;
-    amats.SetSize(2);
-    amats[0].SetSize(2);
-    amats[1].SetSize(2);
-	
-    amats[0][0] = HMatrix_help(row_arr, col_arr, row_arr[row_cluster.Child1], col_arr[col_cluster.Child1], eta);
-    amats[0][1] = HMatrix_help(row_arr, col_arr, row_arr[row_cluster.Child1], col_arr[col_cluster.Child2], eta);
-    amats[1][0] = HMatrix_help(row_arr, col_arr, row_arr[row_cluster.Child2], col_arr[col_cluster.Child1], eta);
-    amats[1][1] = HMatrix_help(row_arr, col_arr, row_arr[row_cluster.Child2], col_arr[col_cluster.Child2], eta);
-
-    BlockMatrix block(amats);
-	
-    return make_shared<BlockMatrix>(block);
-    }
-
-    }
-  */
   
-  BEMBlock :: BEMBlock(Array<DofId> &_setI, Array<DofId> &_setJ, bool _isNearField) : setI(_setI), setJ(_setJ), isNearField(_isNearField), matrix(nullptr) { }
+  BEMBlock :: BEMBlock(Array<DofId> &_trialdofs, Array<DofId> &_testdofs, bool _isNearField) : trialdofs(_trialdofs), testdofs(_testdofs), isNearField(_isNearField), matrix(nullptr) { }
 
   void BEMBlock :: MultAdd (double s, const BaseVector & x, BaseVector & y) const
   {
     // Get only vector entries related to the index sets
-    VVector<> xp(setI.Size()), yp(setJ.Size());
+    VVector<> xp(trialdofs.Size()), yp(testdofs.Size());
     
-    x.GetIndirect(setI, xp.FV());
-    y.GetIndirect(setJ, yp.FV());
+    x.GetIndirect(trialdofs, xp.FV());
+    y.GetIndirect(testdofs, yp.FV());
     
-    // We need something like BaseVectorFromVector
-    // S_BaseVectorPtr<> xp_base(setI.Size(), x.EntrySize(), xp.Data());
-    // S_BaseVectorPtr<> yp_base(setJ.Size(), y.EntrySize(), yp.Data());
-
     // matrix->MultAdd(s, xp_base, yp_base);
     matrix->MultAdd(s, xp, yp);
     
-    y.SetIndirect(setJ, yp.FV<double>());
+    y.SetIndirect(testdofs, yp.FV<double>());
   }
 
   void BEMBlock :: MultTransAdd (double s, const BaseVector & x, BaseVector & y) const
   {
     // Get only vector entries related to the index sets
     FlatVector<> xp, yp;
-    x.GetIndirect(setI, xp);
-    y.GetIndirect(setJ, yp);
+    x.GetIndirect(trialdofs, xp);
+    y.GetIndirect(testdofs, yp);
     
     // We something like BaseVectorFromVector
-    S_BaseVectorPtr<> xp_base(setI.Size(), x.EntrySize(), xp.Data());
-    S_BaseVectorPtr<> yp_base(setJ.Size(), y.EntrySize(), yp.Data());
+    S_BaseVectorPtr<> xp_base(trialdofs.Size(), x.EntrySize(), xp.Data());
+    S_BaseVectorPtr<> yp_base(testdofs.Size(), y.EntrySize(), yp.Data());
     matrix->MultTransAdd(s, xp_base, yp_base);
 
-    y.SetIndirect(setJ, yp);
+    y.SetIndirect(testdofs, yp);
   }
 
   LowRankMatrix :: LowRankMatrix() :
@@ -569,17 +528,17 @@ namespace ngbem
 	return;
       }
 
-    Array<DofId> setI;	
-    setI.SetSize(row_cluster.Number);
-    for (int k=0; k<setI.Size(); k++)
-      setI[k] = row_ct.mapcluster2glob[row_cluster.PermuPos+k];
+    Array<DofId> testdofs;	
+    testdofs.SetSize(row_cluster.Number);
+    for (int k=0; k<testdofs.Size(); k++)
+      testdofs[k] = row_ct.mapcluster2glob[row_cluster.PermuPos+k];
 
-    Array<DofId> setJ;	
-    setJ.SetSize(col_cluster.Number);
-    for (int k=0; k<setJ.Size(); k++)
-      setJ[k] = col_ct.mapcluster2glob[col_cluster.PermuPos+k];
+    Array<DofId> trialdofs;	
+    trialdofs.SetSize(col_cluster.Number);
+    for (int k=0; k<trialdofs.Size(); k++)
+      trialdofs[k] = col_ct.mapcluster2glob[col_cluster.PermuPos+k];
     
-    matList.Append(BEMBlock(setI, setJ, isNearField));
+    matList.Append(BEMBlock(trialdofs, testdofs, isNearField));
   }
   
   HMatrix :: HMatrix(shared_ptr<ClusterTree> _row_ct, shared_ptr<ClusterTree> _col_ct, double _eta, int _width_vol_dof, int _height_vol_dof) : row_ct(_row_ct), col_ct(_col_ct), eta(_eta), width_vol_dof(_width_vol_dof), height_vol_dof(_height_vol_dof)
@@ -615,4 +574,10 @@ namespace ngbem
     return sp;
   }
 
+  // size_t HMatrix :: GetMemSize() const
+  // {
+  //   size_t s = 0;
+  //   for (int i = 0; i < matList.Size(); i++)
+  //     matList[i]
+  // }
 }

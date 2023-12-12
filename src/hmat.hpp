@@ -51,22 +51,22 @@ namespace ngbem
   class BEMBlock
   {
     bool isNearField;
-    Array<DofId> setI;
-    Array<DofId> setJ;
+    Array<DofId> trialdofs;
+    Array<DofId> testdofs;
 
     shared_ptr<BaseMatrix> matrix;
 	
   public:
     BEMBlock() {;}
-    BEMBlock(Array<DofId> &setI, Array<DofId> &setJ, bool isNearField);
+    BEMBlock(Array<DofId> &trialdofs, Array<DofId> &testdofs, bool isNearField);
     bool IsNearField() const {return isNearField; }
     shared_ptr<BaseMatrix> GetMat() const { return matrix; }
     void SetMat(shared_ptr<BaseMatrix> _matrix) { matrix = _matrix; }
-    const Array<DofId> & GetI() const { return setI; }
-    const Array<DofId> & GetJ() const { return setJ; }
+    const Array<DofId> & GetTrialDofs() const { return trialdofs; }
+    const Array<DofId> & GetTestDofs() const { return testdofs; }
 
     /** Matrix-vector-multiply with global vectors x and y. Only the entries specified
-	by #setI and #setJ are used. */
+	by #testdofs and #trialdofs are used. */
     void MultAdd (double s, const BaseVector & x, BaseVector & y) const;
     void MultTransAdd (double s, const BaseVector & x, BaseVector & y) const;    
   };
@@ -125,8 +125,7 @@ namespace ngbem
     shared_ptr<ClusterTree> col_ct;
     
     /** Parameter in admissibility condition. Decides whether a block is part
-	of the near- or far-field.
-    */
+	of the near- or far-field. */
     const double eta;
     
     /** The hierarchical matrix realized as list of admissible and inadmissible blocks. */
@@ -140,7 +139,7 @@ namespace ngbem
 
     Array<BEMBlock> & GetMatList() { return matList; }
 
-    /** Matrix-vector-multiply-add: \f$y = y + s A B^\top x \f$. */
+    /** Matrix-vector-multiply-add: \f$y = y + s A x \f$. */
     virtual void MultAdd (double s, const BaseVector & x, BaseVector & y) const override;
     virtual void MultTransAdd (double s, const BaseVector & x, BaseVector & y) const override;
     bool IsComplex() const override { return false; }
@@ -150,6 +149,9 @@ namespace ngbem
 
     virtual AutoVector CreateRowVector () const override;
     virtual AutoVector CreateColVector () const override;
+
+    /** Get the size of the allocated storage of the hierarchical matrix in bytes. */
+    //size_t GetMemSize() const;
   };
 }
 
