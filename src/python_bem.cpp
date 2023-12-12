@@ -10,11 +10,12 @@ PYBIND11_MODULE(libbem, m)
 {
   cout << "Loading ngbem library" << endl;
 
-  m.def("SingleLayerPotentialOperator", [](BilinearForm &bfa, int intorder) {
+  m.def("SingleLayerPotentialOperator", [](BilinearForm &bfa, int intorder, int leafsize, double eta, double eps, char *method) {
     // cout << "create single-layer potential" << endl;
-    auto bemop = make_unique<SingleLayerPotentialOperator>(bfa.GetTrialSpace(), intorder);
+    struct BEMParameters param({intorder, leafsize, eta, eps, method});
+    auto bemop = make_unique<SingleLayerPotentialOperator>(bfa.GetTrialSpace(), param);
     bfa.AddSpecialElement(std::move(bemop));
-  }, py::arg("bf"), py::arg("intorder")=10);
+  }, py::arg("bf"), py::arg("intorder")=3, py::arg("leafsize")=40, py::arg("eta")=1., py::arg("eps")=1e-4, py::arg("eps")="svd");
 
 
   m.def("DoubleLayerPotentialOperator", [](BilinearForm &bfb, int intorder) {

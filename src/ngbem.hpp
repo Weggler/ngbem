@@ -21,27 +21,30 @@ namespace ngbem
     shared_ptr<FESpace> space;
     Array<DofId> mapglob2bnd;
     Array<DofId> mapbnd2glob;
-    int intorder;
     struct BEMParameters param;
 
     ClusterTree cluster_tree;
-    Array<Array<int>> elems4dof; // contains list of elems contributing to bnd-dof 
+    shared_ptr<HMatrix> hmatrix;
+    Array<Array<int>> elems4dof; // contains list of elems contributing to global dof 
 
   public:
-    SingleLayerPotentialOperator(shared_ptr<FESpace> aspace, int intorder);
+    SingleLayerPotentialOperator(shared_ptr<FESpace> aspace, struct BEMParameters param);
 
-    void CalcElementMatrix(FlatMatrix<double> matrix, // matrix dim = ndof_bnd x ndof_bnd
+    // matrix dim = ndof x ndof, volume dofs are not used
+    void CalcElementMatrix(FlatMatrix<double> matrix, 
                            LocalHeap &lh) const override;
 
-    void CalcBlockMatrix(FlatMatrix<double> matrix, Array<DofId> &setI, Array<DofId> &setJ, // matrix dim = size(setI) x size(setJ)
+    void CalcBlockMatrix(FlatMatrix<double> matrix, Array<DofId> &setI, Array<DofId> &setJ, 
 			 LocalHeap &lh) const;
 
     shared_ptr<LowRankMatrix> CalcFarFieldBlock(Array<DofId> &setI, Array<DofId> &setJ, LocalHeap &lh) const;
     
     void CalcHMatrix(HMatrix hmatrix, LocalHeap &lh, struct BEMParameters &param) const;
+
+    virtual void Apply (FlatVector<double> elx, FlatVector<double> ely, 
+			LocalHeap & lh) const override;
     
     void GetDofNrs(Array<int> &dnums) const override;
-
 
   };
 

@@ -134,11 +134,12 @@ namespace ngbem
     return tuple { ipx, ipy, weights };
   }
   
-  SingleLayerPotentialOperator :: SingleLayerPotentialOperator(shared_ptr<FESpace> aspace, int _intorder)
-    : space(aspace), intorder(_intorder), param({_intorder, 40, 1.0, 1e-4, "svd"}), cluster_tree(space, param.leafsize)
+  SingleLayerPotentialOperator :: SingleLayerPotentialOperator(shared_ptr<FESpace> aspace, struct BEMParameters _param)
+    : space(aspace), param(_param), cluster_tree(space, param.leafsize)
   {
     auto mesh = space->GetMeshAccess();
 
+    cout << "params: " << param.intorder << endl;
     // setup global-2-boundary mappings;
     BitArray bnddofs(space->GetNDof());
     bnddofs.Clear();
@@ -177,8 +178,8 @@ namespace ngbem
       }
 
     HMatrix hmat(make_shared<ClusterTree>(cluster_tree), make_shared<ClusterTree>(cluster_tree), 2.0, space->GetNDof(), space->GetNDof());
+    hmatrix = make_shared<HMatrix>(hmat);
     LocalHeap lh(10000000);
-
     CalcHMatrix(hmat, lh, param);
     cout << "HMatrix done " << endl;
     HeapReset hr(lh);    
@@ -235,16 +236,16 @@ namespace ngbem
     RegionTimer reg(tall);
 
 
-    IntegrationRule irtrig(ET_TRIG, intorder); // order=4
+    IntegrationRule irtrig(ET_TRIG, param.intorder); // order=4
     
     auto [ identic_panel_x, identic_panel_y, identic_panel_weight ] =
-      IdenticPanelIntegrationRule(intorder);
+      IdenticPanelIntegrationRule(param.intorder);
 
     auto [ common_vertex_x, common_vertex_y, common_vertex_weight ] =
-      CommonVertexIntegrationRule(intorder);
+      CommonVertexIntegrationRule(param.intorder);
     
     auto [ common_edge_x, common_edge_y, common_edge_weight ] =
-      CommonEdgeIntegrationRule(intorder);
+      CommonEdgeIntegrationRule(param.intorder);
 
     auto mesh = space->GetMeshAccess();
     auto evaluator = space->GetEvaluator(BND);
@@ -625,16 +626,24 @@ namespace ngbem
 	else
 	  {
 	    // Compute low-rank block
-	    shared_ptr<LowRankMatrix> far = CalcFarFieldBlock(*setI, *setJ, lh);
-	    // cout << "far-pointer " << far << endl;
-	    // cout << "far " << far->VHeight() << " x " << far->VRank() << " x " << far->VWidth() << endl;
-	    // *mat = far;
+	    shared_ptr<LowRankMatrix> far = CalcFarFieldBlock(*setI, *setJ, lh);	    
+	    *mat = far;
 	  }
 
 	HeapReset hr(lh);
       }
   }
 
+  void SingleLayerPotentialOperator :: Apply(FlatVector<double> elx, FlatVector<double> ely, 
+					     LocalHeap & lh) const
+  {
+    for (int i = 0; i < ely.Size(); i++)
+      ely(i) = 0.;
+    S_BaseVectorPtr<> xp_base(elx.Size(), 1, elx.Data());
+    S_BaseVectorPtr<> yp_base(ely.Size(), 1, ely.Data());
+    hmatrix->MultAdd(1., xp_base, yp_base);
+  }
+  
   void SingleLayerPotentialOperator :: GetDofNrs(Array<int> &dnums) const
   {
     dnums = mapbnd2glob;
