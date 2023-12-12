@@ -139,7 +139,6 @@ namespace ngbem
   {
     auto mesh = space->GetMeshAccess();
 
-    cout << "params: " << param.intorder << endl;
     // setup global-2-boundary mappings;
     BitArray bnddofs(space->GetNDof());
     bnddofs.Clear();
@@ -194,8 +193,6 @@ namespace ngbem
     x = 1.;
     y = 0.;
     y = dense * x;
-
-    cout << "y = " << y << endl;
     
     S_BaseVectorPtr<> x_base(space->GetNDof(), 1, x.Data());
     S_BaseVectorPtr<> y_base(space->GetNDof(), 1, y.Data());    
@@ -534,75 +531,43 @@ namespace ngbem
   {
     int m = setJ.Size();
     int n = setI.Size();
-    int p = fmin(n, m);
+    int p = min(n, m);
   
     Matrix<double> A(m, n);
     CalcBlockMatrix(A, setI, setJ, lh);
-
-    /** @warning Workaround because dgesvd_ has double free error, when matrix
-	is not square. .*/
-    Matrix<double, ColMajor> U(m, p), Vt(p, n);
-    U = 0;
-    Vt = 0.;
-    if (p == m)
+    
+    // Calculate SVD for A^\top = V S U^\top
+    Matrix<double, ColMajor> V(n, p), Ut(p, m);
+    Vector<> S(p);
+    Array<double> work(n * m + 100);
+    integer info;
+    char jobu = 'S', jobv = 'S';
+    integer lda = Trans(A).Dist(), ldu = Ut.Dist(), ldv = V.Dist();
+    integer lwork = work.Size();
+    
+    dgesvd_(&jobv, &jobu, &n, &m, Trans(A).Data(), &lda, S.Data(), V.Data(), &ldv,
+	    Ut.Data(), &ldu, work.Data(), &lwork, &info);
+    
+    //Truncate according to eps. k is the rank
+    int k = 1;
+    for (int j = 1; j < p; j++)
       {
-	U.Diag() = 1.;
-	Vt = A;
+	if (S(j) > param.eps)
+	  k++;
       }
-    else
-      {
-	U = A;
-	Vt.Diag() = 1.;
-      }
+    
+    // Low-rank approximation from truncated svd
+    Matrix<double, ColMajor> U_trc(m, k), Vt_trc(k, n);
+    for (size_t j = 0; j < k; j++)
+      for (size_t i = 0; i < m; i++)
+	U_trc(i, j) = Ut(j, i) * sqrt(S(j));
+    for (size_t j = 0; j < n; j++)
+      for (size_t i = 0; i < k; i++)
+	Vt_trc(i, j) = V(j, i) * sqrt(S(i));
 
-    shared_ptr<Matrix<>> Up = make_shared<Matrix<>>(U);
-    shared_ptr<Matrix<>> Vp = make_shared<Matrix<>>(Vt);
-    LowRankMatrix lowrank_mat(Up, Vp);
+    LowRankMatrix lowrank_mat(make_shared<Matrix<>>(U_trc), make_shared<Matrix<>>(Vt_trc));
     
     return make_shared<LowRankMatrix>(lowrank_mat);
-    
-    //Matrix<double, ColMajor> U(m), Vt(n);
-    
-    // // Calculate SVD (LAPACKSVD is buggy)
-    // //LapackSVD(MatrixView(A), MatrixView(U), MatrixView(Vt));
-    // Vector<> S(p);
-    // Array<double> work(n * m + 100);
-    // integer info;
-    // char jobu = 'A', jobv = 'A';
-    // integer lda = A.Dist(), ldu = U.Dist(), ldv = Vt.Dist();
-    // integer lwork = work.Size();
-    
-    // dgesvd_ ( &jobu, &jobv, &m, &n, A.Data(), &lda,
-    //           S.Data(),
-    //           U.Data(), &ldu, Vt.Data(), &ldv,
-    //           work.Data(), &lwork, 
-    //           &info);
-    
-    // //Truncate according to eps. k is the rank
-    // int k = 1;
-    // for (int j = 1; j < p; j++)
-    //   {
-    // 	if (S(j) < param.eps)
-    // 	  S(j) = 0.;
-    // 	else
-    // 	  k++;
-    //   }
-    
-    // // Multiply U with truncated singular values    
-    // // Truncate the matrices U and Vt
-    // Matrix<double, ColMajor> U_trc(m, k), Vt_trc(k, n);
-    // for (size_t j = 0; j < k; j++)
-    //   for (size_t i = 0; i < m; i++)
-    // 	U_trc(i, j) = U(i, j) * S(j);
-    // for (size_t j = 0; j < n; j++)
-    //   for (size_t i = 0; i < k; i++)
-    // 	Vt_trc(i, j) = Vt(i, j);
-
-    // shared_ptr<Matrix<>> Up = make_shared<Matrix<>>(U_trc);
-    // shared_ptr<Matrix<>> Vp = make_shared<Matrix<>>(Vt_trc);
-    // LowRankMatrix lowrank_mat(Up, Vp);
-    
-    // return make_shared<LowRankMatrix>(lowrank_mat);
   }
 
   void SingleLayerPotentialOperator :: CalcHMatrix(HMatrix & hmatrix, LocalHeap &lh, struct BEMParameters &param) const
