@@ -223,7 +223,7 @@ namespace ngbem
 
   /* compute single layer matrix for dof set I and J  - global boundry dof numbers*/
   void SingleLayerPotentialOperator ::
-  CalcBlockMatrix(FlatMatrix<double> matrix,  Array<DofId> &setI, Array<DofId> &setJ,
+  CalcBlockMatrix(FlatMatrix<double> matrix,  const Array<DofId> &setI, const Array<DofId> &setJ,
 		  LocalHeap &lh) const
   {
 
@@ -529,7 +529,8 @@ namespace ngbem
 	}
   }
 
-  shared_ptr<LowRankMatrix> SingleLayerPotentialOperator :: CalcFarFieldBlock(Array<DofId> &setI, Array<DofId> &setJ, LocalHeap &lh) const
+  shared_ptr<LowRankMatrix> SingleLayerPotentialOperator ::
+  CalcFarFieldBlock(const Array<DofId> &setI, const Array<DofId> &setJ, LocalHeap &lh) const
   {
     int m = setJ.Size();
     int n = setI.Size();
@@ -604,30 +605,29 @@ namespace ngbem
     // return make_shared<LowRankMatrix>(lowrank_mat);
   }
 
-  void SingleLayerPotentialOperator :: CalcHMatrix(HMatrix hmatrix, LocalHeap &lh, struct BEMParameters &param) const
+  void SingleLayerPotentialOperator :: CalcHMatrix(HMatrix & hmatrix, LocalHeap &lh, struct BEMParameters &param) const
   {
-    auto matList = hmatrix.GetMatList();
-    for (int k = 0; k< matList->Size(); k++)
+    auto & matList = hmatrix.GetMatList();
+    for (int k = 0; k< matList.Size(); k++)
       {
 	// matList is an array of BEM blocks
-	BEMBlock block = (*matList)[k];
-	auto mat = block.GetMat();
-	auto setI = block.GetI();
-	auto setJ = block.GetJ();
+	BEMBlock & block = matList[k];
+	// auto mat = block.GetMat();
+	auto & setI = block.GetI();
+	auto & setJ = block.GetJ();
 	
 	if(block.IsNearField())
 	  {
 	    // Compute dense block
-	    Matrix<> near(setJ->Size(), setI->Size());
-	    CalcBlockMatrix(near, *setI, *setJ, lh);	    
-	    *mat = make_shared<BaseMatrixFromMatrix>(near);
+	    Matrix<> near(setJ.Size(), setI.Size());
+	    CalcBlockMatrix(near, setI, setJ, lh);	    
+	    block.SetMat(make_shared<BaseMatrixFromMatrix>(near));
 	    //cout << "near " << near.Height() << " x " << near.Width() << endl;
 	  }
 	else
 	  {
 	    // Compute low-rank block
-	    shared_ptr<LowRankMatrix> far = CalcFarFieldBlock(*setI, *setJ, lh);	    
-	    *mat = far;
+	    block.SetMat (CalcFarFieldBlock(setI, setJ, lh));	    
 	  }
 
 	HeapReset hr(lh);
@@ -750,7 +750,7 @@ namespace ngbem
 
   /* compute double layer matrix for dof set I and J  - global boundry dof numbers*/
   void DoubleLayerPotentialOperator ::
-  CalcBlockMatrix(FlatMatrix<double> matrix, Array<DofId> &setI, Array<DofId> &setJ,
+  CalcBlockMatrix(FlatMatrix<double> matrix, const Array<DofId> &setI, const Array<DofId> &setJ,
 		  LocalHeap &lh) const // setI - H1, setJ - L2
   {
     auto mesh = space->GetMeshAccess();    // trialspace = H1

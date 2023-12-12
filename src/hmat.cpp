@@ -483,7 +483,7 @@ namespace ngbem
 
     // matrix->MultAdd(s, xp_base, yp_base);
     matrix->MultAdd(s, xp, yp);
-        
+    
     y.SetIndirect(setJ, yp.FV<double>());
   }
 
@@ -591,9 +591,7 @@ namespace ngbem
   void HMatrix :: MultAdd (double s, const BaseVector & x, BaseVector & y) const
   {
     for (int i = 0; i < matList.Size(); i++)
-      {
-	matList[i].MultAdd(s, x, y);
-      }
+      matList[i].MultAdd(s, x, y);
   }
 
   void HMatrix :: MultTransAdd (double s, const BaseVector & x, BaseVector & y) const

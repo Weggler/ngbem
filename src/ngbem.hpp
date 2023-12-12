@@ -34,12 +34,12 @@ namespace ngbem
     void CalcElementMatrix(FlatMatrix<double> matrix, 
                            LocalHeap &lh) const override;
 
-    void CalcBlockMatrix(FlatMatrix<double> matrix, Array<DofId> &setI, Array<DofId> &setJ, 
+    void CalcBlockMatrix(FlatMatrix<double> matrix, const Array<DofId> &setI, const Array<DofId> &setJ, 
 			 LocalHeap &lh) const;
 
-    shared_ptr<LowRankMatrix> CalcFarFieldBlock(Array<DofId> &setI, Array<DofId> &setJ, LocalHeap &lh) const;
+    shared_ptr<LowRankMatrix> CalcFarFieldBlock(const Array<DofId> &setI, const Array<DofId> &setJ, LocalHeap &lh) const;
     
-    void CalcHMatrix(HMatrix hmatrix, LocalHeap &lh, struct BEMParameters &param) const;
+    void CalcHMatrix(HMatrix & hmatrix, LocalHeap &lh, struct BEMParameters &param) const;
 
     virtual void Apply (FlatVector<double> elx, FlatVector<double> ely, 
 			LocalHeap & lh) const override;
@@ -73,7 +73,7 @@ namespace ngbem
     void CalcElementMatrix(FlatMatrix<double> matrix, // matrix dim = ndof_bnd x ndof_bnd2
                            LocalHeap &lh) const override;
     
-    void CalcBlockMatrix(FlatMatrix<double> matrix, Array<DofId> &setI, Array<DofId> &setJ, // matrix dim = size(setI) x size(setJ)
+    void CalcBlockMatrix(FlatMatrix<double> matrix, const Array<DofId> &setI, const Array<DofId> &setJ, // matrix dim = size(setI) x size(setJ)
 			 LocalHeap &lh) const;
 
     void GetDofNrs(Array<int> &dnums) const override; 

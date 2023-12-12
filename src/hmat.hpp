@@ -60,9 +60,10 @@ namespace ngbem
     BEMBlock() {;}
     BEMBlock(Array<DofId> &setI, Array<DofId> &setJ, bool isNearField);
     bool IsNearField() const {return isNearField; }
-    shared_ptr<shared_ptr<BaseMatrix>> GetMat() const { return make_shared<shared_ptr<BaseMatrix>>(matrix); }
-    shared_ptr<Array<DofId>> GetI() const { return make_shared<Array<DofId>>(setI); }
-    shared_ptr<Array<DofId>> GetJ() const { return make_shared<Array<DofId>>(setJ); }
+    shared_ptr<BaseMatrix> GetMat() const { return matrix; }
+    void SetMat(shared_ptr<BaseMatrix> _matrix) { matrix = _matrix; }
+    const Array<DofId> & GetI() const { return setI; }
+    const Array<DofId> & GetJ() const { return setJ; }
 
     /** Matrix-vector-multiply with global vectors x and y. Only the entries specified
 	by #setI and #setJ are used. */
@@ -100,10 +101,10 @@ namespace ngbem
     shared_ptr<Matrix<>> GetBt() const { return Bt; }
 
     
-    bool IsComplex() const  { return false; }
+    bool IsComplex() const override { return false; }
 
-    virtual int VHeight() const { return m; }
-    virtual int VWidth() const { return n; }
+    virtual int VHeight() const override { return m; }
+    virtual int VWidth() const override { return n; }
     virtual int VRank() const { return rank; }
 
     virtual AutoVector CreateRowVector () const override;
@@ -137,15 +138,15 @@ namespace ngbem
   public:
     HMatrix(shared_ptr<ClusterTree> row_ct, shared_ptr<ClusterTree> col_ct, double eta, int width_vol_dof, int height_vol_dof);
 
-    shared_ptr<Array<BEMBlock>> GetMatList() const { return make_shared<Array<BEMBlock>>(matList); }
+    Array<BEMBlock> & GetMatList() { return matList; }
 
     /** Matrix-vector-multiply-add: \f$y = y + s A B^\top x \f$. */
     virtual void MultAdd (double s, const BaseVector & x, BaseVector & y) const override;
     virtual void MultTransAdd (double s, const BaseVector & x, BaseVector & y) const override;
-    bool IsComplex() const { return false; }
+    bool IsComplex() const override { return false; }
 
-    virtual int VHeight() const { return row_ct->mapcluster2glob.Size(); }
-    virtual int VWidth() const { return col_ct->mapcluster2glob.Size(); }
+    virtual int VHeight() const override { return row_ct->mapcluster2glob.Size(); }
+    virtual int VWidth() const override { return col_ct->mapcluster2glob.Size(); }
 
     virtual AutoVector CreateRowVector () const override;
     virtual AutoVector CreateColVector () const override;
