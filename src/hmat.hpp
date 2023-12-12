@@ -95,6 +95,7 @@ namespace ngbem
     LowRankMatrix(shared_ptr<Matrix<>> A, shared_ptr<Matrix<>> Bt);
     
     /** Matrix-vector-multiply-add: \f$y = y + s A B^\top y \f$. */
+    virtual void Mult(const BaseVector & x, BaseVector & y) const override;    
     virtual void MultAdd (double s, const BaseVector & x, BaseVector & y) const override;
     virtual void MultTransAdd (double s, const BaseVector & x, BaseVector & y) const override;
     shared_ptr<Matrix<>> GetA() const { return A; }

@@ -273,8 +273,8 @@ namespace ngbem
     // If the size cluster is smaller than leafsize, it becomes a leaf (no children)
     if (NClu <= leafsize)
       {
-	Clusters[IClu].Child1 =- 1;
-	Clusters[IClu].Child2 =- 1;
+	Clusters[IClu].Child1 = -1;
+	Clusters[IClu].Child2 = -1;
 	return;
       }
     // Otherwise we divide the cluster into two children
@@ -430,20 +430,28 @@ namespace ngbem
     return fmin(Cluster1.Radius, Cluster2.Radius) < eta * dist;
   }
   
-  BEMBlock :: BEMBlock(Array<DofId> &_trialdofs, Array<DofId> &_testdofs, bool _isNearField) : trialdofs(_trialdofs), testdofs(_testdofs), isNearField(_isNearField), matrix(nullptr) { }
+  BEMBlock :: BEMBlock(Array<DofId> &_trialdofs, Array<DofId> &_testdofs, bool _isNearField)
+    : trialdofs(_trialdofs), testdofs(_testdofs), isNearField(_isNearField), matrix(nullptr) { }
 
   void BEMBlock :: MultAdd (double s, const BaseVector & x, BaseVector & y) const
   {
     // Get only vector entries related to the index sets
     VVector<> xp(trialdofs.Size()), yp(testdofs.Size());
-    
+
+    /*
     x.GetIndirect(trialdofs, xp.FV());
     y.GetIndirect(testdofs, yp.FV());
-    
-    // matrix->MultAdd(s, xp_base, yp_base);
+
     matrix->MultAdd(s, xp, yp);
     
     y.SetIndirect(testdofs, yp.FV<double>());
+    */
+
+    x.GetIndirect(trialdofs, xp.FV());
+
+    matrix->Mult(xp, yp);
+    yp.FV() *= s;
+    y.AddIndirect(testdofs, yp.FV(), /* useatomic= */ true); 
   }
 
   void BEMBlock :: MultTransAdd (double s, const BaseVector & x, BaseVector & y) const
@@ -477,12 +485,24 @@ namespace ngbem
     else
       throw Exception ("Low-rank matrix: ranks incompatible");
   }
+
+  void LowRankMatrix :: Mult (const BaseVector & x, BaseVector & y) const
+  {
+    Vector<> tmp(A->Width());
+    tmp = (*Bt) * x.FV<double>();
+    y.FV<double>() = (*A) * tmp;
+  }
+
   
   void LowRankMatrix :: MultAdd (double s, const BaseVector & x, BaseVector & y) const
   {
     // Vector<> tmp = x.FV<double>();
     // tmp *= s;
-    y.FV<double>() += s * (*A) * (*Bt) * x.FV<double>();
+    
+    // y.FV<double>() += s * (*A) * (*Bt) * x.FV<double>(); // performance nightmare
+    Vector<> tmp(A->Width());
+    tmp = (*Bt) * x.FV<double>();
+    y.FV<double>() += s*(*A) * tmp;
   }
 
   void LowRankMatrix :: MultTransAdd (double s, const BaseVector & x, BaseVector & y) const
@@ -549,8 +569,18 @@ namespace ngbem
     
   void HMatrix :: MultAdd (double s, const BaseVector & x, BaseVector & y) const
   {
+    static Timer t("ngbem - HMatrix::MultAdd");
+    RegionTimer reg(t);
+
     for (int i = 0; i < matList.Size(); i++)
       matList[i].MultAdd(s, x, y);
+    /*
+    // working, but not effective when called inside parallel thread
+    ParallelFor (matList.Size(), [&](size_t i)
+    {
+      matList[i].MultAdd(s, x, y);
+    });
+    */
   }
 
   void HMatrix :: MultTransAdd (double s, const BaseVector & x, BaseVector & y) const

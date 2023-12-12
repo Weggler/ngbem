@@ -176,10 +176,13 @@ namespace ngbem
 	  }
       }
 
-    HMatrix hmat(make_shared<ClusterTree>(cluster_tree), make_shared<ClusterTree>(cluster_tree), param.eta, space->GetNDof(), space->GetNDof());
-    hmatrix = make_shared<HMatrix>(hmat);
+    // HMatrix hmat(make_shared<ClusterTree>(cluster_tree), make_shared<ClusterTree>(cluster_tree), param.eta, space->GetNDof(), space->GetNDof());
+    // hmatrix = make_shared<HMatrix>(hmat);
+    hmatrix = make_shared<HMatrix>(make_shared<ClusterTree>(cluster_tree),
+                                   make_shared<ClusterTree>(cluster_tree),
+                                   param.eta, space->GetNDof(), space->GetNDof());
     LocalHeap lh(10000000);
-    CalcHMatrix(hmat, lh, param);
+    CalcHMatrix(*hmatrix, lh, param);
     cout << "HMatrix done " << endl;
     HeapReset hr(lh);    
     
@@ -197,7 +200,7 @@ namespace ngbem
     S_BaseVectorPtr<> x_base(space->GetNDof(), 1, x.Data());
     S_BaseVectorPtr<> y_base(space->GetNDof(), 1, y.Data());    
     
-    hmat.MultAdd(-1., x_base, y_base);
+    hmatrix->MultAdd(-1., x_base, y_base);
 
     //cout << "dense : " << dense << endl;
     
@@ -225,7 +228,8 @@ namespace ngbem
   CalcBlockMatrix(FlatMatrix<double> matrix, const Array<DofId> &trialdofs, const Array<DofId> &testdofs,
 		  LocalHeap &lh) const
   {
-
+    static Timer t("ngbem - SLP::CalcBlockMatrix"); RegionTimer regt(t);
+    
     static Timer tall("SingleLayer - block");
     static Timer t_identic("SingleLayer - identic panel");
     static Timer t_common_vertex("SingleLayer - common vertex");        
@@ -329,7 +333,7 @@ namespace ngbem
 	    {
 	    case 3: //identical panel
 	      {
-		RegionTimer reg(t_identic);    
+		// RegionTimer reg(t_identic);    
                 
 		elmat = 0.0;
 		for (int k = 0; k < identic_panel_weight.Size(); k++)
@@ -358,7 +362,7 @@ namespace ngbem
               
 	    case 2: //common edge
 	      {
-		RegionTimer reg(t_common_edge);    
+		// RegionTimer reg(t_common_edge);    
                 
 		const EDGE * edges = ElementTopology::GetEdges (ET_TRIG);
 		int cex, cey;
@@ -423,7 +427,7 @@ namespace ngbem
         
 	    case 1: //common vertex
 	      {
-		RegionTimer reg(t_common_vertex);    
+		// RegionTimer reg(t_common_vertex);    
                 
 		int cvx=-1, cvy=-1;
 		for (int cx = 0; cx < 3; cx++)
@@ -481,7 +485,7 @@ namespace ngbem
         
 	    case 0: //disjoint panels
 	      {
-		RegionTimer r(t_disjoint);    
+		// RegionTimer r(t_disjoint);    
                 
 		elmat = 0.0;
         
@@ -493,7 +497,7 @@ namespace ngbem
 		evaluator -> CalcMatrix(feli, mirx, Trans(shapesi), lh);
 		evaluator -> CalcMatrix(felj, miry, Trans(shapesj), lh);
                 
-		RegionTimer r2(t_disjoint2);
+		// RegionTimer r2(t_disjoint2);
         
 		FlatMatrix<> kernel_ixiy(irtrig.Size(), irtrig.Size(), lh);
 		for (int ix = 0; ix < irtrig.Size(); ix++)
@@ -523,7 +527,7 @@ namespace ngbem
 	  for (int ii = 0; ii < dnumsi.Size(); ii++)
 	    for (int jj = 0; jj < dnumsj.Size(); jj++)
 	      if(testdofsinv[dnumsi[ii]] != -1 && trialdofsinv[dnumsj[jj]] != -1 )
-		matrix(testdofsinv[dnumsi[ii]], trialdofsinv[dnumsj[jj]]) += elmat(ii, jj);
+		matrix(testdofsinv[dnumsi[ii]], trialdofsinv[dnumsj[jj]]) += elmat(jj, ii);
         
 	}
   }
@@ -531,6 +535,7 @@ namespace ngbem
   shared_ptr<LowRankMatrix> SingleLayerPotentialOperator ::
   CalcFarFieldBlock(const Array<DofId> &trialdofs, const Array<DofId> &testdofs, LocalHeap &lh) const
   {
+    static Timer t("ngbem - SLP::CalcFarFieldBlock"); RegionTimer reg(t);
     int m = testdofs.Size();
     int n = trialdofs.Size();
     int p = min(n, m);
@@ -574,6 +579,7 @@ namespace ngbem
 
   void SingleLayerPotentialOperator :: CalcHMatrix(HMatrix & hmatrix, LocalHeap &lh, struct BEMParameters &param) const
   {
+    static Timer t("ngbem - SLP::CalcHMatrix"); RegionTimer reg(t);    
     auto & matList = hmatrix.GetMatList();
     for (int k = 0; k< matList.Size(); k++)
       {
@@ -604,6 +610,7 @@ namespace ngbem
   void SingleLayerPotentialOperator :: Apply(FlatVector<double> elx, FlatVector<double> ely, 
 					     LocalHeap & lh) const
   {
+    static Timer t("ngbem - SLP::Apply"); RegionTimer reg(t);        
     for (int i = 0; i < ely.Size(); i++)
       ely(i) = 0.;
     S_BaseVectorPtr<> xp_base(elx.Size(), 1, elx.Data());
@@ -727,8 +734,8 @@ namespace ngbem
     static Timer t_identic("DoubleLayer - identic panel");
     static Timer t_common_vertex("DoubleLayer - common vertex");        
     static Timer t_common_edge("DoubleLayer - common edge");        
-    static Timer t_disjoint("DoubleLayer - disjoint");
-    static Timer t_disjoint2("DoubleLayer - disjoint2");        
+    // static Timer t_disjoint("DoubleLayer - disjoint");
+    // static Timer t_disjoint2("DoubleLayer - disjoint2");        
     RegionTimer reg(tall);
 
 
@@ -830,7 +837,7 @@ namespace ngbem
 	    {
 	    case 3: //identical panel
 	      {
-		RegionTimer reg(t_identic);    
+		// RegionTimer reg(t_identic);    
                 
 		elmat = 0.0;
 		for (int k = 0; k < identic_panel_weight.Size(); k++)
@@ -863,7 +870,7 @@ namespace ngbem
 	      }
 	    case 2: //common edge
 	      {
-		RegionTimer reg(t_common_edge);    
+		// RegionTimer reg(t_common_edge);    
                 
 		const EDGE * edges = ElementTopology::GetEdges (ET_TRIG); // 0 1 | 1 2 | 2 0 
 		int cex, cey;
@@ -931,7 +938,7 @@ namespace ngbem
 
 	    case 1: //common vertex
 	      {
-		RegionTimer reg(t_common_vertex);    
+		// RegionTimer reg(t_common_vertex);    
                 
 		int cvx=-1, cvy=-1;
 		for (int cx = 0; cx < 3; cx++)
@@ -995,7 +1002,7 @@ namespace ngbem
 
 	    case 0: //disjoint panels
 	      {
-		RegionTimer r(t_disjoint);    
+		// RegionTimer r(t_disjoint);    
                 
 		elmat = 0.0;
                 
@@ -1011,7 +1018,7 @@ namespace ngbem
 		evaluator -> CalcMatrix(feli, mirx, Trans(shapesi), lh);
 		evaluator2 -> CalcMatrix(felj, miry, Trans(shapesj), lh);
                 
-		RegionTimer r2(t_disjoint2);
+		// RegionTimer r2(t_disjoint2);
 		kernel_shapesj = 0;
 		for (int ix = 0; ix < irtrig.Size(); ix++)
 		  for (int iy = 0; iy < irtrig.Size(); iy++)
