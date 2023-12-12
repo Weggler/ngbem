@@ -54,14 +54,16 @@ namespace ngbem
     Array<DofId> trialdofs;
     Array<DofId> testdofs;
 
-    shared_ptr<BaseMatrix> matrix;
+    unique_ptr<BaseMatrix> matrix;
 	
   public:
     BEMBlock() {;}
     BEMBlock(Array<DofId> &trialdofs, Array<DofId> &testdofs, bool isNearField);
     bool IsNearField() const {return isNearField; }
-    shared_ptr<BaseMatrix> GetMat() const { return matrix; }
-    void SetMat(shared_ptr<BaseMatrix> _matrix) { matrix = _matrix; }
+    
+    const unique_ptr<BaseMatrix> & GetMat() const { return matrix; }
+    void SetMat(unique_ptr<BaseMatrix> _matrix) { matrix = std::move(_matrix); }
+    
     const Array<DofId> & GetTrialDofs() const { return trialdofs; }
     const Array<DofId> & GetTestDofs() const { return testdofs; }
 
@@ -79,33 +81,33 @@ namespace ngbem
   class LowRankMatrix : public BaseMatrix 
   {
     /** Height of the matrix #A. */
-    size_t m;
+    // size_t m;   // directly ask A
     /** Width of the matrix #Bt. */
-    size_t n;
+    // size_t n;
     /** The rank is the width of #A and height of #Bt. */
     size_t rank;
     /** The Matrix \f$A\f$ of the low-rank factorization. */
-    shared_ptr<Matrix<>> A;
+    Matrix<> A;
     /** The transpose of the matrix \f$B\f$ of the low-rank factorization. */
-    shared_ptr<Matrix<>> Bt;
+    Matrix<> Bt;
   public:
     /** Empty constructor. */
-    LowRankMatrix();
+    // LowRankMatrix();
     /** Full cunstructor. */
-    LowRankMatrix(shared_ptr<Matrix<>> A, shared_ptr<Matrix<>> Bt);
+    LowRankMatrix(Matrix<> A, Matrix<> Bt);
     
     /** Matrix-vector-multiply-add: \f$y = y + s A B^\top y \f$. */
     virtual void Mult(const BaseVector & x, BaseVector & y) const override;    
     virtual void MultAdd (double s, const BaseVector & x, BaseVector & y) const override;
     virtual void MultTransAdd (double s, const BaseVector & x, BaseVector & y) const override;
-    shared_ptr<Matrix<>> GetA() const { return A; }
-    shared_ptr<Matrix<>> GetBt() const { return Bt; }
+    const auto & GetA() const { return A; }
+    const auto & GetBt() const { return Bt; }
 
     
     bool IsComplex() const override { return false; }
 
-    virtual int VHeight() const override { return m; }
-    virtual int VWidth() const override { return n; }
+    virtual int VHeight() const override { return A.Height(); }
+    virtual int VWidth() const override { return Bt.Width(); }
     virtual int VRank() const { return rank; }
 
     virtual AutoVector CreateRowVector () const override;

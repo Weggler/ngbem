@@ -532,7 +532,7 @@ namespace ngbem
 	}
   }
 
-  shared_ptr<LowRankMatrix> SingleLayerPotentialOperator ::
+  unique_ptr<LowRankMatrix> SingleLayerPotentialOperator ::
   CalcFarFieldBlock(const Array<DofId> &trialdofs, const Array<DofId> &testdofs, LocalHeap &lh) const
   {
     static Timer t("ngbem - SLP::CalcFarFieldBlock"); RegionTimer reg(t);
@@ -572,9 +572,9 @@ namespace ngbem
       for (size_t i = 0; i < k; i++)
 	Vt_trc(i, j) = V(j, i) * sqrt(S(i));
 
-    LowRankMatrix lowrank_mat(make_shared<Matrix<>>(U_trc), make_shared<Matrix<>>(Vt_trc));
-    
-    return make_shared<LowRankMatrix>(lowrank_mat);
+    // LowRankMatrix lowrank_mat(make_shared<Matrix<>>(U_trc), make_shared<Matrix<>>(Vt_trc));
+    // return make_shared<LowRankMatrix>(lowrank_mat);
+    return make_unique<LowRankMatrix> (Matrix<>(U_trc), Matrix<>(Vt_trc));
   }
 
   void SingleLayerPotentialOperator :: CalcHMatrix(HMatrix & hmatrix, LocalHeap &lh, struct BEMParameters &param) const
@@ -594,7 +594,7 @@ namespace ngbem
 	    // Compute dense block
 	    Matrix<> near(testdofs.Size(), trialdofs.Size());
 	    CalcBlockMatrix(near, trialdofs, testdofs, lh);	    
-	    block.SetMat(make_shared<BaseMatrixFromMatrix>(near));
+	    block.SetMat(make_unique<BaseMatrixFromMatrix>(near));
 	    //cout << "near " << near << endl;
 	  }
 	else

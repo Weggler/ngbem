@@ -469,28 +469,30 @@ namespace ngbem
     y.SetIndirect(testdofs, yp);
   }
 
+  /*
   LowRankMatrix :: LowRankMatrix() :
     A(nullptr), Bt(nullptr), m(0), n(0), rank(0)
   {
   }
+  */
   
-  LowRankMatrix :: LowRankMatrix(shared_ptr<Matrix<>> _A, shared_ptr<Matrix<>> _Bt) :
-    A(_A), Bt(_Bt)
+  LowRankMatrix :: LowRankMatrix(Matrix<> _A, Matrix<> _Bt) :
+    A(std::move(_A)), Bt(std::move(_Bt))
   {
-    m = A->Height();
-    n = Bt->Width();
+    // m = A->Height();
+    // n = Bt->Width();
 
-    if (A->Width() == Bt->Height())
-      rank = A->Width();
+    if (A.Width() == Bt.Height())
+      rank = A.Width();
     else
       throw Exception ("Low-rank matrix: ranks incompatible");
   }
 
   void LowRankMatrix :: Mult (const BaseVector & x, BaseVector & y) const
   {
-    Vector<> tmp(A->Width());
-    tmp = (*Bt) * x.FV<double>();
-    y.FV<double>() = (*A) * tmp;
+    Vector<> tmp(A.Width());
+    tmp = Bt * x.FV<double>();
+    y.FV<double>() = A * tmp;
   }
 
   
@@ -500,28 +502,27 @@ namespace ngbem
     // tmp *= s;
     
     // y.FV<double>() += s * (*A) * (*Bt) * x.FV<double>(); // performance nightmare
-    Vector<> tmp(A->Width());
-    tmp = (*Bt) * x.FV<double>();
-    y.FV<double>() += s*(*A) * tmp;
+    Vector<> tmp(A.Width());
+    tmp = Bt * x.FV<double>();
+    y.FV<double>() += s*A * tmp;
   }
 
   void LowRankMatrix :: MultTransAdd (double s, const BaseVector & x, BaseVector & y) const
   {
     // Vector<> tmp = x.FV<double>();
     // tmp *= s;
-    y.FV<double>() += s * Trans(*Bt) * Trans(*A) * x.FV<double>();
+    y.FV<double>() += s * Trans(Bt) * Trans(A) * x.FV<double>();
   }
 
   AutoVector LowRankMatrix :: CreateRowVector () const
   {
-    // missing parallel: 1 dof for all
-    shared_ptr<BaseVector> sp = make_shared<VVector<double>>(n);   
+    shared_ptr<BaseVector> sp = make_shared<VVector<double>>(A.Height());   
     return sp;
   }
   
   AutoVector LowRankMatrix :: CreateColVector () const
   {
-    shared_ptr<BaseVector> sp = make_shared<VVector<double>>(m);   
+    shared_ptr<BaseVector> sp = make_shared<VVector<double>>(Bt.Width());   
     return sp;
   }
   
@@ -548,8 +549,9 @@ namespace ngbem
 	return;
       }
 
-    Array<DofId> testdofs;	
-    testdofs.SetSize(row_cluster.Number);
+    // Array<DofId> testdofs;	
+    // testdofs.SetSize(row_cluster.Number);
+    Array<DofId> testdofs(row_cluster.Number);
     for (int k=0; k<testdofs.Size(); k++)
       testdofs[k] = row_ct.mapcluster2glob[row_cluster.PermuPos+k];
 

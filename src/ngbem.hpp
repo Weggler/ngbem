@@ -37,7 +37,7 @@ namespace ngbem
     void CalcBlockMatrix(FlatMatrix<double> matrix, const Array<DofId> &trialdofs, const Array<DofId> &testdofs, 
 			 LocalHeap &lh) const;
 
-    shared_ptr<LowRankMatrix> CalcFarFieldBlock(const Array<DofId> &trialdofs, const Array<DofId> &testdofs, LocalHeap &lh) const;
+    unique_ptr<LowRankMatrix> CalcFarFieldBlock(const Array<DofId> &trialdofs, const Array<DofId> &testdofs, LocalHeap &lh) const;
     
     void CalcHMatrix(HMatrix & hmatrix, LocalHeap &lh, struct BEMParameters &param) const;
 
