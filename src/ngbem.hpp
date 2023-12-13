@@ -7,43 +7,61 @@ namespace ngbem
 {
   using namespace ngcomp;
 
+  /** BEMParameters. 
+      All parameters to define approximation of the layer potential operators. */
   struct BEMParameters
   {
+    /* intorder defines integration rule for singular pairings. */  
     const int intorder;
+    /* leafsize is the minimal size of a #Custer */
     const int leafsize;
+    /* eta defines admissibily condition for cluster pairs*/
     const double eta;
+    /* eps defines low rank approximation */
     const double eps;
+    /* method defines the low rank approximation method */
     const char *method;
   };
   
+  /** SingleLayerPotentialOperator. 
+      */
   class SingleLayerPotentialOperator : public SpecialElement
   {
-    shared_ptr<FESpace> space;
+    shared_ptr<FESpace> space; 
     Array<DofId> mapglob2bnd;
     Array<DofId> mapbnd2glob;
-    struct BEMParameters param;
+    Array<Array<int>> elems4dof; // contains list of elems contributing to dof 
 
+    struct BEMParameters param;
     ClusterTree cluster_tree;
     shared_ptr<HMatrix> hmatrix;
-    Array<Array<int>> elems4dof; // contains list of elems contributing to global dof 
 
   public:
+    /** Constructor */
     SingleLayerPotentialOperator(shared_ptr<FESpace> aspace, struct BEMParameters param);
 
-    // matrix dim = ndof x ndof, volume dofs are not used
+    /** Routine computes the SL potential matrix according to the given FE space. 
+        The matrix is dense with dim = ndof x ndof, where volume dofs are not used */
     void CalcElementMatrix(FlatMatrix<double> matrix, 
                            LocalHeap &lh) const override;
 
+    /** Compute the sub-block of SL potential matrix which belongs to the given dofs, 
+        where #matrix is dense. We use the routine to compute a #BEMBlock of type "nearfield". */
     void CalcBlockMatrix(FlatMatrix<double> matrix, const Array<DofId> &trialdofs, const Array<DofId> &testdofs, 
 			 LocalHeap &lh) const;
 
+    /** Compute the sub-block of SL potential matrix which belongs to the given dofs,  
+        where #matrix is a #LowRankMatrix. We use the routine to compute a #BEMBlock of type "farfield". */
     unique_ptr<LowRankMatrix> CalcFarFieldBlock(const Array<DofId> &trialdofs, const Array<DofId> &testdofs, LocalHeap &lh) const;
     
+    /** Given a #HMatrix structure, compute all block. Memory for farfield blocks gets clear here. */
     void CalcHMatrix(HMatrix & hmatrix, LocalHeap &lh, struct BEMParameters &param) const;
 
+    /** Compute the matrix-vector multiplication $y = A x$. Apply is used by the iterative solver. */
     virtual void Apply (FlatVector<double> elx, FlatVector<double> ely, 
 			LocalHeap & lh) const override;
     
+    /** Get list of boundary degrees of freedom of given FE space.  */
     void GetDofNrs(Array<int> &dnums) const override;
 
   };
