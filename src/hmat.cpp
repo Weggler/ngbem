@@ -25,22 +25,22 @@ namespace ngbem
     BitArray bnddofs(space->GetNDof());
     bnddofs.Clear();
     for (int i = 0; i < mesh->GetNE(BND); i++)
-      {
-	Array<DofId> dnums;
-	space->GetDofNrs(ElementId(BND, i), dnums);
-	for (auto d : dnums)
+    {
+      Array<DofId> dnums;
+      space->GetDofNrs(ElementId(BND, i), dnums);
+      for (auto d : dnums)
 	  bnddofs.SetBit(d);
-      }
+    }
     mapglob2bnd.SetSize(space->GetNDof());
     mapglob2bnd = -1;
     int ndof = 0;
     for (int i = 0; i < space->GetNDof(); i++)
       if (bnddofs.Test(i))
-	{
-	  mapglob2bnd[i] = mapbnd2glob.Size();
-	  mapbnd2glob.Append(i);
-	  ndof++;
-	}
+      {
+        mapglob2bnd[i] = mapbnd2glob.Size();
+        mapbnd2glob.Append(i);
+        ndof++;
+      }
 
     clcoord.SetSize(ndof);
     clcoord = 0;
@@ -49,25 +49,25 @@ namespace ngbem
     clcounter.SetSize(ndof);
     clcounter = 0;
 
-    // run through all surface elements: clweights and counter
+    // run through all surface elements: clweights and clcounter
     for (int i = 0; i < mesh->GetNSE(); i++)
-      {
-	ElementId ei(BND, i);
+    {
+      ElementId ei(BND, i);
 
-	Array<DofId> dnumsi;
-	space->GetDofNrs(ei, dnumsi); // local dofs
-	for (int ii = 0; ii < dnumsi.Size(); ii++)
+      Array<DofId> dnumsi;
+      space->GetDofNrs(ei, dnumsi); // elem dofs
+      for (int ii = 0; ii < dnumsi.Size(); ii++)
 	  {
 	    clweight[mapglob2bnd[dnumsi[ii]]] += mesh->SurfaceElementVolume(i);
 	    clcounter[mapglob2bnd[dnumsi[ii]]] += 1;
 	  }
-      }
+    }
 
     // run through all surface elements: clcoord
     for (int i = 0; i < mesh->GetNSE(); i++)
-      {
-	HeapReset hr(lh);
-	ElementId ei(BND, i);
+    {
+    HeapReset hr(lh);
+    ElementId ei(BND, i);
 
 	/* The distinguished points in an element are its vertices, edge midpoints
 	   and element centroid. */
@@ -93,11 +93,12 @@ namespace ngbem
 
 	// run through dofs of the current element
 	Array<DofId> dnumsi;
-	space->GetDofNrs(ei, dnumsi); // local dofs
+	space->GetDofNrs(ei, dnumsi); // elem dofs
 	int vertcounter = 0;
 	int edgecounter = 0;
 	for (int ii = 0; ii < dnumsi.Size(); ii++)
 	  {
+	    // get the number of support elements to actual dof
 	    int clc = clcounter[mapglob2bnd[dnumsi[ii]]];
 	    // vertex dof is mapped to its vertex
 	    if(clc  > 2)
@@ -122,28 +123,28 @@ namespace ngbem
 	int edgeoffset = edgecounter/3;
 	edgecounter = 0;
 	for (int ii = 0; ii < dnumsi.Size(); ii++)
-	  {
+    {
+	    // get the number of support elements to actual dof
 	    int clc = clcounter[mapglob2bnd[dnumsi[ii]]];
 	    if(clc  == 2) // edge dof
-	      {
-		// The edge dofs of the same edge are mapped to the same point
-		for (int offset = 0; offset < edgeoffset; offset++)
-		  {
-		    clcoord[mapglob2bnd[dnumsi[ii+offset]]] = mipx[3+edgecounter];
-		  }
+        {
+    	  // The edge dofs of the same edge are mapped to the same point
+    	  for (int offset = 0; offset < edgeoffset; offset++)
+          {
+            clcoord[mapglob2bnd[dnumsi[ii+offset]]] = mipx[3+edgecounter];
+          }
 
-		edgecounter++;
-		ii +=edgeoffset-1;
-	      }
+          edgecounter++;
+          ii +=edgeoffset-1;
+        }
 	  }
-      }
+    }
     for (int i = 0; i < ndof; i++)
-      {
-	clweight[i] /= (double) clcounter[i];
-	//cout << i << ":" << clweight[i] << "\t" << clcounter[i] << endl;
-	//cout << i << ":" << clcoord[i] << endl;
-      }
-
+    {
+      clweight[i] /= (double) clcounter[i];
+	  //cout << i << ":" << clweight[i] << "\t" << clcounter[i] << endl;
+	  //cout << i << ":" << clcoord[i] << endl;
+    }
 
     return tuple {clweight, clcoord};
   }
@@ -437,16 +438,6 @@ namespace ngbem
   {
     // Get only vector entries related to the index sets
     VVector<> xp(trialdofs.Size()), yp(testdofs.Size());
-
-    /*
-    x.GetIndirect(trialdofs, xp.FV());
-    y.GetIndirect(testdofs, yp.FV());
-
-    matrix->MultAdd(s, xp, yp);
-    
-    y.SetIndirect(testdofs, yp.FV<double>());
-    */
-
     x.GetIndirect(trialdofs, xp.FV());
 
     matrix->Mult(xp, yp);
@@ -469,19 +460,11 @@ namespace ngbem
     y.SetIndirect(testdofs, yp);
   }
 
-  /*
-  LowRankMatrix :: LowRankMatrix() :
-    A(nullptr), Bt(nullptr), m(0), n(0), rank(0)
-  {
-  }
-  */
-  
+
+
   LowRankMatrix :: LowRankMatrix(Matrix<> _A, Matrix<> _Bt) :
     A(std::move(_A)), Bt(std::move(_Bt))
   {
-    // m = A->Height();
-    // n = Bt->Width();
-
     if (A.Width() == Bt.Height())
       rank = A.Width();
     else
@@ -494,7 +477,6 @@ namespace ngbem
     tmp = Bt * x.FV<double>();
     y.FV<double>() = A * tmp;
   }
-
   
   void LowRankMatrix :: MultAdd (double s, const BaseVector & x, BaseVector & y) const
   {
@@ -526,6 +508,11 @@ namespace ngbem
     return sp;
   }
   
+  /* Given two clusters, the structure of the resulting #HMatrix is already fix. This routine
+     creates recursively a list of #BEMBlock. 
+
+     Note: only the structure of the hierarchical matrix is created, the matrices themselves
+     are allocated and filled somewhere else, e.g. in #CalcHMatrix. */
   void HMatrix_help (ClusterTree &row_ct, ClusterTree &col_ct,
 		     long i, long j, double eta, Array<BEMBlock> &matList)
   {
@@ -539,15 +526,15 @@ namespace ngbem
     else if(Rja_AdmissiblePair(row_cluster, col_cluster, eta))
       isNearField = false;
     else 
-      {
+    {
 	
-	HMatrix_help(row_ct, col_ct, row_cluster.Child1, col_cluster.Child1, eta, matList);
-	HMatrix_help(row_ct, col_ct, row_cluster.Child1, col_cluster.Child2, eta, matList);
-	HMatrix_help(row_ct, col_ct, row_cluster.Child2, col_cluster.Child1, eta, matList);
-	HMatrix_help(row_ct, col_ct, row_cluster.Child2, col_cluster.Child2, eta, matList);
+	  HMatrix_help(row_ct, col_ct, row_cluster.Child1, col_cluster.Child1, eta, matList);
+	  HMatrix_help(row_ct, col_ct, row_cluster.Child1, col_cluster.Child2, eta, matList);
+	  HMatrix_help(row_ct, col_ct, row_cluster.Child2, col_cluster.Child1, eta, matList);
+	  HMatrix_help(row_ct, col_ct, row_cluster.Child2, col_cluster.Child2, eta, matList);
 	
-	return;
-      }
+	  return;
+    }
 
     // Array<DofId> testdofs;	
     // testdofs.SetSize(row_cluster.Number);
@@ -565,7 +552,6 @@ namespace ngbem
   
   HMatrix :: HMatrix(shared_ptr<ClusterTree> _row_ct, shared_ptr<ClusterTree> _col_ct, double _eta, int _width_vol_dof, int _height_vol_dof) : row_ct(_row_ct), col_ct(_col_ct), eta(_eta), width_vol_dof(_width_vol_dof), height_vol_dof(_height_vol_dof)
   {    
-    //mat = HMatrix_help(row_ct->arr_clusters, col_ct->arr_clusters, row_ct->arr_clusters[0], col_ct->arr_clusters[0], eta);
     HMatrix_help(*row_ct, *col_ct, 0, 0, eta, matList);
   }
     

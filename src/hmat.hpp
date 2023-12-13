@@ -5,15 +5,23 @@ namespace ngbem
 {
   using namespace ngcomp;
 
-  /** Cluster. */
+  /** Cluster. 
+      A cluster is defined by its hiearchical information, 
+      especially its size of dof indices and (#Number) the
+      starting position in the cluster dof ordering (#PermuPos).
+
+      A cluster is a node in the #ClusterTree. 
+*/
   struct Cluster
   {
+    /** Hierarchical information */
     long Level;
     long Parent, Child1, Child2;
     long Number;
     long PermuPos;
     long BasisElement;
 
+    /** Geometrical Information */
     double Radius;
     double EVal[3],EVec[9];
     double XMin[3],XMax[3];
@@ -22,21 +30,21 @@ namespace ngbem
   };
 
   /** Cluster tree.
-      A cluster tree is a binary tree of the index set of the FE space associated
-      with its geometrical information, i.e. the physical support points of the
-      finite element functions on the mesh.
+      A cluster tree is a binary tree of the index set of the FE space.
+      The clustering process permutes the dofs based on their geometrical 
+      distance. The geometrical information associated to a specific dof 
+      may depend on the type of dof in the ho mesh.
 
-      A cluster in the tree is defined by its size (number of indices) and its
-      starting position in the cluster ordering.
+      Each node in the tree is a #Cluster.
   */
   class ClusterTree
   {
-    /** Finite element spaces containing the mesh. */
+    /** Finite element space containing the mesh. */
     shared_ptr<FESpace> space;
 
   public:
-    /** The clustering process only consider boundary dofs. Therefore, we need
-	a mapping from cluster indices to global indices. */
+    /** The clustering process permutes dof indices. Therefore, we need
+	a mapping from cluster indices back to FE-space dof indices. */
     Array<DofId> mapcluster2glob;
 
     /** Number of clusters in the tree. */
@@ -45,9 +53,17 @@ namespace ngbem
     /** Array of length #n_cluster containing the clusters. */
     Array<struct Cluster> arr_clusters;
 
+    /** Constructor (leafsize defines the minimal size of a #Cluster) */
     ClusterTree(shared_ptr<FESpace> space, int leafsize);
   };
-
+  
+  /** BEMBlock.
+      A BEMBlock is a specific submatrix in a layer potential operator matrix
+      in case the latter is a #HMatrix. 
+      A BEMBlock can either be dense (near field) or low-rank (far field)
+    
+      A #HMatrix holds a list of BEMBlocks.
+  */
   class BEMBlock
   {
     bool isNearField;
@@ -57,14 +73,20 @@ namespace ngbem
     unique_ptr<BaseMatrix> matrix;
 	
   public:
+    /** Constructors */
     BEMBlock() {;}
     BEMBlock(Array<DofId> &trialdofs, Array<DofId> &testdofs, bool isNearField);
+
+    /** Block type, i.e., if true it is dense and otherwise low-rank */
     bool IsNearField() const {return isNearField; }
     
+    /** Access to matrix */  
     const unique_ptr<BaseMatrix> & GetMat() const { return matrix; }
     void SetMat(unique_ptr<BaseMatrix> _matrix) { matrix = std::move(_matrix); }
     
+    /** All dofs of the trial functions contributing to the block */  
     const Array<DofId> & GetTrialDofs() const { return trialdofs; }
+    /** All dofs of the test functions contributing to the block */  
     const Array<DofId> & GetTestDofs() const { return testdofs; }
 
     /** Matrix-vector-multiply with global vectors x and y. Only the entries specified
@@ -93,17 +115,18 @@ namespace ngbem
   public:
     /** Empty constructor. */
     // LowRankMatrix();
-    /** Full cunstructor. */
+    /** Constructor. */
     LowRankMatrix(Matrix<> A, Matrix<> Bt);
+
+    /** Access matrices of factorization . */
+    const auto & GetA() const { return A; }
+    const auto & GetBt() const { return Bt; }
     
-    /** Matrix-vector-multiply-add: \f$y = y + s A B^\top y \f$. */
+    /** Matrix-vector-multiplication, e.g. \f$y = y + s (A B^\top ) y \f$. */
     virtual void Mult(const BaseVector & x, BaseVector & y) const override;    
     virtual void MultAdd (double s, const BaseVector & x, BaseVector & y) const override;
     virtual void MultTransAdd (double s, const BaseVector & x, BaseVector & y) const override;
-    const auto & GetA() const { return A; }
-    const auto & GetBt() const { return Bt; }
 
-    
     bool IsComplex() const override { return false; }
 
     virtual int VHeight() const override { return A.Height(); }
@@ -117,7 +140,7 @@ namespace ngbem
   /** Hierarchical matrix.
       A hierarchical matrix is a generalized block matrix with a partition
       based on clusters. It consists of near-field dense blocks and far-field
-      low-rank blocks.
+      low-rank blocks. A block is  #BEMBlock. 
   */
   class HMatrix : public BaseMatrix
   {
