@@ -175,6 +175,9 @@ namespace ngbem
         elems4dof[dnumsi[ii]].Append(i);
       }
     }
+    //cout << "elems4dof: " << elems4dof << endl;
+
+    /*START: TEST hmatrix: compare approximation with dense matrix. */   
 
     // create hmatrix
     hmatrix = make_shared<HMatrix>(make_shared<ClusterTree>(cluster_tree),
@@ -185,13 +188,10 @@ namespace ngbem
     CalcHMatrix(*hmatrix, lh, param);
     //cout << "HMatrix done " << endl;
     HeapReset hr(lh);    
-    
-    /*START: TEST hmatrix: compare approximation with dense matrix. */   
 
     Matrix<double> dense(mapglob2bnd.Size(), mapglob2bnd.Size());
     CalcElementMatrix(dense, lh);
     //cout << "dense: " << dense.Height() << " x " << dense.Width() << endl;
-    //cout << "elems4dof: " << elems4dof << endl;
 
     // Test with vector
     Vector<double> x(space->GetNDof()), y(space->GetNDof());
@@ -701,16 +701,49 @@ namespace ngbem
       }
     }
     //cout << "elems4dof: " << elems4dof << endl;
+
+    /*START: TEST hmatrix: compare approximation with dense matrix. */   
+
+    // create hmatrix
+    hmatrix = make_shared<HMatrix>(make_shared<ClusterTree>(cluster_tree), // trial space H1
+                                   make_shared<ClusterTree>(cluster_tree2), // test space L2
+                                   param.eta, space->GetNDof(), space2->GetNDof());
+    // compute all its blocks
+    LocalHeap lh(100000000);
+    CalcHMatrix(*hmatrix, lh, param);
+    //cout << "HMatrix done " << endl;
+    HeapReset hr(lh);    
+
+    Matrix<double> dense(mapglob2bnd2.Size(), mapglob2bnd.Size()); // ndof(L2) x ndof(H1)
+    CalcElementMatrix(dense, lh);
+    //cout << "dense: " << dense.Height() << " x " << dense.Width() << endl;
+
+    // Test with vector
+    Vector<double> x(space->GetNDof()), y(space->GetNDof());
+    x = 1.;
+    y = 0.;
+    y = dense * x;
+    
+    S_BaseVectorPtr<> x_base(space->GetNDof(), 1, x.Data());
+    S_BaseVectorPtr<> y_base(space2->GetNDof(), 1, y.Data());    
+    hmatrix->MultAdd(-1., x_base, y_base);
+    
+    double err = 0.;
+    for (int i = 0; i < y.Size(); i++)
+      err += y(i) * y(i);
+    cout << "error " << sqrt(err) << endl;
+
+    /*END: TEST hmatrix: compare approximation with dense matrix. */   
   }
 
+  /* compute dense double layer matrix,  dim = ndof_bnd_L2 x ndof_bnd_H1 */
   void DoubleLayerPotentialOperator ::
-  CalcElementMatrix(FlatMatrix<double> matrix, // matrix dim = ndof_bnd_L2 x ndof_bnd_H1
-		    LocalHeap &lh) const
+  CalcElementMatrix(FlatMatrix<double> matrix, LocalHeap &lh) const
   {
     Array<int> range, range2;
-    for (int i = 0; i < mapbnd2glob.Size(); i++) // trial
+    for (int i = 0; i < mapbnd2glob.Size(); i++) // trial H1
       range.Append(i);
-    for (int j = 0; j < mapbnd2glob2.Size(); j++) // test
+    for (int j = 0; j < mapbnd2glob2.Size(); j++) // test L2
       range2.Append(j);
     CalcBlockMatrix(matrix, range, range2, lh);
   }
@@ -1039,6 +1072,91 @@ namespace ngbem
 
 	}
   }
+
+  unique_ptr<LowRankMatrix> DoubleLayerPotentialOperator ::
+  CalcFarFieldBlock(const Array<DofId> &trialdofs, const Array<DofId> &testdofs, LocalHeap &lh) const
+  {
+    static Timer t("ngbem - DLP::CalcFarFieldBlock"); RegionTimer reg(t);
+    int m = testdofs.Size();
+    int n = trialdofs.Size();
+    int p = min(n, m);
+  
+    Matrix<double> A(m, n);
+    CalcBlockMatrix(A, trialdofs, testdofs, lh);
+    cout << "Info from CalcFarFieldBlock: matrix done" << endl;
+    
+    // Calculate SVD for A^\top = V S U^\top
+    Matrix<double, ColMajor> V(n, p), Ut(p, m);
+    Vector<> S(p);
+    Array<double> work(n * m + 100);
+    integer info;
+    char jobu = 'S', jobv = 'S';
+    integer lda = Trans(A).Dist(), ldu = Ut.Dist(), ldv = V.Dist();
+    integer lwork = work.Size();
+    
+    dgesvd_(&jobv, &jobu, &n, &m, Trans(A).Data(), &lda, S.Data(), V.Data(), &ldv,
+	    Ut.Data(), &ldu, work.Data(), &lwork, &info);
+    cout << "Info from CalcFarFieldBlock: svd done" << endl;
+    
+    //Truncate according to eps. k is the rank
+    int k = 1;
+    for (int j = 1; j < p; j++)
+    {
+      if (S(j) > param.eps)
+        k++;
+     }
+    
+    // Low-rank approximation from truncated svd
+    Matrix<double, ColMajor> U_trc(m, k), Vt_trc(k, n);
+    for (size_t j = 0; j < k; j++)
+      for (size_t i = 0; i < m; i++)
+        U_trc(i, j) = Ut(j, i) * sqrt(S(j));
+    for (size_t j = 0; j < n; j++)
+      for (size_t i = 0; i < k; i++)
+        Vt_trc(i, j) = V(j, i) * sqrt(S(i));
+    cout << "Info from CalcFarFieldBlock: truncation done" << endl;
+
+    return make_unique<LowRankMatrix> (Matrix<>(U_trc), Matrix<>(Vt_trc));
+  }
+
+  void DoubleLayerPotentialOperator :: CalcHMatrix(HMatrix & hmatrix, LocalHeap &lh, struct BEMParameters &param) const
+  {
+    static Timer t("ngbem - DLP::CalcHMatrix"); RegionTimer reg(t);    
+    auto & matList = hmatrix.GetMatList();
+
+    // run through all blocks of the #HMatrix
+    for (int k = 0; k < matList.Size(); k++)
+    {
+	  BEMBlock & block = matList[k];
+	  auto & trialdofs = block.GetTrialDofs();
+	  auto & testdofs = block.GetTestDofs();
+	  if(block.IsNearField())
+      {
+        //// Compute dense block
+        //Matrix<> near(testdofs.Size(), trialdofs.Size());
+        //CalcBlockMatrix(near, trialdofs, testdofs, lh);	    
+        //block.SetMat(make_unique<BaseMatrixFromMatrix>(near));
+      }
+	  else
+      {
+        // Compute low-rank block
+        block.SetMat(CalcFarFieldBlock(trialdofs, testdofs, lh));	    
+      }
+	  HeapReset hr(lh);
+    }
+  }
+
+  void DoubleLayerPotentialOperator :: Apply(FlatVector<double> elx, FlatVector<double> ely, 
+					     LocalHeap & lh) const
+  {
+    static Timer t("ngbem - SLP::Apply"); RegionTimer reg(t);        
+    for (int i = 0; i < ely.Size(); i++)
+      ely(i) = 0.;
+    S_BaseVectorPtr<> xp_base(elx.Size(), 1, elx.Data());
+    S_BaseVectorPtr<> yp_base(ely.Size(), 1, ely.Data());
+    hmatrix->MultAdd(1., xp_base, yp_base);
+  }
+  
 
   void DoubleLayerPotentialOperator :: GetDofNrs(Array<int> &dnums) const
   {
