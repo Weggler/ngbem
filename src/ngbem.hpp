@@ -42,8 +42,7 @@ namespace ngbem
 
     /** Routine computes the SL potential matrix according to the given FE space. 
         The matrix is dense with dim = ndof x ndof, where volume dofs are not used */
-    void CalcElementMatrix(FlatMatrix<double> matrix, 
-                           LocalHeap &lh) const override;
+    void CalcElementMatrix(FlatMatrix<double> matrix, LocalHeap &lh) const override;
 
     /** Compute the sub-block of SL potential matrix which belongs to the given dofs, 
         where #matrix is dense. We use the routine to compute a #BEMBlock of type "nearfield". */
@@ -58,8 +57,7 @@ namespace ngbem
     void CalcHMatrix(HMatrix & hmatrix, LocalHeap &lh, struct BEMParameters &param) const;
 
     /** Compute the matrix-vector multiplication $y = A x$. Apply is used by the iterative solver. */
-    virtual void Apply (FlatVector<double> elx, FlatVector<double> ely, 
-			LocalHeap & lh) const override;
+    virtual void Apply (FlatVector<double> elx, FlatVector<double> ely, LocalHeap & lh) const override;
     
     /** Get list of boundary degrees of freedom of given FE space.  */
     void GetDofNrs(Array<int> &dnums) const override;
@@ -78,7 +76,8 @@ namespace ngbem
     Array<DofId> mapbnd2glob;
     Array<DofId> mapglob2bnd2;
     Array<DofId> mapbnd2glob2;
-    int intorder;
+
+    struct BEMParameters param;
 
     ClusterTree cluster_tree;
     Array<Array<int>> elems4dof; // contains list of elems contributing to bnd-dof
@@ -86,9 +85,9 @@ namespace ngbem
     Array<Array<int>> elems4dof2; // contains list of elems contributing to bnd-dof 
 
   public:
-    DoubleLayerPotentialOperator(shared_ptr<FESpace> aspace, shared_ptr<FESpace> bspace, int intorder);
+    DoubleLayerPotentialOperator(shared_ptr<FESpace> aspace, shared_ptr<FESpace> bspace, struct BEMParameters param);
 
-    void CalcElementMatrix(FlatMatrix<double> matrix, // matrix dim = ndof_bnd x ndof_bnd2
+    void CalcElementMatrix(FlatMatrix<double> matrix, // matrix dim = ndof_test x ndof_trial
                            LocalHeap &lh) const override;
     
     void CalcBlockMatrix(FlatMatrix<double> matrix, const Array<DofId> &testdofs, const Array<DofId> &trialdofs, // matrix dim = size(testdofs) x size(trialdofs)

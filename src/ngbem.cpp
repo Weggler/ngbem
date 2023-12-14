@@ -624,8 +624,8 @@ namespace ngbem
 
   // aspace, space == H1 trialspace, bspace, space2 ==  L2 testspace
   DoubleLayerPotentialOperator :: DoubleLayerPotentialOperator (shared_ptr<FESpace> aspace, shared_ptr<FESpace> bspace,
-								int _intorder)
-    : space(aspace), space2(bspace), intorder(_intorder), cluster_tree(aspace, 20), cluster_tree2(bspace, 20)
+                                  struct BEMParameters _param)
+    : space(aspace), space2(bspace), param(_param), cluster_tree(aspace, param.leafsize), cluster_tree2(bspace, param.leafsize)
   {
 
     auto mesh = space->GetMeshAccess(); // trialspace
@@ -732,16 +732,16 @@ namespace ngbem
 
     RegionTimer reg(tall);
 
-    IntegrationRule irtrig(ET_TRIG, intorder); // order=4
+    IntegrationRule irtrig(ET_TRIG, param.intorder); // order=4
     
     auto [ identic_panel_x, identic_panel_y, identic_panel_weight ] =
-      IdenticPanelIntegrationRule(intorder);
+      IdenticPanelIntegrationRule(param.intorder);
 
     auto [ common_vertex_x, common_vertex_y, common_vertex_weight ] =
-      CommonVertexIntegrationRule(intorder);
+      CommonVertexIntegrationRule(param.intorder);
     
     auto [ common_edge_x, common_edge_y, common_edge_weight ] =
-      CommonEdgeIntegrationRule(intorder);
+      CommonEdgeIntegrationRule(param.intorder);
 
     //cout << "CalcElementMatrix: " << endl;
     matrix = 0; 

@@ -18,12 +18,12 @@ PYBIND11_MODULE(libbem, m)
   }, py::arg("bf"), py::arg("intorder")=3, py::arg("leafsize")=40, py::arg("eta")=2., py::arg("eps")=1e-6, py::arg("method")="svd");
 
 
-  m.def("DoubleLayerPotentialOperator", [](BilinearForm &bfb, int intorder) {
+  m.def("DoubleLayerPotentialOperator", [](BilinearForm &bfb, int intorder, int leafsize, double eta, double eps, char *method) {
     // cout << "create double-layer potential" << endl;
-
-    auto bemop2 = make_unique<DoubleLayerPotentialOperator>(bfb.GetTrialSpace(), bfb.GetTestSpace(), intorder);
+    struct BEMParameters param({intorder, leafsize, eta, eps, method});
+    auto bemop2 = make_unique<DoubleLayerPotentialOperator>(bfb.GetTrialSpace(), bfb.GetTestSpace(), param);
     bfb.AddSpecialElement(std::move(bemop2));
-  }, py::arg("bf"), py::arg("intorder")=10);
-  ;
+  }, py::arg("bf"), py::arg("intorder")=3, py::arg("leafsize")=40, py::arg("eta")=2., py::arg("eps")=1e-6, py::arg("method")="svd");
+  
 }
 
