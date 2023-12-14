@@ -356,7 +356,7 @@ namespace ngbem
               evaluator->CalcMatrix(felj, mipy, mshapej, lh);
                       
               double fac = mipx.GetMeasure()*mipy.GetMeasure()*identic_panel_weight[k];
-              elmat += fac*kernel* Trans(mshapej) * mshapei;
+              elmat += fac*kernel* Trans(mshapei) * mshapej;
             }
             
 	        // cout << "single panel elmat = " << endl << elmat << endl;
@@ -420,7 +420,7 @@ namespace ngbem
 	          evaluator->CalcMatrix(felj, mipy, mshapej, lh);
                       
 	          double fac = mipx.GetMeasure()*mipy.GetMeasure() * common_edge_weight[k];
-	          elmat += fac*kernel* Trans(mshapej) * mshapei;
+	          elmat += fac*kernel* Trans(mshapei) * mshapej;
 	        }
             
 	        // cout.precision(12);                
@@ -478,7 +478,7 @@ namespace ngbem
 	          evaluator->CalcMatrix(felj, mipy, mshapej, lh);
                       
 	          double fac = mipx.GetMeasure()*mipy.GetMeasure()*common_vertex_weight[k];
-	          elmat += fac*kernel* Trans(mshapej) * mshapei;
+	          elmat += fac*kernel* Trans(mshapei) * mshapej;
 	        }
             
 	        // cout.precision(12);
@@ -516,9 +516,9 @@ namespace ngbem
 	          }
 	        }
             
-	        FlatMatrix<double> kernel_shapesj(felj.GetNDof(), irtrig.Size(), lh);
-	        kernel_shapesj = shapesj * Trans(kernel_ixiy);
-	        elmat += kernel_shapesj * Trans(shapesi);
+	        FlatMatrix<double> kernel_shapesj(irtrig.Size(), felj.GetNDof(), lh);
+	        kernel_shapesj = kernel_ixiy * Trans(shapesj);
+	        elmat += shapesi * kernel_shapesj;
             
 	        // cout << "disjoint panel " << endl << elmat << endl;
 	        break;
@@ -531,7 +531,7 @@ namespace ngbem
 	  for (int ii = 0; ii < dnumsi.Size(); ii++)
 	    for (int jj = 0; jj < dnumsj.Size(); jj++)
 	      if(testdofsinv[dnumsi[ii]] != -1 && trialdofsinv[dnumsj[jj]] != -1 ) // consider only trial and test function
-		    matrix(testdofsinv[dnumsi[ii]], trialdofsinv[dnumsj[jj]]) += elmat(jj, ii);
+		    matrix(testdofsinv[dnumsi[ii]], trialdofsinv[dnumsj[jj]]) += elmat(ii, jj);
 	}
   }
 
