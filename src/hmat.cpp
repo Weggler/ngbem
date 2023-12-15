@@ -25,22 +25,22 @@ namespace ngbem
     BitArray bnddofs(space->GetNDof());
     bnddofs.Clear();
     for (int i = 0; i < mesh->GetNE(BND); i++)
-    {
-      Array<DofId> dnums;
-      space->GetDofNrs(ElementId(BND, i), dnums);
-      for (auto d : dnums)
+      {
+	Array<DofId> dnums;
+	space->GetDofNrs(ElementId(BND, i), dnums);
+	for (auto d : dnums)
 	  bnddofs.SetBit(d);
-    }
+      }
     mapglob2bnd.SetSize(space->GetNDof());
     mapglob2bnd = -1;
     int ndof = 0;
     for (int i = 0; i < space->GetNDof(); i++)
       if (bnddofs.Test(i))
-      {
-        mapglob2bnd[i] = mapbnd2glob.Size();
-        mapbnd2glob.Append(i);
-        ndof++;
-      }
+	{
+	  mapglob2bnd[i] = mapbnd2glob.Size();
+	  mapbnd2glob.Append(i);
+	  ndof++;
+	}
 
     clcoord.SetSize(ndof);
     clcoord = 0;
@@ -51,23 +51,23 @@ namespace ngbem
 
     // run through all surface elements: clweights and clcounter
     for (int i = 0; i < mesh->GetNSE(); i++)
-    {
-      ElementId ei(BND, i);
+      {
+	ElementId ei(BND, i);
 
-      Array<DofId> dnumsi;
-      space->GetDofNrs(ei, dnumsi); // elem dofs
-      for (int ii = 0; ii < dnumsi.Size(); ii++)
+	Array<DofId> dnumsi;
+	space->GetDofNrs(ei, dnumsi); // elem dofs
+	for (int ii = 0; ii < dnumsi.Size(); ii++)
 	  {
 	    clweight[mapglob2bnd[dnumsi[ii]]] += mesh->SurfaceElementVolume(i);
 	    clcounter[mapglob2bnd[dnumsi[ii]]] += 1;
 	  }
-    }
+      }
 
     // run through all surface elements: clcoord
     for (int i = 0; i < mesh->GetNSE(); i++)
-    {
-    HeapReset hr(lh);
-    ElementId ei(BND, i);
+      {
+	HeapReset hr(lh);
+	ElementId ei(BND, i);
 
 	/* The distinguished points in an element are its vertices, edge midpoints
 	   and element centroid. */
@@ -123,28 +123,28 @@ namespace ngbem
 	int edgeoffset = edgecounter/3;
 	edgecounter = 0;
 	for (int ii = 0; ii < dnumsi.Size(); ii++)
-    {
+	  {
 	    // get the number of support elements to actual dof
 	    int clc = clcounter[mapglob2bnd[dnumsi[ii]]];
 	    if(clc  == 2) // edge dof
-        {
-    	  // The edge dofs of the same edge are mapped to the same point
-    	  for (int offset = 0; offset < edgeoffset; offset++)
-          {
-            clcoord[mapglob2bnd[dnumsi[ii+offset]]] = mipx[3+edgecounter];
-          }
+	      {
+		// The edge dofs of the same edge are mapped to the same point
+		for (int offset = 0; offset < edgeoffset; offset++)
+		  {
+		    clcoord[mapglob2bnd[dnumsi[ii+offset]]] = mipx[3+edgecounter];
+		  }
 
-          edgecounter++;
-          ii +=edgeoffset-1;
-        }
+		edgecounter++;
+		ii +=edgeoffset-1;
+	      }
 	  }
-    }
+      }
     for (int i = 0; i < ndof; i++)
-    {
-      clweight[i] /= (double) clcounter[i];
-	  //cout << i << ":" << clweight[i] << "\t" << clcounter[i] << endl;
-	  //cout << i << ":" << clcoord[i] << endl;
-    }
+      {
+	clweight[i] /= (double) clcounter[i];
+	//cout << i << ":" << clweight[i] << "\t" << clcounter[i] << endl;
+	//cout << i << ":" << clcoord[i] << endl;
+      }
 
     return tuple {clweight, clcoord};
   }
@@ -163,19 +163,19 @@ namespace ngbem
     // Moments of cluster
     double Mom[10] = {0.};
     for(int i = ClBegin; i <= ClEnd; i++)
-    {
-      int j = Permu[i];
-      Mom[0] += G[j];
-      Mom[1] += G[j] * X[j](0);
-      Mom[2] += G[j] * X[j](1);
-      Mom[3] += G[j] * X[j](2);
-      Mom[4] += G[j] * X[j](0) * X[j](0);
-      Mom[5] += G[j] * X[j](0) * X[j](1);
-      Mom[6] += G[j] * X[j](0) * X[j](2);
-      Mom[7] += G[j] * X[j](1) * X[j](1);
-      Mom[8] += G[j] * X[j](1) * X[j](2);
-	  Mom[9] += G[j] * X[j](2) * X[j](2);
-    }
+      {
+	int j = Permu[i];
+	Mom[0] += G[j];
+	Mom[1] += G[j] * X[j](0);
+	Mom[2] += G[j] * X[j](1);
+	Mom[3] += G[j] * X[j](2);
+	Mom[4] += G[j] * X[j](0) * X[j](0);
+	Mom[5] += G[j] * X[j](0) * X[j](1);
+	Mom[6] += G[j] * X[j](0) * X[j](2);
+	Mom[7] += G[j] * X[j](1) * X[j](1);
+	Mom[8] += G[j] * X[j](1) * X[j](2);
+	Mom[9] += G[j] * X[j](2) * X[j](2);
+      }
 
     // Centroid of cluster
     double Centre[3] = {Mom[1] / Mom[0], Mom[2] / Mom[0], Mom[3] / Mom[0]};
@@ -202,140 +202,140 @@ namespace ngbem
     double XMin[3], XMax[3];
     double Radius = 0., DistMin;
     for(int i = ClBegin; i <= ClEnd; i++)
-    {
-      int j = Permu[i];
-      
-      double Diff[3] = {X[j](0), X[j](1), X[j](2)};
-      Diff[0] -= Centre[0];
-      Diff[1] -= Centre[1];
-      Diff[2] -= Centre[2];
-      
-      double Dist = sqrt(fabs(Diff[0] * Diff[0] + Diff[1] * Diff[1] +
-      			Diff[2] * Diff[2]));
-      
-      if(i == ClBegin || Dist < DistMin)
       {
-        jMin=j;
-        DistMin=Dist;
-      }
+	int j = Permu[i];
       
-      double XT[3];
-      XT[0] = A[0] * Diff[0] + A[1] * Diff[1] + A[2] * Diff[2];
-      XT[1] = A[3] * Diff[0] + A[4] * Diff[1] + A[5] * Diff[2];
-      XT[2] = A[6] * Diff[0] + A[7] * Diff[1] + A[8] * Diff[2];
-      Radius = fmax(Radius, sqrt(fabs(XT[0] * XT[0] + XT[1] * XT[1] +
-      				XT[2] * XT[2])));
+	double Diff[3] = {X[j](0), X[j](1), X[j](2)};
+	Diff[0] -= Centre[0];
+	Diff[1] -= Centre[1];
+	Diff[2] -= Centre[2];
       
-      if (i == ClBegin)
-      {
-        XMin[0]=XT[0];
-        XMax[0]=XT[0];
-        XMin[1]=XT[1];
-        XMax[1]=XT[1];
-        XMin[2]=XT[2];
-        XMax[2]=XT[2];
+	double Dist = sqrt(fabs(Diff[0] * Diff[0] + Diff[1] * Diff[1] +
+				Diff[2] * Diff[2]));
+      
+	if(i == ClBegin || Dist < DistMin)
+	  {
+	    jMin=j;
+	    DistMin=Dist;
+	  }
+      
+	double XT[3];
+	XT[0] = A[0] * Diff[0] + A[1] * Diff[1] + A[2] * Diff[2];
+	XT[1] = A[3] * Diff[0] + A[4] * Diff[1] + A[5] * Diff[2];
+	XT[2] = A[6] * Diff[0] + A[7] * Diff[1] + A[8] * Diff[2];
+	Radius = fmax(Radius, sqrt(fabs(XT[0] * XT[0] + XT[1] * XT[1] +
+					XT[2] * XT[2])));
+      
+	if (i == ClBegin)
+	  {
+	    XMin[0]=XT[0];
+	    XMax[0]=XT[0];
+	    XMin[1]=XT[1];
+	    XMax[1]=XT[1];
+	    XMin[2]=XT[2];
+	    XMax[2]=XT[2];
+	  }
+	else
+	  {
+	    XMin[0]=fmin(XMin[0], XT[0]);
+	    XMax[0]=fmax(XMax[0], XT[0]);
+	    XMin[1]=fmin(XMin[1], XT[1]);
+	    XMax[1]=fmax(XMax[1], XT[1]);
+	    XMin[2]=fmin(XMin[2], XT[2]);
+	    XMax[2]=fmax(XMax[2], XT[2]);
+	  }
       }
-      else
-      {
-        XMin[0]=fmin(XMin[0], XT[0]);
-        XMax[0]=fmax(XMax[0], XT[0]);
-        XMin[1]=fmin(XMin[1], XT[1]);
-        XMax[1]=fmax(XMax[1], XT[1]);
-        XMin[2]=fmin(XMin[2], XT[2]);
-        XMax[2]=fmax(XMax[2], XT[2]);
-      }
-    }
 
     // Diagonal
     double Diag[3] = {XMax[0] - XMin[0], XMax[1] - XMin[1], XMax[2] - XMin[2]};
     double DiagLength = sqrt(fabs(Diag[0] * Diag[0] + Diag[1] * Diag[1] +
 				  Diag[2] * Diag[2]));
     if (DiagLength > 0.0)
-    {
-	  Diag[0] /= DiagLength;
-	  Diag[1] /= DiagLength;
-	  Diag[2] /= DiagLength;
-    }
+      {
+	Diag[0] /= DiagLength;
+	Diag[1] /= DiagLength;
+	Diag[2] /= DiagLength;
+      }
 
     // Copy the data to current cluster
     Clusters[IClu].BasisElement=jMin;
     Clusters[IClu].Radius=Radius;
     Clusters[IClu].DiagLength=DiagLength;
     for (int k = 0; k < 3; k++)
-    {
-	  Clusters[IClu].EVal[k] = W[k];
-	  Clusters[IClu].XMin[k] = XMin[k];
-	  Clusters[IClu].XMax[k] = XMax[k];
-	  Clusters[IClu].Centre[k] = Centre[k];
-    }
+      {
+	Clusters[IClu].EVal[k] = W[k];
+	Clusters[IClu].XMin[k] = XMin[k];
+	Clusters[IClu].XMax[k] = XMax[k];
+	Clusters[IClu].Centre[k] = Centre[k];
+      }
     for (int k = 0; k < 9; k++)
       Clusters[IClu].EVec[k] = A[k];
 
     // If the size cluster is smaller than leafsize, it becomes a leaf (no children)
     if (NClu <= leafsize)
-    {
-	  Clusters[IClu].Child1 = -1;
-	  Clusters[IClu].Child2 = -1;
-	  return;
-    }
+      {
+	Clusters[IClu].Child1 = -1;
+	Clusters[IClu].Child2 = -1;
+	return;
+      }
     // Otherwise we divide the cluster into two children
     else
-    {
-      int Num1 = 0, Num2 = 0;
-      int ICheck = ClBegin;
-      int IEnd = ClEnd;
-      double Crit = Centre[0] * A[6] + Centre[1] * A[7] + Centre[2] * A[8];
+      {
+	int Num1 = 0, Num2 = 0;
+	int ICheck = ClBegin;
+	int IEnd = ClEnd;
+	double Crit = Centre[0] * A[6] + Centre[1] * A[7] + Centre[2] * A[8];
     
-      /* Split along the eigenvector of the largest eigenvalue of the
-         covariance matrix. */
-      for (int i = 0; i < NClu; i++)
-      {
-        int j = Permu[ICheck];
-        if (X[j](0) * A[6] + X[j](1) * A[7] + X[j](2) * A[8] >= Crit)
-        {
-          Num1 += 1;
-          ICheck += 1;
-        }
-        else
-        {
-          Num2 += 1;
-          Permu[ICheck] = Permu[IEnd];
-          Permu[IEnd] = j;
-          IEnd -= 1;
-        }
-      }
+	/* Split along the eigenvector of the largest eigenvalue of the
+	   covariance matrix. */
+	for (int i = 0; i < NClu; i++)
+	  {
+	    int j = Permu[ICheck];
+	    if (X[j](0) * A[6] + X[j](1) * A[7] + X[j](2) * A[8] >= Crit)
+	      {
+		Num1 += 1;
+		ICheck += 1;
+	      }
+	    else
+	      {
+		Num2 += 1;
+		Permu[ICheck] = Permu[IEnd];
+		Permu[IEnd] = j;
+		IEnd -= 1;
+	      }
+	  }
 
-      // Non-separable cluster
-      if (Num1 == 0 || Num2 == 0)
-      {
-        Clusters[IClu].Child1 = -1;
-        Clusters[IClu].Child2 = -1;
-        return;
-      }
-      // Separable cluster with two children
-      else
-      {
-        // Provide hierarchical information
-        struct Cluster cl1, cl2;
-        int IClu1 = *NClusters;
-        Clusters[IClu].Child1 = IClu1;
-        cl1.Level = Clusters[IClu].Level + 1;
-        cl1.Parent = IClu;
-        cl1.Number = Num1;
-        cl1.PermuPos = ClBegin;
-        Clusters.Append(cl1);
+	// Non-separable cluster
+	if (Num1 == 0 || Num2 == 0)
+	  {
+	    Clusters[IClu].Child1 = -1;
+	    Clusters[IClu].Child2 = -1;
+	    return;
+	  }
+	// Separable cluster with two children
+	else
+	  {
+	    // Provide hierarchical information
+	    struct Cluster cl1, cl2;
+	    int IClu1 = *NClusters;
+	    Clusters[IClu].Child1 = IClu1;
+	    cl1.Level = Clusters[IClu].Level + 1;
+	    cl1.Parent = IClu;
+	    cl1.Number = Num1;
+	    cl1.PermuPos = ClBegin;
+	    Clusters.Append(cl1);
         
-        int IClu2 = *NClusters + 1;
-        Clusters[IClu].Child2 = IClu2;
-        cl2.Level = Clusters[IClu].Level + 1;
-        cl2.Parent = IClu;
-        cl2.Number = Num2;
-        cl2.PermuPos = ClBegin + Num1;
-        Clusters.Append(cl2);
+	    int IClu2 = *NClusters + 1;
+	    Clusters[IClu].Child2 = IClu2;
+	    cl2.Level = Clusters[IClu].Level + 1;
+	    cl2.Parent = IClu;
+	    cl2.Number = Num2;
+	    cl2.PermuPos = ClBegin + Num1;
+	    Clusters.Append(cl2);
         
-        *NClusters += 2;
+	    *NClusters += 2;
+	  }
       }
-    }
   }
 
   /* by S. Rjasanow
@@ -362,10 +362,10 @@ namespace ngbem
     
     /* Devide cluster */
     do
-    {
-      Rja_DivideCluster(G, X, &NClusters, IClu, Clusters, Permu, leafsize);
-      IClu += 1;
-    }
+      {
+	Rja_DivideCluster(G, X, &NClusters, IClu, Clusters, Permu, leafsize);
+	IClu += 1;
+      }
     while (IClu < NClusters);
 
     return NClusters;
@@ -394,12 +394,12 @@ namespace ngbem
     BitArray bnddofs(space->GetNDof());
     bnddofs.Clear();
     for (int i = 0; i < mesh->GetNE(BND); i++)
-    {
-      Array<DofId> dnums;
-      space->GetDofNrs(ElementId(BND, i), dnums);
-      for (auto d : dnums) 
-        bnddofs.SetBit(d);
-    }
+      {
+	Array<DofId> dnums;
+	space->GetDofNrs(ElementId(BND, i), dnums);
+	for (auto d : dnums) 
+	  bnddofs.SetBit(d);
+      }
     
     mapglob2bnd.SetSize(space->GetNDof());
     mapglob2bnd = -1;
@@ -439,9 +439,10 @@ namespace ngbem
     // Get only vector entries related to the index sets
     VVector<> xp(trialdofs.Size()), yp(testdofs.Size());
     x.GetIndirect(trialdofs, xp.FV());
-
+    
     matrix->Mult(xp, yp);
     yp.FV() *= s;
+    
     y.AddIndirect(testdofs, yp.FV(), /* useatomic= */ true); 
   }
 
@@ -459,8 +460,6 @@ namespace ngbem
 
     y.SetIndirect(testdofs, yp);
   }
-
-
 
   LowRankMatrix :: LowRankMatrix(Matrix<> _A, Matrix<> _Bt) :
     A(std::move(_A)), Bt(std::move(_Bt))
@@ -486,7 +485,7 @@ namespace ngbem
     // y.FV<double>() += s * (*A) * (*Bt) * x.FV<double>(); // performance nightmare
     Vector<> tmp(A.Width());
     tmp = Bt * x.FV<double>();
-    y.FV<double>() += s*A * tmp;
+    y.FV<double>() += s * A * tmp;
   }
 
   void LowRankMatrix :: MultTransAdd (double s, const BaseVector & x, BaseVector & y) const
@@ -494,7 +493,7 @@ namespace ngbem
     //y.FV<double>() += s * Trans(Bt) * Trans(A) * x.FV<double>();
     Vector<> tmp(Bt.Height());
     tmp = Trans(A) * x.FV<double>();
-    y.FV<double>() += s*Trans(Bt) * tmp;
+    y.FV<double>() += s * Trans(Bt) * tmp;
   }
 
   AutoVector LowRankMatrix :: CreateRowVector () const
@@ -527,15 +526,15 @@ namespace ngbem
     else if(Rja_AdmissiblePair(row_cluster, col_cluster, eta))
       isNearField = false;
     else 
-    {
+      {
 	
-	  HMatrix_help(row_ct, col_ct, row_cluster.Child1, col_cluster.Child1, eta, matList);
-	  HMatrix_help(row_ct, col_ct, row_cluster.Child1, col_cluster.Child2, eta, matList);
-	  HMatrix_help(row_ct, col_ct, row_cluster.Child2, col_cluster.Child1, eta, matList);
-	  HMatrix_help(row_ct, col_ct, row_cluster.Child2, col_cluster.Child2, eta, matList);
+	HMatrix_help(row_ct, col_ct, row_cluster.Child1, col_cluster.Child1, eta, matList);
+	HMatrix_help(row_ct, col_ct, row_cluster.Child1, col_cluster.Child2, eta, matList);
+	HMatrix_help(row_ct, col_ct, row_cluster.Child2, col_cluster.Child1, eta, matList);
+	HMatrix_help(row_ct, col_ct, row_cluster.Child2, col_cluster.Child2, eta, matList);
 	
-	  return;
-    }
+	return;
+      }
 
     Array<DofId> testdofs(row_cluster.Number);
     for (int k=0; k<testdofs.Size(); k++)
@@ -564,7 +563,7 @@ namespace ngbem
     // working, but not effective when called inside parallel thread
     ParallelFor (matList.Size(), [&](size_t i)
     {
-      matList[i].MultAdd(s, x, y);
+    matList[i].MultAdd(s, x, y);
     });
     */
   }
