@@ -547,7 +547,7 @@ namespace ngbem
     matList.Append(BEMBlock(trialdofs, testdofs, isNearField));
   }
   
-  HMatrix :: HMatrix(shared_ptr<ClusterTree> _row_ct, shared_ptr<ClusterTree> _col_ct, double _eta, int _width_vol_dof, int _height_vol_dof) : row_ct(_row_ct), col_ct(_col_ct), eta(_eta), width_vol_dof(_width_vol_dof), height_vol_dof(_height_vol_dof)
+  HMatrix :: HMatrix(shared_ptr<ClusterTree> _col_ct, shared_ptr<ClusterTree> _row_ct, double _eta, int _width_vol_dof, int _height_vol_dof) : col_ct(_col_ct), row_ct(_row_ct), eta(_eta), width_vol_dof(_width_vol_dof), height_vol_dof(_height_vol_dof)
   {    
     HMatrix_help(*row_ct, *col_ct, 0, 0, eta, matList);
   }

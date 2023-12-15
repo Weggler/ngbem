@@ -189,7 +189,7 @@ namespace ngbem
     cout << "HMatrix done " << endl;
     HeapReset hr(lh);    
 
-    Matrix<double> dense(mapglob2bnd.Size(), mapglob2bnd.Size());
+    Matrix<double> dense(space->GetNDof(), space->GetNDof());
     CalcElementMatrix(dense, lh);
     cout << "dense: " << dense.Height() << " x " << dense.Width() << endl;
 
@@ -704,13 +704,13 @@ namespace ngbem
 
     /*START: TEST hmatrix: compare approximation with dense matrix. */
     LocalHeap lh(100000000);
-    Matrix<double> dense(mapglob2bnd2.Size(), mapglob2bnd.Size()); // ndof(L2) x ndof(H1)
+    Matrix<double> dense(space2->GetNDof(), space->GetNDof()); // ndof(L2) x ndof(H1)
     CalcElementMatrix(dense, lh);
     cout << "dense: " << dense.Height() << " x " << dense.Width() << endl;
 
     // create hmatrix
-    hmatrix = make_shared<HMatrix>(make_shared<ClusterTree>(cluster_tree2), // test space L2
-                                   make_shared<ClusterTree>(cluster_tree), // trial space H1
+    hmatrix = make_shared<HMatrix>(make_shared<ClusterTree>(cluster_tree), // trial space H1
+                                   make_shared<ClusterTree>(cluster_tree2), // test space H1
                                    param.eta, space->GetNDof(), space2->GetNDof());
     // compute all its blocks
     HeapReset hr(lh);    

@@ -161,7 +161,7 @@ namespace ngbem
     int width_vol_dof, height_vol_dof;
     
   public:
-    HMatrix(shared_ptr<ClusterTree> row_ct, shared_ptr<ClusterTree> col_ct, double eta, int width_vol_dof, int height_vol_dof);
+    HMatrix(shared_ptr<ClusterTree> col_ct, shared_ptr<ClusterTree> row_ct, double eta, int width_vol_dof, int height_vol_dof);
 
     Array<BEMBlock> & GetMatList() { return matList; }
 
