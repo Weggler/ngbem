@@ -216,7 +216,7 @@ namespace ngbem
 		    LocalHeap &lh) const
   {
     Array<int> range;
-    for (int i = 0; i < mapbnd2glob.Size(); i++)
+    for (int i = 0; i < space->GetNDof(); i++)
       {
 	range.Append(i);
       }
@@ -688,7 +688,7 @@ namespace ngbem
 	}
 
     // run through surface elements and add elem to related test dofs
-    elems4dof2.SetSize(mapbnd2glob2.Size());
+    elems4dof2.SetSize(space2->GetNDof());
     for (int i = 0; i < mesh2->GetNSE(); i++)
       {
 	ElementId ei(BND, i);
@@ -702,21 +702,19 @@ namespace ngbem
       }
     //cout << "elems4dof: " << elems4dof << endl;
 
-    /*START: TEST hmatrix: compare approximation with dense matrix. */   
-
-    // create hmatrix
-    hmatrix = make_shared<HMatrix>(make_shared<ClusterTree>(cluster_tree2), // trial space H1
-                                   make_shared<ClusterTree>(cluster_tree), // test space L2
-                                   param.eta, space->GetNDof(), space2->GetNDof());
-
-    // compute all its blocks
+    /*START: TEST hmatrix: compare approximation with dense matrix. */
     LocalHeap lh(100000000);
-    CalcHMatrix(*hmatrix, lh, param);
-    HeapReset hr(lh);    
-
     Matrix<double> dense(mapglob2bnd2.Size(), mapglob2bnd.Size()); // ndof(L2) x ndof(H1)
     CalcElementMatrix(dense, lh);
     cout << "dense: " << dense.Height() << " x " << dense.Width() << endl;
+
+    // create hmatrix
+    hmatrix = make_shared<HMatrix>(make_shared<ClusterTree>(cluster_tree2), // test space L2
+                                   make_shared<ClusterTree>(cluster_tree), // trial space H1
+                                   param.eta, space->GetNDof(), space2->GetNDof());
+    // compute all its blocks
+    HeapReset hr(lh);    
+    CalcHMatrix(*hmatrix, lh, param);
 
     // Test with vector
     Vector<double> x(space->GetNDof()), y(space2->GetNDof());
@@ -741,9 +739,9 @@ namespace ngbem
   CalcElementMatrix(FlatMatrix<double> matrix, LocalHeap &lh) const
   {
     Array<int> range, range2;
-    for (int i = 0; i < mapbnd2glob.Size(); i++) // trial H1
+    for (int i = 0; i < space->GetNDof(); i++) // trial H1
       range.Append(i);
-    for (int j = 0; j < mapbnd2glob2.Size(); j++) // test L2
+    for (int j = 0; j < space2->GetNDof(); j++) // test L2
       range2.Append(j);
     CalcBlockMatrix(matrix, range, range2, lh);
   }
@@ -788,8 +786,8 @@ namespace ngbem
     Array<int> testdofsinv;
     Array<int> trialdofsinv;
 
-    trialdofsinv.SetSize( mapbnd2glob.Size() ); 
-    testdofsinv.SetSize( mapbnd2glob2.Size() );
+    trialdofsinv.SetSize(space->GetNDof()); 
+    testdofsinv.SetSize(space2->GetNDof());
 
     trialdofsinv = -1;
     testdofsinv = -1;
