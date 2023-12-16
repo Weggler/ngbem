@@ -48,12 +48,12 @@ namespace ngbem
 
     /** Compute the sub-block of SL potential matrix which belongs to the given dofs, 
         where #matrix is dense. We use the routine to compute a #BEMBlock of type "nearfield". */
-    void CalcBlockMatrix(FlatMatrix<double> matrix, const Array<DofId> &trialdofs, const Array<DofId> &testdofs, 
+    void CalcBlockMatrix(FlatMatrix<double> matrix, FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, 
 			 LocalHeap &lh) const;
 
     /** Compute the sub-block of SL potential matrix which belongs to the given dofs,  
         where #matrix is a #LowRankMatrix. We use the routine to compute a #BEMBlock of type "farfield". */
-    unique_ptr<LowRankMatrix> CalcFarFieldBlock(const Array<DofId> &trialdofs, const Array<DofId> &testdofs, LocalHeap &lh) const;
+    unique_ptr<LowRankMatrix> CalcFarFieldBlock(FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, LocalHeap &lh) const;
     
     /** Given a #HMatrix structure, compute all block. Memory for farfield blocks gets clear here. */
     void CalcHMatrix(HMatrix & hmatrix, LocalHeap &lh, struct BEMParameters &param) const;
@@ -97,12 +97,12 @@ namespace ngbem
     /** Compute the sub-block of DL potential matrix which belongs to the given dofs, 
         where #matrix is dense with dim = size(testdofs) x size(trialdofs). 
         We use the routine to compute a #BEMBlock of type "nearfield". */
-    void CalcBlockMatrix(FlatMatrix<double> matrix, const Array<DofId> &trialdofs, const Array<DofId> &testdofs, 
+    void CalcBlockMatrix(FlatMatrix<double> matrix, FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, 
 			 LocalHeap &lh) const;
 
     /** Compute the sub-block of SL potential matrix which belongs to the given dofs,  
         where #matrix is a #LowRankMatrix. We use the routine to compute a #BEMBlock of type "farfield". */
-    unique_ptr<LowRankMatrix> CalcFarFieldBlock(const Array<DofId> &trialdofs, const Array<DofId> &testdofs, LocalHeap &lh) const;
+    unique_ptr<LowRankMatrix> CalcFarFieldBlock(FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, LocalHeap &lh) const;
     
     /** Given a #HMatrix structure, compute all block. Memory for farfield blocks gets clear here. */
     void CalcHMatrix(HMatrix & hmatrix, LocalHeap &lh, struct BEMParameters &param) const;

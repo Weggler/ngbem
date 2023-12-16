@@ -223,7 +223,7 @@ namespace ngbem
 
   /* compute single layer matrix for given dofs - dofs are global dof numbers*/
   void SingleLayerPotentialOperator ::
-  CalcBlockMatrix(FlatMatrix<double> matrix, const Array<DofId> &trialdofs, const Array<DofId> &testdofs,
+  CalcBlockMatrix(FlatMatrix<double> matrix, FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs,
 		  LocalHeap &lh) const
   {
     static Timer t("ngbem - SLP::CalcBlockMatrix"); RegionTimer regt(t);
@@ -535,7 +535,7 @@ namespace ngbem
   }
 
   unique_ptr<LowRankMatrix> SingleLayerPotentialOperator ::
-  CalcFarFieldBlock(const Array<DofId> &trialdofs, const Array<DofId> &testdofs, LocalHeap &lh) const
+  CalcFarFieldBlock(FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, LocalHeap &lh) const
   {
     static Timer t("ngbem - SLP::CalcFarFieldBlock"); RegionTimer reg(t);
     static Timer tblock("ngbem - SLP::CalcFarFieldBlock, block");
@@ -605,8 +605,8 @@ namespace ngbem
       {
 	HeapReset hr(lh);
 	BEMBlock & block = matList[k];
-	auto & trialdofs = block.GetTrialDofs();
-	auto & testdofs = block.GetTestDofs();
+	auto trialdofs = block.GetTrialDofs();
+	auto testdofs = block.GetTestDofs();
 	if(block.IsNearField())
 	  {
 	    // Compute dense block
@@ -776,7 +776,7 @@ namespace ngbem
 
   /* compute double layer matrix for given dof sets  - global boundry dof numbers*/
   void DoubleLayerPotentialOperator ::
-  CalcBlockMatrix(FlatMatrix<double> matrix, const Array<DofId> &trialdofs, const Array<DofId> &testdofs,
+  CalcBlockMatrix(FlatMatrix<double> matrix, FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs,
 		  LocalHeap &lh) const 
   {
     auto mesh = space->GetMeshAccess();    // trialspace = H1
@@ -1100,7 +1100,7 @@ namespace ngbem
   }
 
   unique_ptr<LowRankMatrix> DoubleLayerPotentialOperator ::
-  CalcFarFieldBlock(const Array<DofId> &trialdofs, const Array<DofId> &testdofs, LocalHeap &lh) const
+  CalcFarFieldBlock(FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, LocalHeap &lh) const
   {
     static Timer t("ngbem - DLP::CalcFarFieldBlock"); RegionTimer reg(t);
     int m = testdofs.Size();
@@ -1151,8 +1151,8 @@ namespace ngbem
     for (int k = 0; k < matList.Size(); k++)
       {
 	BEMBlock & block = matList[k];
-	auto & trialdofs = block.GetTrialDofs();
-	auto & testdofs = block.GetTestDofs();
+	auto trialdofs = block.GetTrialDofs();
+	auto testdofs = block.GetTestDofs();
 	if(block.IsNearField())
 	  {
 	    //// Compute dense block

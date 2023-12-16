@@ -86,9 +86,9 @@ namespace ngbem
     void SetMat(unique_ptr<BaseMatrix> _matrix) { matrix = std::move(_matrix); }
     
     /** All dofs of the trial functions contributing to the block */  
-    const Array<DofId> & GetTrialDofs() const { return trialdofs; }
+    FlatArray<DofId> GetTrialDofs() const { return trialdofs; }
     /** All dofs of the test functions contributing to the block */  
-    const Array<DofId> & GetTestDofs() const { return testdofs; }
+    FlatArray<DofId> GetTestDofs() const { return testdofs; }
 
     /** Matrix-vector-multiply with global vectors x and y. Only the entries specified
 	by #testdofs and #trialdofs are used. */
