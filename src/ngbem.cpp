@@ -129,10 +129,11 @@ namespace ngbem
   }
   
   SingleLayerPotentialOperator :: SingleLayerPotentialOperator(shared_ptr<FESpace> aspace, struct BEMParameters _param)
-    : space(aspace), param(_param), cluster_tree(space, param.leafsize)
+    : space(aspace), param(_param)
   {
     auto mesh = space->GetMeshAccess();
-
+    cluster_tree = make_shared<ClusterTree>(space, param.leafsize);
+    
     // setup global-2-boundary mappings:
     BitArray bnddofs(space->GetNDof());
     bnddofs.Clear();
@@ -174,8 +175,7 @@ namespace ngbem
     /*START: TEST hmatrix: compare approximation with dense matrix. */   
 
     // create hmatrix
-    hmatrix = make_shared<HMatrix>(make_shared<ClusterTree>(cluster_tree),
-                                   make_shared<ClusterTree>(cluster_tree),
+    hmatrix = make_shared<HMatrix>(cluster_tree, cluster_tree,
                                    param.eta, space->GetNDof(), space->GetNDof());
     // compute all its blocks
     LocalHeap lh(10000000);
@@ -645,13 +645,18 @@ namespace ngbem
   }
 
   // aspace, space == H1 trialspace, bspace, space2 ==  L2 testspace
-  DoubleLayerPotentialOperator :: DoubleLayerPotentialOperator (shared_ptr<FESpace> aspace, shared_ptr<FESpace> bspace,
-								struct BEMParameters _param)
-    : space(aspace), space2(bspace), param(_param), cluster_tree(aspace, param.leafsize), cluster_tree2(bspace, param.leafsize)
+  DoubleLayerPotentialOperator ::
+  DoubleLayerPotentialOperator (shared_ptr<FESpace> aspace, shared_ptr<FESpace> bspace,
+                                struct BEMParameters _param)
+    : space(aspace), space2(bspace), param(_param)
   {
 
     auto mesh = space->GetMeshAccess(); // trialspace
     auto mesh2 = space2->GetMeshAccess(); // testspace
+
+
+    cluster_tree = make_shared<ClusterTree>(aspace, param.leafsize);
+    cluster_tree2 = make_shared<ClusterTree>(bspace, param.leafsize);
     
     // setup global-2-boundary mappings;
     BitArray bnddofs(space->GetNDof());
@@ -725,8 +730,8 @@ namespace ngbem
     //cout << "elems4dof: " << elems4dof << endl;
 
     // create hmatrix
-    hmatrix = make_shared<HMatrix>(make_shared<ClusterTree>(cluster_tree), // trial space H1
-                                   make_shared<ClusterTree>(cluster_tree2), // test space H1
+    hmatrix = make_shared<HMatrix>(cluster_tree, // trial space H1
+                                   cluster_tree2, // test space H1
                                    param.eta, space->GetNDof(), space2->GetNDof());
 
     LocalHeap lh(100000000);
@@ -751,11 +756,8 @@ namespace ngbem
         S_BaseVectorPtr<> x_base(space->GetNDof(), 1, x.Data());
         S_BaseVectorPtr<> y_base(space2->GetNDof(), 1, y.Data());    
         hmatrix->MultAdd(-1., x_base, y_base);
-        
-        double err = 0.;
-        for (int i = 0; i < y.Size(); i++)
-          err += y(i) * y(i);
-        cout << "error " << sqrt(err) << endl;
+  
+        cout << "error " << L2Norm (y) << endl;
     }
     /*END: TEST hmatrix: compare approximation with dense matrix. */   
   }

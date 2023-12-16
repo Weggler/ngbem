@@ -34,8 +34,8 @@ namespace ngbem
     Array<DofId> mapbnd2glob;
     Array<Array<int>> elems4dof; // contains list of elems contributing to dof 
 
-    struct BEMParameters param;
-    ClusterTree cluster_tree;
+    BEMParameters param;
+    shared_ptr<ClusterTree> cluster_tree;
     shared_ptr<HMatrix> hmatrix;
 
   public:
@@ -81,9 +81,9 @@ namespace ngbem
 
     struct BEMParameters param;
 
-    ClusterTree cluster_tree;
+    shared_ptr<ClusterTree> cluster_tree;
     Array<Array<int>> elems4dof; // contains list of elems contributing to bnd-dof
-    ClusterTree cluster_tree2;
+    shared_ptr<ClusterTree> cluster_tree2;
     Array<Array<int>> elems4dof2; // contains list of elems contributing to bnd-dof 
     shared_ptr<HMatrix> hmatrix;
 
