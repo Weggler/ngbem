@@ -421,9 +421,13 @@ namespace ngbem
      checks the distance between the centroids. */
   int Rja_AdmissiblePair(Cluster &Cluster1, Cluster &Cluster2, double eta)
   {
+    /*
     double diff[3] = {Cluster1.Centre[0] - Cluster2.Centre[0], Cluster1.Centre[1] - Cluster2.Centre[1],
 		      Cluster1.Centre[2] - Cluster2.Centre[2]};
-    double dist = sqrt(fmax(0., diff[0] * diff[0] + diff[1] * diff[1] + diff[2] * diff[2]));
+    */
+    Vec<3> diff = Cluster1.Centre - Cluster2.Centre;
+    // double dist = sqrt(fmax(0., diff[0] * diff[0] + diff[1] * diff[1] + diff[2] * diff[2]));
+    double dist = L2Norm(diff);
 
     // dist is the approximate distance between the clusters
     dist = fmax(0., dist - Cluster1.Radius - Cluster2.Radius);
@@ -431,7 +435,7 @@ namespace ngbem
     return fmin(Cluster1.Radius, Cluster2.Radius) < eta * dist;
   }
   
-  BEMBlock :: BEMBlock(Array<DofId> &_trialdofs, Array<DofId> &_testdofs, bool _isNearField)
+  BEMBlock :: BEMBlock(FlatArray<DofId> _trialdofs, FlatArray<DofId> _testdofs, bool _isNearField)
     : trialdofs(_trialdofs), testdofs(_testdofs), isNearField(_isNearField), matrix(nullptr) { }
 
   void BEMBlock :: MultAdd (double s, const BaseVector & x, BaseVector & y) const
@@ -449,6 +453,7 @@ namespace ngbem
   void BEMBlock :: MultTransAdd (double s, const BaseVector & x, BaseVector & y) const
   {
     // Get only vector entries related to the index sets
+    throw Exception("todo: allocate vectors in BEMBlock::MultTransAdd");
     FlatVector<> xp, yp;
     x.GetIndirect(trialdofs, xp);
     y.GetIndirect(testdofs, yp);
@@ -536,6 +541,7 @@ namespace ngbem
 	return;
       }
 
+    /*
     Array<DofId> testdofs(row_cluster.Number);
     for (int k=0; k<testdofs.Size(); k++)
       testdofs[k] = row_ct.mapcluster2glob[row_cluster.PermuPos+k];
@@ -545,9 +551,16 @@ namespace ngbem
       trialdofs[k] = col_ct.mapcluster2glob[col_cluster.PermuPos+k];
     
     matList.Append(BEMBlock(trialdofs, testdofs, isNearField));
+    */
+    matList.Append(BEMBlock(col_ct.mapcluster2glob.Range(col_cluster.PermuPos, col_cluster.PermuPos+col_cluster.Number),
+                            row_ct.mapcluster2glob.Range(row_cluster.PermuPos, row_cluster.PermuPos+row_cluster.Number),
+                            isNearField));    
   }
   
-  HMatrix :: HMatrix(shared_ptr<ClusterTree> _col_ct, shared_ptr<ClusterTree> _row_ct, double _eta, int _width_vol_dof, int _height_vol_dof) : col_ct(_col_ct), row_ct(_row_ct), eta(_eta), width_vol_dof(_width_vol_dof), height_vol_dof(_height_vol_dof)
+  HMatrix :: HMatrix(shared_ptr<ClusterTree> _col_ct, shared_ptr<ClusterTree> _row_ct,
+                     double _eta, int _width_vol_dof, int _height_vol_dof)
+    : col_ct(_col_ct), row_ct(_row_ct), eta(_eta),
+      width_vol_dof(_width_vol_dof), height_vol_dof(_height_vol_dof)
   {    
     HMatrix_help(*row_ct, *col_ct, 0, 0, eta, matList);
   }
@@ -571,9 +584,7 @@ namespace ngbem
   void HMatrix :: MultTransAdd (double s, const BaseVector & x, BaseVector & y) const
   {
     for (int i = 0; i < matList.Size(); i++)
-      {
-	matList[i].MultTransAdd(s, x, y);
-      }
+      matList[i].MultTransAdd(s, x, y);
   }
 
   AutoVector HMatrix :: CreateRowVector () const

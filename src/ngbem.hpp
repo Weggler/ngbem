@@ -20,7 +20,9 @@ namespace ngbem
     /* eps defines low rank approximation */
     const double eps;
     /* method defines the low rank approximation method */
-    const char *method;
+    const string method;
+    // testing hmatrix accuracy
+    bool testhmatrix;
   };
   
   /** SingleLayerPotentialOperator. 

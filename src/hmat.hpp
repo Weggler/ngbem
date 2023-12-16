@@ -25,7 +25,8 @@ namespace ngbem
     double Radius;
     double EVal[3],EVec[9];
     double XMin[3],XMax[3];
-    double Centre[3];
+    // double Centre[3];
+    Vec<3> Centre;
     double DiagLength;
   };
 
@@ -75,7 +76,7 @@ namespace ngbem
   public:
     /** Constructors */
     BEMBlock() {;}
-    BEMBlock(Array<DofId> &trialdofs, Array<DofId> &testdofs, bool isNearField);
+    BEMBlock(FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, bool isNearField);
 
     /** Block type, i.e., if true it is dense and otherwise low-rank */
     bool IsNearField() const {return isNearField; }
