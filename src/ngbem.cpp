@@ -158,6 +158,7 @@ namespace ngbem
     //cout << "dofs: " << mapbnd2glob << endl;
 
     // run through bnd elements, for each element get its dofs and add the elem
+    /*
     elems4dof.SetSize(space->GetNDof());
     for (int i = 0; i < mesh->GetNSE(); i++)
       {
@@ -170,6 +171,19 @@ namespace ngbem
 	    elems4dof[dnumsi[ii]].Append(i);
 	  }
       }
+    */
+    // Table-creator creates table with one big block of memory,
+    // avoids memory fragmentation 
+    TableCreator<int> creator;
+    Array<DofId> dnumsi;
+    for ( ; !creator.Done(); creator++)
+      for (int i = 0; i < mesh->GetNSE(); i++)
+        {
+          space->GetDofNrs( ElementId(BND, i), dnumsi); 
+          for (auto d : dnumsi)
+            creator.Add (d, i);
+        }
+    elems4dof = creator.MoveTable();
     //cout << "elems4dof: " << elems4dof << endl;
 
     /*START: TEST hmatrix: compare approximation with dense matrix. */   
@@ -563,7 +577,7 @@ namespace ngbem
       RegionTimer rsvd(tsvd);
       dgesvd_(&jobv, &jobu, &n, &m, Trans(A).Data(), &lda, S.Data(), V.Data(), &ldv,
               Ut.Data(), &ldu, work.Data(), &lwork, &info);
-      // needs ngsolve update
+      // needs ngsolve update, prefer to call NGSolve wrapper function:
       // LapackSVD (A, Trans(Ut), Trans(V), S, false);
     }
     //Truncate according to eps. k is the rank

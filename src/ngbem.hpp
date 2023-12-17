@@ -32,7 +32,8 @@ namespace ngbem
     shared_ptr<FESpace> space; 
     Array<DofId> mapglob2bnd;
     Array<DofId> mapbnd2glob;
-    Array<Array<int>> elems4dof; // contains list of elems contributing to dof 
+    // Array<Array<int>> elems4dof; // contains list of elems contributing to dof
+    Table<int> elems4dof;
 
     BEMParameters param;
     shared_ptr<ClusterTree> cluster_tree;
