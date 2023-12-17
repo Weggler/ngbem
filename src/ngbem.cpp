@@ -272,7 +272,7 @@ namespace ngbem
       {
 	patchj.Append(tmp[j]);
 	int tmpj = tmp[j];
-	while (tmp[j] == tmpj && j < tmp.Size()) 
+	while (j < tmp.Size() && tmp[j] == tmpj)
 	  j++;
 	j--;
       }
@@ -289,7 +289,7 @@ namespace ngbem
       {
 	patchi.Append(tmp2[i]);
 	int tmpi = tmp2[i];
-	while (tmp2[i] == tmpi && i < tmp2.Size()) 
+	while (i < tmp2.Size() && tmp2[i] == tmpi)
 	  i++;
 	i--;
       }
@@ -830,7 +830,7 @@ namespace ngbem
       {
 	patchi.Append(tmp2[i]);
 	int tmpi = tmp2[i];
-	while (tmp2[i] == tmpi && i < tmp2.Size()) 
+	while (i < tmp2.Size() && tmp2[i] == tmpi)
 	  i++;
 	i--;
       }
@@ -846,7 +846,7 @@ namespace ngbem
       {
 	patchj.Append(tmp[j]);
 	int tmpj = tmp[j];
-	while (tmp[j] == tmpj && j < tmp.Size()) 
+	while (j < tmp.Size() && tmp[j] == tmpj)
 	  j++;
 	j--;
       }
@@ -1172,12 +1172,24 @@ namespace ngbem
   void DoubleLayerPotentialOperator :: Apply(FlatVector<double> elx, FlatVector<double> ely, 
 					     LocalHeap & lh) const
   {
-    static Timer t("ngbem - SLP::Apply"); RegionTimer reg(t);        
+    static Timer t("ngbem - SLP::Apply"); RegionTimer reg(t);
+    /*
     for (int i = 0; i < ely.Size(); i++)
       ely(i) = 0.;
     S_BaseVectorPtr<> xp_base(elx.Size(), 1, elx.Data());
     S_BaseVectorPtr<> yp_base(ely.Size(), 1, ely.Data());
     hmatrix->MultAdd(1., xp_base, yp_base);
+    */
+    VVector<> vx(hmatrix->Width());
+    VVector<> vy(hmatrix->Height());
+    *testout << "Apply, hmat.h = " << hmatrix->Height() << ", w = " << hmatrix->Width() << endl;
+    vy = 0.0;
+    for (int i = 0; i < mapbnd2glob.Size(); i++)
+      vx(mapbnd2glob[i]) = elx[i];
+    hmatrix -> MultAdd (1, vx, vy);
+    for (int i = 0; i < mapbnd2glob2.Size(); i++)
+      ely[i] = vy(mapbnd2glob2[i]);
+    
   }
   
 

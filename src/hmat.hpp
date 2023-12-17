@@ -171,9 +171,13 @@ namespace ngbem
     virtual void MultTransAdd (double s, const BaseVector & x, BaseVector & y) const override;
     bool IsComplex() const override { return false; }
 
+    /*
     virtual int VHeight() const override { return row_ct->mapcluster2glob.Size(); }
     virtual int VWidth() const override { return col_ct->mapcluster2glob.Size(); }
-
+    */
+    virtual int VHeight() const override { return height_vol_dof; }
+    virtual int VWidth() const override { return width_vol_dof; }
+    
     virtual AutoVector CreateRowVector () const override;
     virtual AutoVector CreateColVector () const override;
 
