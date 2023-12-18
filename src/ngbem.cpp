@@ -548,6 +548,22 @@ namespace ngbem
 	}
   }
 
+  /*
+  void StochasticTSVD (MatrixView<> A, MatrixView<> U, MatrixView<> V, VectorView<> S)
+  {
+    for (int i = 0; i < V.Height(); i++)
+      for (int j = 0; j < V.Width(); j++)
+        V(i,j) = double (rand()) / RAND_MAX;
+
+    Matrix AVt = A * Trans(V);
+    Matrix tmp(V.Height(), V.Height());
+    LapackSVD (AVt, U, tmp, S, false);    
+    Matrix UtA = Trans(U) * A;
+    LapackSVD (UtA, tmp, V, S, false);
+    U = Matrix<> (U * tmp);
+  }
+  */
+
   unique_ptr<LowRankMatrix> SingleLayerPotentialOperator ::
   CalcFarFieldBlock(FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, LocalHeap &lh) const
   {
@@ -558,6 +574,7 @@ namespace ngbem
     int m = testdofs.Size();
     int n = trialdofs.Size();
     int p = min(n, m);
+    // if (p > 40) p = 40;
   
     Matrix<double> A(m, n);
     {
@@ -579,6 +596,7 @@ namespace ngbem
               Ut.Data(), &ldu, work.Data(), &lwork, &info);
       // needs ngsolve update, prefer to call NGSolve wrapper function:
       // LapackSVD (A, Trans(Ut), Trans(V), S, false);
+      // StochasticTSVD (A, Trans(Ut), Trans(V), S);
     }
     //Truncate according to eps. k is the rank
     int k = 1;
@@ -1198,14 +1216,21 @@ namespace ngbem
     return make_unique<LowRankMatrix> (Matrix<>(U_trc), Matrix<>(Vt_trc));
   }
 
-  void DoubleLayerPotentialOperator :: CalcHMatrix(HMatrix & hmatrix, LocalHeap &lh, struct BEMParameters &param) const
+  void DoubleLayerPotentialOperator :: CalcHMatrix(HMatrix & hmatrix, LocalHeap &clh, struct BEMParameters &param) const
   {
     static Timer t("ngbem - DLP::CalcHMatrix"); RegionTimer reg(t);    
     auto & matList = hmatrix.GetMatList();
 
-    // run through all blocks of the #HMatrix
-    for (int k = 0; k < matList.Size(); k++)
-      {
+    // run through all blocks of the #HMatrix    
+    // for (int k = 0; k < matList.Size(); k++)
+
+    ParallelForRange (matList.Size(), [&](IntRange r)
+    {
+      LocalHeap lh = clh.Split();
+      for (int k : r)
+        {
+	HeapReset hr(lh);
+          
 	BEMBlock & block = matList[k];
 	auto trialdofs = block.GetTrialDofs();
 	auto testdofs = block.GetTestDofs();
@@ -1221,8 +1246,8 @@ namespace ngbem
 	    // Compute low-rank block
 	    block.SetMat(CalcFarFieldBlock(trialdofs, testdofs, lh));	    
 	  }
-	HeapReset hr(lh);
       }
+    }, TasksPerThread(4));
   }
 
   void DoubleLayerPotentialOperator :: Apply(FlatVector<double> elx, FlatVector<double> ely, 
