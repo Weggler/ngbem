@@ -178,7 +178,9 @@ namespace ngbem
       }
 
     // Centroid of cluster
-    double Centre[3] = {Mom[1] / Mom[0], Mom[2] / Mom[0], Mom[3] / Mom[0]};
+    //double Centre[3] = {Mom[1] / Mom[0], Mom[2] / Mom[0], Mom[3] / Mom[0]};
+    Vec<3> Centre;
+    Centre = Vec<3>(Mom[1] / Mom[0], Mom[2] / Mom[0], Mom[3] / Mom[0]);
 
     // Covariance matrix of cluster
     double A[9];
@@ -199,19 +201,25 @@ namespace ngbem
 
     // Radius and bounding box
     int jMin;
-    double XMin[3], XMax[3];
+    //double XMin[3], XMax[3];
+    Vec<3> XMin;
+    Vec<3> XMax;
+
     double Radius = 0., DistMin;
     for(int i = ClBegin; i <= ClEnd; i++)
       {
 	int j = Permu[i];
+
+	//double Diff[3] = {X[j](0), X[j](1), X[j](2)};
+	//Diff[0] -= Centre[0];
+	//Diff[1] -= Centre[1];
+	//Diff[2] -= Centre[2];
+    Vec<3> Diff;
+    Diff = Vec<3>(X[j](0)-Centre[0], X[j](1)-Centre[1], X[j](2)-Centre[2]);
       
-	double Diff[3] = {X[j](0), X[j](1), X[j](2)};
-	Diff[0] -= Centre[0];
-	Diff[1] -= Centre[1];
-	Diff[2] -= Centre[2];
-      
-	double Dist = sqrt(fabs(Diff[0] * Diff[0] + Diff[1] * Diff[1] +
-				Diff[2] * Diff[2]));
+	//double Dist = sqrt(fabs(Diff[0] * Diff[0] + Diff[1] * Diff[1] +
+	//			Diff[2] * Diff[2]));
+    double Dist = L2Norm(Diff);
       
 	if(i == ClBegin || Dist < DistMin)
 	  {
@@ -219,21 +227,32 @@ namespace ngbem
 	    DistMin=Dist;
 	  }
       
-	double XT[3];
-	XT[0] = A[0] * Diff[0] + A[1] * Diff[1] + A[2] * Diff[2];
-	XT[1] = A[3] * Diff[0] + A[4] * Diff[1] + A[5] * Diff[2];
-	XT[2] = A[6] * Diff[0] + A[7] * Diff[1] + A[8] * Diff[2];
-	Radius = fmax(Radius, sqrt(fabs(XT[0] * XT[0] + XT[1] * XT[1] +
-					XT[2] * XT[2])));
+	//double XT[3];
+	//XT[0] = A[0] * Diff[0] + A[1] * Diff[1] + A[2] * Diff[2];
+	//XT[1] = A[3] * Diff[0] + A[4] * Diff[1] + A[5] * Diff[2];
+	//XT[2] = A[6] * Diff[0] + A[7] * Diff[1] + A[8] * Diff[2];
+	//Radius = fmax(Radius, sqrt(fabs(XT[0] * XT[0] + XT[1] * XT[1] +
+	//				XT[2] * XT[2])));
+    Vec<3> XT;
+    XT = Vec<3>(A[0] * Diff[0] + A[1] * Diff[1] + A[2] * Diff[2], 
+                A[3] * Diff[0] + A[4] * Diff[1] + A[5] * Diff[2], 
+                A[6] * Diff[0] + A[7] * Diff[1] + A[8] * Diff[2]);
+	Radius = fmax(Radius, L2Norm(XT));
+
+
       
 	if (i == ClBegin)
 	  {
+        /*
 	    XMin[0]=XT[0];
 	    XMax[0]=XT[0];
 	    XMin[1]=XT[1];
 	    XMax[1]=XT[1];
 	    XMin[2]=XT[2];
 	    XMax[2]=XT[2];
+        */
+        XMin = XT;
+        XMax = XT;
 	  }
 	else
 	  {
@@ -247,14 +266,23 @@ namespace ngbem
       }
 
     // Diagonal
+    /*
     double Diag[3] = {XMax[0] - XMin[0], XMax[1] - XMin[1], XMax[2] - XMin[2]};
     double DiagLength = sqrt(fabs(Diag[0] * Diag[0] + Diag[1] * Diag[1] +
 				  Diag[2] * Diag[2]));
+    */
+    Vec<3> Diag;
+    Diag = Vec<3> (XMax[0] - XMin[0], XMax[1] - XMin[1], XMax[2] - XMin[2]);
+    double DiagLength = L2Norm(Diag); 
+
     if (DiagLength > 0.0)
       {
+    /*
 	Diag[0] /= DiagLength;
 	Diag[1] /= DiagLength;
 	Diag[2] /= DiagLength;
+    */
+    Diag /= DiagLength;
       }
 
     // Copy the data to current cluster
@@ -263,11 +291,12 @@ namespace ngbem
     Clusters[IClu].DiagLength=DiagLength;
     for (int k = 0; k < 3; k++)
       {
-	Clusters[IClu].EVal[k] = W[k];
-	Clusters[IClu].XMin[k] = XMin[k];
-	Clusters[IClu].XMax[k] = XMax[k];
-	Clusters[IClu].Centre[k] = Centre[k];
+        Clusters[IClu].EVal[k] = W[k];
+        Clusters[IClu].XMin[k] = XMin[k];
+        Clusters[IClu].XMax[k] = XMax[k];
+        Clusters[IClu].Centre[k] = Centre[k];
       }
+
     for (int k = 0; k < 9; k++)
       Clusters[IClu].EVec[k] = A[k];
 
@@ -395,10 +424,10 @@ namespace ngbem
     bnddofs.Clear();
     for (int i = 0; i < mesh->GetNE(BND); i++)
       {
-	Array<DofId> dnums;
-	space->GetDofNrs(ElementId(BND, i), dnums);
-	for (auto d : dnums) 
-	  bnddofs.SetBit(d);
+        Array<DofId> dnums;
+        space->GetDofNrs(ElementId(BND, i), dnums);
+        for (auto d : dnums) 
+          bnddofs.SetBit(d);
       }
     
     mapglob2bnd.SetSize(space->GetNDof());

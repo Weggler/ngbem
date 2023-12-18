@@ -23,8 +23,10 @@ namespace ngbem
 
     /** Geometrical Information */
     double Radius;
-    double EVal[3],EVec[9];
-    double XMin[3],XMax[3];
+    double EVec[9], EVal[3];
+    //double XMin[3],XMax[3];
+    Vec<3> XMin;
+    Vec<3> XMax;
     // double Centre[3];
     Vec<3> Centre;
     double DiagLength;
