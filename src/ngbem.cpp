@@ -692,16 +692,30 @@ namespace ngbem
 	}
 
     // run through surface elements and add elem to related trial dofs
+    /*
     elems4dof.SetSize(space->GetNDof());
     for (int i = 0; i < mesh->GetNSE(); i++)
       {
-	ElementId ei(BND, i);
-      
-	Array<DofId> dnumsi;
-	space->GetDofNrs(ei, dnumsi); 
-	for (int ii = 0; ii < dnumsi.Size(); ii++)
-	  elems4dof[dnumsi[ii]].Append(i);
+        ElementId ei(BND, i);
+          
+        Array<DofId> dnumsi;
+        space->GetDofNrs(ei, dnumsi); 
+        for (int ii = 0; ii < dnumsi.Size(); ii++)
+          elems4dof[dnumsi[ii]].Append(i);
       }
+    */
+    // Table-creator creates table with one big block of memory,
+    // avoids memory fragmentation 
+    TableCreator<int> creator;
+    Array<DofId> dnumsi;
+    for ( ; !creator.Done(); creator++)
+      for (int i = 0; i < mesh->GetNSE(); i++)
+        {
+          space->GetDofNrs( ElementId(BND, i), dnumsi); 
+          for (auto d : dnumsi)
+            creator.Add (d, i);
+        }
+    elems4dof = creator.MoveTable();
     //cout << "elems4dof: " << elems4dof << endl;
 
     // cout << "dim1: " << space->GetSpatialDimension() << endl;
@@ -729,23 +743,34 @@ namespace ngbem
 	}
 
     // run through surface elements and add elem to related test dofs
+/*
     elems4dof2.SetSize(space2->GetNDof());
     for (int i = 0; i < mesh2->GetNSE(); i++)
       {
-	ElementId ei(BND, i);
-        
-	Array<DofId> dnumsi;
-	space2->GetDofNrs(ei, dnumsi); 
-	for (int ii = 0; ii < dnumsi.Size(); ii++)
-	  {
-	    elems4dof2[dnumsi[ii]].Append(i);
-	  }
+        ElementId ei(BND, i);
+            
+        Array<DofId> dnumsi;
+        space2->GetDofNrs(ei, dnumsi); 
+        for (int ii = 0; ii < dnumsi.Size(); ii++)
+          {
+            elems4dof2[dnumsi[ii]].Append(i);
+          }
       }
-    //cout << "elems4dof: " << elems4dof << endl;
+*/
+    TableCreator<int> creator2;
+    for ( ; !creator2.Done(); creator2++)
+      for (int i = 0; i < mesh2->GetNSE(); i++)
+        {
+          space2->GetDofNrs( ElementId(BND, i), dnumsi); 
+          for (auto d : dnumsi)
+            creator2.Add (d, i);
+        }
+    elems4dof2 = creator2.MoveTable();
+    //cout << "elems4dof: " << elems4dof2 << endl;
 
     // create hmatrix
     hmatrix = make_shared<HMatrix>(cluster_tree, // trial space H1
-                                   cluster_tree2, // test space H1
+                                   cluster_tree2, // test space L2
                                    param.eta, space->GetNDof(), space2->GetNDof());
 
     LocalHeap lh(100000000);

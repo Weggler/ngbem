@@ -83,9 +83,11 @@ namespace ngbem
     struct BEMParameters param;
 
     shared_ptr<ClusterTree> cluster_tree;
-    Array<Array<int>> elems4dof; // contains list of elems contributing to bnd-dof
+    //Array<Array<int>> elems4dof; 
+    Table<int> elems4dof; // contains list of elems contributing to bnd-dof
     shared_ptr<ClusterTree> cluster_tree2;
-    Array<Array<int>> elems4dof2; // contains list of elems contributing to bnd-dof 
+    //Array<Array<int>> elems4dof2; 
+    Table<int> elems4dof2; // contains list of elems contributing to bnd-dof
     shared_ptr<HMatrix> hmatrix;
 
   public:
