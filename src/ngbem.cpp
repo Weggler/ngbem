@@ -1170,6 +1170,7 @@ namespace ngbem
       }
     
     // Low-rank approximation from truncated svd
+    /*
     Matrix<double, ColMajor> U_trc(m, k), Vt_trc(k, n);
     for (size_t j = 0; j < k; j++)
       for (size_t i = 0; i < m; i++)
@@ -1177,6 +1178,16 @@ namespace ngbem
     for (size_t j = 0; j < n; j++)
       for (size_t i = 0; i < k; i++)
         Vt_trc(i, j) = V(j, i) * sqrt(S(i));
+    */
+    if (n > 200 || m > 200)
+      *testout << "svd, n,m = " << n << ", " << m << ", k = " << k << endl;
+    
+    Matrix<double> U_trc(m, k), Vt_trc(k, n);
+    for (size_t j = 0; j < k; j++)
+      U_trc.Col(j) = sqrt(S(j)) * Ut.Row(j);
+
+    for (size_t i = 0; i < k; i++)    
+      Vt_trc.Row(i) = sqrt(S(i)) * V.Col(i);
 
     return make_unique<LowRankMatrix> (Matrix<>(U_trc), Matrix<>(Vt_trc));
   }
