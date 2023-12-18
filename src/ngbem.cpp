@@ -609,31 +609,37 @@ namespace ngbem
     return make_unique<LowRankMatrix> (std::move(U_trc), std::move(Vt_trc));
   }
 
-  void SingleLayerPotentialOperator :: CalcHMatrix(HMatrix & hmatrix, LocalHeap &lh, struct BEMParameters &param) const
+  void SingleLayerPotentialOperator :: CalcHMatrix(HMatrix & hmatrix, LocalHeap & clh, struct BEMParameters &param) const
   {
     static Timer t("ngbem - SLP::CalcHMatrix"); RegionTimer reg(t);    
     auto & matList = hmatrix.GetMatList();
 
     // run through all blocks of the #HMatrix
-    for (int k = 0; k < matList.Size(); k++)
-      {
-	HeapReset hr(lh);
-	BEMBlock & block = matList[k];
-	auto trialdofs = block.GetTrialDofs();
-	auto testdofs = block.GetTestDofs();
-	if(block.IsNearField())
-	  {
-	    // Compute dense block
-	    Matrix<> near(testdofs.Size(), trialdofs.Size());
-	    CalcBlockMatrix(near, trialdofs, testdofs, lh);	    
-	    block.SetMat(make_unique<BaseMatrixFromMatrix>(std::move(near)));
-	  }
-	else
-	  {
-	    // Compute low-rank block
-	    block.SetMat(CalcFarFieldBlock(trialdofs, testdofs, lh));	    
-	  }
-      }
+    // for (int k = 0; k < matList.Size(); k++)
+
+    ParallelForRange (matList.Size(), [&](IntRange r)
+    {
+      LocalHeap lh = clh.Split();
+      for (int k : r)
+        {
+          HeapReset hr(lh);
+          BEMBlock & block = matList[k];
+          auto trialdofs = block.GetTrialDofs();
+          auto testdofs = block.GetTestDofs();
+          if(block.IsNearField())
+            {
+              // Compute dense block
+              Matrix<> near(testdofs.Size(), trialdofs.Size());
+              CalcBlockMatrix(near, trialdofs, testdofs, lh);	    
+              block.SetMat(make_unique<BaseMatrixFromMatrix>(std::move(near)));
+            }
+          else
+            {
+              // Compute low-rank block
+              block.SetMat(CalcFarFieldBlock(trialdofs, testdofs, lh));	    
+            }
+        }
+    }, TasksPerThread(4));
   }
 
   void SingleLayerPotentialOperator :: Apply(FlatVector<double> elx, FlatVector<double> ely, 
