@@ -67,6 +67,8 @@ namespace ngbem
     
       A #HMatrix holds a list of BEMBlocks.
   */
+
+  template <typename T = double>
   class BEMBlock
   {
     bool isNearField;
@@ -94,8 +96,8 @@ namespace ngbem
 
     /** Matrix-vector-multiply with global vectors x and y. Only the entries specified
 	by #testdofs and #trialdofs are used. */
-    void MultAdd (double s, const BaseVector & x, BaseVector & y) const;
-    void MultTransAdd (double s, const BaseVector & x, BaseVector & y) const;    
+    void MultAdd (T s, const BaseVector & x, BaseVector & y) const;
+    void MultTransAdd (T s, const BaseVector & x, BaseVector & y) const;    
   };
 
   /** Low-rank matrix
@@ -164,7 +166,7 @@ namespace ngbem
     const double eta;
     
     /** The hierarchical matrix realized as list of admissible and inadmissible blocks. */
-    Array<BEMBlock> matList;
+    Array<BEMBlock<T>> matList;
 
     /** HACK: the solver routines need the number of all dofs, not only boundary dofs. */
     int width_vol_dof, height_vol_dof;
@@ -172,12 +174,12 @@ namespace ngbem
   public:
     HMatrix(shared_ptr<ClusterTree> col_ct, shared_ptr<ClusterTree> row_ct, double eta, int width_vol_dof, int height_vol_dof);
 
-    Array<BEMBlock> & GetMatList() { return matList; }
+    Array<BEMBlock<T>> & GetMatList() { return matList; }
 
     /** Matrix-vector-multiply-add: \f$y = y + s A x \f$. */
     virtual void MultAdd (double s, const BaseVector & x, BaseVector & y) const override;
     virtual void MultTransAdd (double s, const BaseVector & x, BaseVector & y) const override;
-    bool IsComplex() const override { return false; }
+    bool IsComplex() const override { return std::is_same<T,Complex>(); }
 
     /*
     virtual int VHeight() const override { return row_ct->mapcluster2glob.Size(); }

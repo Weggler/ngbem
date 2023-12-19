@@ -151,7 +151,7 @@ namespace ngbem
       for (int k : r)
         {
           HeapReset hr(lh);
-          BEMBlock & block = matList[k];
+          BEMBlock<T> & block = matList[k];
           auto trialdofs = block.GetTrialDofs();
           auto testdofs = block.GetTestDofs();
           if(block.IsNearField())

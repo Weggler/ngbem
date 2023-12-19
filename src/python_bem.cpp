@@ -45,7 +45,7 @@ PYBIND11_MODULE(libbem, m)
 
 
 
-  m.def("HolmholtzSingleLayerPotentialOperator", [](shared_ptr<FESpace> space, double kappa,
+  m.def("HelmholtzSingleLayerPotentialOperator", [](shared_ptr<FESpace> space, double kappa,
                                                     int intorder, int leafsize, double eta, double eps,
                                                     string method, bool testhmatrix) -> shared_ptr<IntegralOperator<Complex>>
   {

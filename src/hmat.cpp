@@ -463,14 +463,16 @@ namespace ngbem
 
     return fmin(Cluster1.Radius, Cluster2.Radius) < eta * dist;
   }
-  
-  BEMBlock :: BEMBlock(FlatArray<DofId> _trialdofs, FlatArray<DofId> _testdofs, bool _isNearField)
+
+  template <typename T>
+  BEMBlock<T> :: BEMBlock(FlatArray<DofId> _trialdofs, FlatArray<DofId> _testdofs, bool _isNearField)
     : trialdofs(_trialdofs), testdofs(_testdofs), isNearField(_isNearField), matrix(nullptr) { }
 
-  void BEMBlock :: MultAdd (double s, const BaseVector & x, BaseVector & y) const
+  template <typename T>  
+  void BEMBlock<T> :: MultAdd (T s, const BaseVector & x, BaseVector & y) const
   {
     // Get only vector entries related to the index sets
-    VVector<> xp(trialdofs.Size()), yp(testdofs.Size());
+    VVector<T> xp(trialdofs.Size()), yp(testdofs.Size());
     x.GetIndirect(trialdofs, xp.FV());
     
     matrix->Mult(xp, yp);
@@ -479,17 +481,18 @@ namespace ngbem
     y.AddIndirect(testdofs, yp.FV(), /* useatomic= */ true); 
   }
 
-  void BEMBlock :: MultTransAdd (double s, const BaseVector & x, BaseVector & y) const
+  template <typename T>    
+  void BEMBlock<T> :: MultTransAdd (T s, const BaseVector & x, BaseVector & y) const
   {
     // Get only vector entries related to the index sets
     throw Exception("todo: allocate vectors in BEMBlock::MultTransAdd");
-    FlatVector<> xp, yp;
+    FlatVector<T> xp, yp;
     x.GetIndirect(trialdofs, xp);
     y.GetIndirect(testdofs, yp);
     
     // We something like BaseVectorFromVector
-    S_BaseVectorPtr<> xp_base(trialdofs.Size(), x.EntrySize(), xp.Data());
-    S_BaseVectorPtr<> yp_base(testdofs.Size(), y.EntrySize(), yp.Data());
+    S_BaseVectorPtr<T> xp_base(trialdofs.Size(), x.EntrySize(), xp.Data());
+    S_BaseVectorPtr<T> yp_base(testdofs.Size(), y.EntrySize(), yp.Data());
     matrix->MultTransAdd(s, xp_base, yp_base);
 
     y.SetIndirect(testdofs, yp);
@@ -565,8 +568,9 @@ namespace ngbem
 
      Note: only the structure of the hierarchical matrix is created, the matrices themselves
      are allocated and filled somewhere else, e.g. in #CalcHMatrix. */
+  template <typename T>
   void HMatrix_help (ClusterTree &row_ct, ClusterTree &col_ct,
-		     long i, long j, double eta, Array<BEMBlock> &matList)
+		     long i, long j, double eta, Array<BEMBlock<T>> &matList)
   {
 
     auto row_cluster = row_ct.arr_clusters[i];
@@ -599,9 +603,9 @@ namespace ngbem
     
     matList.Append(BEMBlock(trialdofs, testdofs, isNearField));
     */
-    matList.Append(BEMBlock(col_ct.mapcluster2glob.Range(col_cluster.PermuPos, col_cluster.PermuPos+col_cluster.Number),
-                            row_ct.mapcluster2glob.Range(row_cluster.PermuPos, row_cluster.PermuPos+row_cluster.Number),
-                            isNearField));    
+    matList.Append(BEMBlock<T>(col_ct.mapcluster2glob.Range(col_cluster.PermuPos, col_cluster.PermuPos+col_cluster.Number),
+                               row_ct.mapcluster2glob.Range(row_cluster.PermuPos, row_cluster.PermuPos+row_cluster.Number),
+                               isNearField));    
   }
 
   template <typename T>
@@ -641,14 +645,14 @@ namespace ngbem
   AutoVector HMatrix<T> :: CreateRowVector () const
   {
     // missing parallel: 1 dof for all
-    shared_ptr<BaseVector> sp = make_shared<VVector<double>>(width_vol_dof);   
+    shared_ptr<BaseVector> sp = make_shared<VVector<T>>(width_vol_dof);   
     return sp;
   }
 
   template <typename T>  
   AutoVector HMatrix<T> :: CreateColVector () const
   {
-    shared_ptr<BaseVector> sp = make_shared<VVector<double>>(height_vol_dof);   
+    shared_ptr<BaseVector> sp = make_shared<VVector<T>>(height_vol_dof);   
     return sp;
   }
 
