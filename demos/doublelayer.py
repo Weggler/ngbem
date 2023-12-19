@@ -1,4 +1,10 @@
 #  testfile for checking integration 
+#  output of testrun 29.11.23
+# err-integration (8-10):  1.6205859881425085e-07
+# err-integration (10-12):  1.5225443842172683e-08
+# err-integration (12-14):  1.3555959613067985e-09
+# err-integration (14-16):  1.3309124393862712e-10
+# err-integration (16-18):  1.507548088767588e-11
 
 import sys
 sys.path.append('../build')

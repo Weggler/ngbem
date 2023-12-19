@@ -10,19 +10,24 @@ PYBIND11_MODULE(libbem, m)
 {
   cout << "Loading ngbem library" << endl;
 
-  m.def("SingleLayerPotentialOperator", [](BilinearForm &bfa, int intorder) {
+  m.def("SingleLayerPotentialOperator", [](BilinearForm &bfa, int intorder, int leafsize, double eta, double eps,
+                                           string method, bool testhmatrix) {
     // cout << "create single-layer potential" << endl;
-    auto bemop = make_unique<SingleLayerPotentialOperator>(bfa.GetTrialSpace(), intorder);
+    struct BEMParameters param({intorder, leafsize, eta, eps, method, testhmatrix});
+    auto bemop = make_unique<SingleLayerPotentialOperator>(bfa.GetTrialSpace(), param);
     bfa.AddSpecialElement(std::move(bemop));
-  }, py::arg("bf"), py::arg("intorder")=10);
+  }, py::arg("bf"), py::arg("intorder")=3, py::arg("leafsize")=40, py::arg("eta")=2., py::arg("eps")=1e-6,
+    py::arg("method")="svd", py::arg("testhmatrix")=false);
 
 
-  m.def("DoubleLayerPotentialOperator", [](BilinearForm &bfb, int intorder) {
+  m.def("DoubleLayerPotentialOperator", [](BilinearForm &bfb, int intorder, int leafsize, double eta, double eps,
+                                           string method, bool testhmatrix) {
     // cout << "create double-layer potential" << endl;
-
-    auto bemop2 = make_unique<DoubleLayerPotentialOperator>(bfb.GetTrialSpace(), bfb.GetTestSpace(), intorder);
+    struct BEMParameters param({intorder, leafsize, eta, eps, method, testhmatrix});
+    auto bemop2 = make_unique<DoubleLayerPotentialOperator>(bfb.GetTrialSpace(), bfb.GetTestSpace(), param);
     bfb.AddSpecialElement(std::move(bemop2));
-  }, py::arg("bf"), py::arg("intorder")=10);
-  ;
+  }, py::arg("bf"), py::arg("intorder")=3, py::arg("leafsize")=40, py::arg("eta")=2., py::arg("eps")=1e-6,
+        py::arg("method")="svd", py::arg("testhmatrix")=false);
+  
 }
 
