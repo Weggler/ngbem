@@ -8,7 +8,6 @@
 
 namespace ngbem
 {
-
   
   IntegralOperator ::
   IntegralOperator(shared_ptr<FESpace> _trial_space, shared_ptr<FESpace> _test_space,
@@ -19,36 +18,33 @@ namespace ngbem
     if (trial_space == test_space)
       test_ct = trial_ct; // the same
     else
-      test_ct = make_shared<ClusterTree>(test_space, param.leafsize);      
-  }
-  
-  
-  SingleLayerPotentialOperator ::
-  SingleLayerPotentialOperator(shared_ptr<FESpace> aspace, struct BEMParameters _param)
-    : IntegralOperator(aspace, aspace, _param)
-  {
-    auto mesh = trial_space->GetMeshAccess();
+      test_ct = make_shared<ClusterTree>(test_space, param.leafsize);
+
+
+    auto mesh = trial_space->GetMeshAccess(); // trialspace
+    auto mesh2 = test_space->GetMeshAccess(); // testspace
+
     
-    // setup global-2-boundary mappings:
+    // setup global-2-boundary mappings;
     BitArray bnddofs(trial_space->GetNDof());
     bnddofs.Clear();
-    for (int i = 0; i < mesh->GetNE(BND); i++)
+    for (int i = 0; i < mesh->GetNSE(); i++)
       {
 	Array<DofId> dnums;
 	trial_space->GetDofNrs(ElementId(BND, i), dnums);
-	for (auto d : dnums) 
+	for (auto d : dnums)
 	  bnddofs.SetBit(d);
       }
-    
     mapglob2bnd.SetSize(trial_space->GetNDof());
     mapglob2bnd = -1;
     for (int i = 0; i < trial_space->GetNDof(); i++)
       if (bnddofs.Test(i))
-        {
-          mapglob2bnd[i] = mapbnd2glob.Size();
-          mapbnd2glob.Append(i);
-        }    
+	{
+	  mapglob2bnd[i] = mapbnd2glob.Size();
+	  mapbnd2glob.Append(i);
+	}
 
+    // run through surface elements and add elem to related trial dofs
     // Table-creator creates table with one big block of memory,
     // avoids memory fragmentation 
     TableCreator<int> creator;
@@ -61,8 +57,195 @@ namespace ngbem
             creator.Add (d, i);
         }
     elems4dof = creator.MoveTable();
-    //cout << "elems4dof: " << elems4dof << endl;
 
+    BitArray bnddofs2(test_space->GetNDof());
+    bnddofs2.Clear();
+    for (int i = 0; i < mesh2->GetNSE(); i++)
+      {
+	Array<DofId> dnums;
+	test_space->GetDofNrs(ElementId(BND, i), dnums);
+	for (auto d : dnums)
+	  bnddofs2.SetBit(d);
+      }
+    
+    mapglob2bnd2.SetSize(test_space->GetNDof());
+    mapglob2bnd2 = -1;
+    for (int i = 0; i < test_space->GetNDof(); i++)
+      if (bnddofs2.Test(i))
+	{
+	  mapglob2bnd2[i] = mapbnd2glob2.Size();
+	  mapbnd2glob2.Append(i);
+	}
+
+    // run through surface elements and add elem to related test dofs
+    TableCreator<int> creator2;
+    for ( ; !creator2.Done(); creator2++)
+      for (int i = 0; i < mesh2->GetNSE(); i++)
+        {
+          test_space->GetDofNrs( ElementId(BND, i), dnumsi); 
+          for (auto d : dnumsi)
+            creator2.Add (d, i);
+        }
+    elems4dof2 = creator2.MoveTable();
+  }
+
+  
+  void IntegralOperator :: GetDofNrs(Array<int> &dnums) const
+  {
+    dnums = mapbnd2glob;
+  }
+
+  void IntegralOperator ::  GetDofNrs2(Array<int> &dnums) const   
+  {
+    dnums = mapbnd2glob2;
+  }
+
+
+  /* compute dense double layer matrix,  dim = ndof_bnd_L2 x ndof_bnd_H1 */
+  void IntegralOperator ::
+  CalcElementMatrix(FlatMatrix<double> matrix, LocalHeap &lh) const
+  {
+    /*
+    Array<int> range, range2;
+    for (int i = 0; i < trial_space->GetNDof(); i++) // trial H1
+      range.Append(i);
+    for (int j = 0; j < test_space->GetNDof(); j++) // test L2
+      range2.Append(j);
+    CalcBlockMatrix(matrix, range, range2, lh);
+    */
+    CalcBlockMatrix(matrix, mapbnd2glob, mapbnd2glob2, lh);    
+  }
+
+  void IntegralOperator :: Apply(FlatVector<double> elx, FlatVector<double> ely, 
+                                 LocalHeap & lh) const
+  {
+    static Timer t("ngbem - IntegralOperator::Apply"); RegionTimer reg(t);
+    VVector<> vx(hmatrix->Width());
+    VVector<> vy(hmatrix->Height());
+
+    vy = 0.0;
+    for (int i = 0; i < mapbnd2glob.Size(); i++)
+      vx(mapbnd2glob[i]) = elx[i];
+    hmatrix -> MultAdd (1, vx, vy);
+    for (int i = 0; i < mapbnd2glob2.Size(); i++)
+      ely[i] = vy(mapbnd2glob2[i]);
+  }
+
+
+
+  
+  
+  void IntegralOperator :: CalcHMatrix(HMatrix & hmatrix, LocalHeap & clh, struct BEMParameters &param) const
+  {
+    static Timer t("ngbem - BaseClass::CalcHMatrix"); RegionTimer reg(t);    
+    auto & matList = hmatrix.GetMatList();
+
+    ParallelForRange (matList.Size(), [&](IntRange r)
+    {
+      LocalHeap lh = clh.Split();
+      for (int k : r)
+        {
+          HeapReset hr(lh);
+          BEMBlock & block = matList[k];
+          auto trialdofs = block.GetTrialDofs();
+          auto testdofs = block.GetTestDofs();
+          if(block.IsNearField())
+            {
+              // Compute dense block
+              Matrix<> near(testdofs.Size(), trialdofs.Size());
+              CalcBlockMatrix(near, trialdofs, testdofs, lh);	    
+              block.SetMat(make_unique<BaseMatrixFromMatrix<>>(std::move(near)));
+            }
+          else
+            {
+              // Compute low-rank block
+              block.SetMat(CalcFarFieldBlock(trialdofs, testdofs, lh));	    
+            }
+        }
+    }, TasksPerThread(4));
+  }
+
+
+
+
+  void StochasticTSVD1 (MatrixView<> A, MatrixView<> U, MatrixView<> V, VectorView<> S)
+  {
+    for (int i = 0; i < V.Height(); i++)
+      for (int j = 0; j < V.Width(); j++)
+        V(i,j) = double (rand()) / RAND_MAX;
+
+    Matrix AVt = A * Trans(V);
+    Matrix tmp(V.Height(), V.Height());
+    LapackSVD (AVt, U, tmp, S, false);    
+    Matrix UtA = Trans(U) * A;
+    LapackSVD (UtA, tmp, V, S, false);
+    U = Matrix<> (U * tmp);
+  }
+
+  size_t StochasticTSVD (MatrixView<> A, MatrixView<> U, MatrixView<> V, VectorView<> S, double eps)
+  {
+    static Timer tsvd("ngbem - StochasticTSVD"); 
+    RegionTimer reg(tsvd);
+    
+    int rank = 5;
+    int p = min(A.Height(), A.Width());
+    while (rank < p)
+      {
+        StochasticTSVD1 (A, U.Cols(rank), V.Rows(rank), S.Range(rank));
+        if (S[rank-1] < eps)
+          {
+            for (int j = 1; j < p; j++)
+              if (S[j] < eps)
+                return j-1;
+          }
+
+        rank = int (rank*1.5);
+      }
+    
+    LapackSVD(A, U, V, S, false);
+    for (int j = 1; j < p; j++)
+      if (S[j] < eps)
+        return j-1;
+    return p;
+  }
+  
+  unique_ptr<LowRankMatrix> IntegralOperator ::
+  CalcFarFieldBlock(FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, LocalHeap &lh) const
+  {
+    static Timer t("ngbem - IntegralOperator::CalcFarFieldBlock"); RegionTimer reg(t);
+    int m = testdofs.Size();
+    int n = trialdofs.Size();
+    int p = min(n, m);
+    
+    Matrix<double> A(m, n);
+    CalcBlockMatrix(A, trialdofs, testdofs, lh);
+    
+    // Calculate SVD for A^\top = V S U^\top
+    Matrix<double, ColMajor> V(n, p), Ut(p, m);
+    Vector<> S(p);
+
+    int k = StochasticTSVD (A, Trans(Ut), Trans(V), S, param.eps);      
+    
+    // Low-rank approximation from truncated svd
+    
+    Matrix<double> U_trc(m, k), Vt_trc(k, n);
+    for (size_t j = 0; j < k; j++)
+      U_trc.Col(j) = sqrt(S(j)) * Ut.Row(j);
+
+    for (size_t i = 0; i < k; i++)    
+      Vt_trc.Row(i) = sqrt(S(i)) * V.Col(i);
+
+    return make_unique<LowRankMatrix> (Matrix<>(U_trc), Matrix<>(Vt_trc));
+  }
+
+  
+
+  
+  
+  SingleLayerPotentialOperator ::
+  SingleLayerPotentialOperator(shared_ptr<FESpace> aspace, struct BEMParameters _param)
+    : IntegralOperator(aspace, aspace, _param)
+  {
     /*START: TEST hmatrix: compare approximation with dense matrix. */   
 
     // create hmatrix
@@ -100,17 +283,6 @@ namespace ngbem
     /*END: TEST hmatrix: compare approximation with dense matrix. */   
   }
 
-  void SingleLayerPotentialOperator ::
-  CalcElementMatrix(FlatMatrix<double> matrix,  // matrix dim = ndof_bnd x ndof_bnd
-		    LocalHeap &lh) const
-  {
-    Array<int> range;
-    for (int i = 0; i < trial_space->GetNDof(); i++)
-      {
-	range.Append(i);
-      }
-    CalcBlockMatrix(matrix, range, range, lh);
-  }
 
   /* compute single layer matrix for given dofs - dofs are global dof numbers*/
   void SingleLayerPotentialOperator ::
@@ -248,7 +420,6 @@ namespace ngbem
 		    elmat += fac*kernel* Trans(mshapei) * mshapej;
 		  }
               
-	        // cout << "single panel elmat = " << endl << elmat << endl;
 	        break;
 	      }
                   
@@ -312,8 +483,6 @@ namespace ngbem
 		    elmat += fac*kernel* Trans(mshapei) * mshapej;
 		  }
                 
-	        // cout.precision(12);                
-	        // cout << "common edge: " << endl << elmat << endl;
 	        break;
 	      }
               
@@ -371,8 +540,6 @@ namespace ngbem
 		    elmat += fac*kernel* Trans(mshapei) * mshapej;
 		  }
                 
-		// cout.precision(12);
-		// cout << "common vertex: " << endl << elmat << endl;
 		break;
 	      }
             
@@ -410,7 +577,6 @@ namespace ngbem
 		kernel_shapesj = kernel_ixiy * Trans(shapesj);
 		elmat += shapesi * kernel_shapesj;
           
-		// cout << "disjoint panel " << endl << elmat << endl;
 		break;
 	      }
 	    default:
@@ -425,224 +591,13 @@ namespace ngbem
 	}
   }
 
-  void StochasticTSVD1 (MatrixView<> A, MatrixView<> U, MatrixView<> V, VectorView<> S)
-  {
-    for (int i = 0; i < V.Height(); i++)
-      for (int j = 0; j < V.Width(); j++)
-        V(i,j) = double (rand()) / RAND_MAX;
-
-    Matrix AVt = A * Trans(V);
-    Matrix tmp(V.Height(), V.Height());
-    LapackSVD (AVt, U, tmp, S, false);    
-    Matrix UtA = Trans(U) * A;
-    LapackSVD (UtA, tmp, V, S, false);
-    U = Matrix<> (U * tmp);
-  }
-
-  size_t StochasticTSVD (MatrixView<> A, MatrixView<> U, MatrixView<> V, VectorView<> S, double eps)
-  {
-    int rank = 5;
-    int p = min(A.Height(), A.Width());
-    while (rank < p)
-      {
-        StochasticTSVD1 (A, U.Cols(rank), V.Rows(rank), S.Range(rank));
-        if (S[rank-1] < eps)
-          {
-            for (int j = 1; j < p; j++)
-              if (S[j] < eps)
-                return j-1;
-          }
-
-        rank = int (rank*1.5);
-      }
-    
-    LapackSVD(A, U, V, S, false);
-    for (int j = 1; j < p; j++)
-      if (S[j] < eps)
-        return j-1;
-    return p;
-  }
-  
-
-  unique_ptr<LowRankMatrix> SingleLayerPotentialOperator ::
-  CalcFarFieldBlock(FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, LocalHeap &lh) const
-  {
-    static Timer t("ngbem - SLP::CalcFarFieldBlock"); RegionTimer reg(t);
-    static Timer tblock("ngbem - SLP::CalcFarFieldBlock, block");
-    static Timer tsvd("ngbem - SLP::CalcFarFieldBlock, SVD");    
-    
-    int m = testdofs.Size();
-    int n = trialdofs.Size();
-    int p = min(n, m);
-  
-    Matrix<double> A(m, n);
-    {
-      RegionTimer rblock(tblock);
-      CalcBlockMatrix(A, trialdofs, testdofs, lh);
-    }
-    // Calculate SVD for A^\top = V S U^\top
-    Matrix<double> V(p, n), Ut(m, p);
-    Vector<> S(p);
-    // Array<double> work(n * m + 100);
-    // integer info;
-    // char jobu = 'S', jobv = 'S';
-    // integer lda = Trans(A).Dist(), ldu = Ut.Dist(), ldv = V.Dist();
-    // integer lwork = work.Size();
-    int k;
-    {
-      RegionTimer rsvd(tsvd);
-      // dgesvd_(&jobv, &jobu, &n, &m, Trans(A).Data(), &lda, S.Data(), V.Data(), &ldv,
-      // Ut.Data(), &ldu, work.Data(), &lwork, &info);
-      // needs ngsolve update, prefer to call NGSolve wrapper function:
-      // LapackSVD (A, Trans(Ut), Trans(V), S, false);
-      k = StochasticTSVD (A, Ut, V, S, param.eps);
-    }
-    //Truncate according to eps. k is the rank
-    
-    // if (n > 200 || m > 200)
-    // *testout << "svd, n,m = " << n << ", " << m << ", k = " << k << endl;
-    
-    // Low-rank approximation from truncated svd
-    Matrix<double> U_trc(m, k), Vt_trc(k, n);
-    for (size_t j = 0; j < k; j++)
-      U_trc.Col(j) = sqrt(S(j)) * Ut.Col(j);
-
-    for (size_t i = 0; i < k; i++)    
-      Vt_trc.Row(i) = sqrt(S(i)) * V.Row(i);
-
-    return make_unique<LowRankMatrix> (std::move(U_trc), std::move(Vt_trc));
-  }
-
-  void SingleLayerPotentialOperator :: CalcHMatrix(HMatrix & hmatrix, LocalHeap & clh, struct BEMParameters &param) const
-  {
-    static Timer t("ngbem - SLP::CalcHMatrix"); RegionTimer reg(t);    
-    auto & matList = hmatrix.GetMatList();
-
-    // run through all blocks of the #HMatrix
-    // for (int k = 0; k < matList.Size(); k++)
-
-    ParallelForRange (matList.Size(), [&](IntRange r)
-    {
-      LocalHeap lh = clh.Split();
-      for (int k : r)
-        {
-          HeapReset hr(lh);
-          BEMBlock & block = matList[k];
-          auto trialdofs = block.GetTrialDofs();
-          auto testdofs = block.GetTestDofs();
-          if(block.IsNearField())
-            {
-              // Compute dense block
-              Matrix<> near(testdofs.Size(), trialdofs.Size());
-              CalcBlockMatrix(near, trialdofs, testdofs, lh);	    
-              block.SetMat(make_unique<BaseMatrixFromMatrix<>>(std::move(near)));
-            }
-          else
-            {
-              // Compute low-rank block
-              block.SetMat(CalcFarFieldBlock(trialdofs, testdofs, lh));	    
-            }
-        }
-    }, TasksPerThread(4));
-  }
-
-  void SingleLayerPotentialOperator :: Apply(FlatVector<double> elx, FlatVector<double> ely, 
-					     LocalHeap & lh) const
-  {
-    static Timer t("ngbem - SLP::Apply"); RegionTimer reg(t);
-
-    ely = 0.0;
-    VFlatVector<> xp_base(elx);
-    VFlatVector<> yp_base(ely);
-    hmatrix->MultAdd(1., xp_base, yp_base);
-  }
-  
-  void SingleLayerPotentialOperator :: GetDofNrs(Array<int> &dnums) const
-  {
-    dnums = mapbnd2glob;
-  }
 
   // aspace, space == H1 trialspace, bspace, space2 ==  L2 testspace
   DoubleLayerPotentialOperator ::
   DoubleLayerPotentialOperator (shared_ptr<FESpace> aspace, shared_ptr<FESpace> bspace,
                                 BEMParameters _param)
-    : IntegralOperator(aspace, bspace, _param) // , space(aspace), space2(bspace)
+    : IntegralOperator(aspace, bspace, _param)
   {
-
-    auto mesh = trial_space->GetMeshAccess(); // trialspace
-    auto mesh2 = test_space->GetMeshAccess(); // testspace
-
-    
-    // setup global-2-boundary mappings;
-    BitArray bnddofs(trial_space->GetNDof());
-    bnddofs.Clear();
-    for (int i = 0; i < mesh->GetNSE(); i++)
-      {
-	Array<DofId> dnums;
-	trial_space->GetDofNrs(ElementId(BND, i), dnums);
-	for (auto d : dnums)
-	  bnddofs.SetBit(d);
-      }
-    mapglob2bnd.SetSize(trial_space->GetNDof());
-    mapglob2bnd = -1;
-    for (int i = 0; i < trial_space->GetNDof(); i++)
-      if (bnddofs.Test(i))
-	{
-	  mapglob2bnd[i] = mapbnd2glob.Size();
-	  mapbnd2glob.Append(i);
-	}
-
-    // run through surface elements and add elem to related trial dofs
-    // Table-creator creates table with one big block of memory,
-    // avoids memory fragmentation 
-    TableCreator<int> creator;
-    Array<DofId> dnumsi;
-    for ( ; !creator.Done(); creator++)
-      for (int i = 0; i < mesh->GetNSE(); i++)
-        {
-          trial_space->GetDofNrs( ElementId(BND, i), dnumsi); 
-          for (auto d : dnumsi)
-            creator.Add (d, i);
-        }
-    elems4dof = creator.MoveTable();
-    //cout << "elems4dof: " << elems4dof << endl;
-
-    // cout << "dim1: " << trial_space->GetSpatialDimension() << endl;
-    // cout << "bnddofs1: " << bnddofs << endl;
-    // cout << "mapglob2bnd: " << mapglob2bnd << endl;
-    // cout << "mapbnd2glob: " << mapbnd2glob << endl;
-
-    BitArray bnddofs2(test_space->GetNDof());
-    bnddofs2.Clear();
-    for (int i = 0; i < mesh2->GetNSE(); i++)
-      {
-	Array<DofId> dnums;
-	test_space->GetDofNrs(ElementId(BND, i), dnums);
-	for (auto d : dnums)
-	  bnddofs2.SetBit(d);
-      }
-    
-    mapglob2bnd2.SetSize(test_space->GetNDof());
-    mapglob2bnd2 = -1;
-    for (int i = 0; i < test_space->GetNDof(); i++)
-      if (bnddofs2.Test(i))
-	{
-	  mapglob2bnd2[i] = mapbnd2glob2.Size();
-	  mapbnd2glob2.Append(i);
-	}
-
-    // run through surface elements and add elem to related test dofs
-    TableCreator<int> creator2;
-    for ( ; !creator2.Done(); creator2++)
-      for (int i = 0; i < mesh2->GetNSE(); i++)
-        {
-          test_space->GetDofNrs( ElementId(BND, i), dnumsi); 
-          for (auto d : dnumsi)
-            creator2.Add (d, i);
-        }
-    elems4dof2 = creator2.MoveTable();
-    //cout << "elems4dof: " << elems4dof2 << endl;
-
     // create hmatrix
     hmatrix = make_shared<HMatrix>(trial_ct, // trial space H1
                                    test_ct, // test space L2
@@ -676,17 +631,6 @@ namespace ngbem
     /*END: TEST hmatrix: compare approximation with dense matrix. */   
   }
 
-  /* compute dense double layer matrix,  dim = ndof_bnd_L2 x ndof_bnd_H1 */
-  void DoubleLayerPotentialOperator ::
-  CalcElementMatrix(FlatMatrix<double> matrix, LocalHeap &lh) const
-  {
-    Array<int> range, range2;
-    for (int i = 0; i < trial_space->GetNDof(); i++) // trial H1
-      range.Append(i);
-    for (int j = 0; j < test_space->GetNDof(); j++) // test L2
-      range2.Append(j);
-    CalcBlockMatrix(matrix, range, range2, lh);
-  }
 
   /* compute double layer matrix for given dof sets  - global boundry dof numbers*/
   void DoubleLayerPotentialOperator ::
@@ -722,7 +666,6 @@ namespace ngbem
 
     auto evaluator = trial_space->GetEvaluator(BND);
     auto evaluator2 = test_space->GetEvaluator(BND);
-    // cout << "type(eval2) = " << typeid(*evaluator2).name() << endl
 
     Array<int> tmp, tmp2;
     Array<int> patchi, patchj;
@@ -769,7 +712,6 @@ namespace ngbem
 	  HeapReset hr(lh);
 	  ElementId ei(BND, patchi[i]);
 	  ElementId ej(BND, patchj[j]);
-	  //cout << "bem elements: " << ei << ", " << ej << endl;
           
 	  auto verti = mesh2->GetElement(ei).Vertices();
 	  auto vertj = mesh->GetElement(ej).Vertices();          
@@ -825,8 +767,7 @@ namespace ngbem
 		    double fac = mipx.GetMeasure()*mipy.GetMeasure()*identic_panel_weight[k];
 		    elmat += fac*kernel* shapei * Trans(shapej);
 		  }
-                      
-		// cout << "new elmat = " << endl << elmat << endl;
+
 		break;
 	      }
 	    case 2: //common edge
@@ -910,7 +851,7 @@ namespace ngbem
 			  break;
 			}
 		    }
-		// cout << "cvx = " << cvx << ", cvy = " << cvy << endl;
+
 		int vpermx[3] = { cvx, (cvx+1)%3, (cvx+2)%3 };
 		vpermx[2] = 3-vpermx[0]-vpermx[1];
 		int vpermy[3] = { cvy, (cvy+1)%3, (cvy+2)%3 };
@@ -953,7 +894,6 @@ namespace ngbem
 		    elmat += fac*kernel* shapei * Trans(shapej);
 		  }
 
-		// cout << "new: common vertex elmat = " << elmat << endl;
 		break;
 	      }
 
@@ -969,31 +909,10 @@ namespace ngbem
                   
 		FlatMatrix<> shapesi(feli.GetNDof(), irtrig.Size(), lh);
 		FlatMatrix<> shapesj(felj.GetNDof(), irtrig.Size(), lh);
-		// FlatMatrix<> kernel_shapesj(felj.GetNDof(), irtrig.Size(), lh);
                 
 		evaluator2 -> CalcMatrix(feli, mirx, Trans(shapesi), lh);
 		evaluator-> CalcMatrix(felj, miry, Trans(shapesj), lh);
 
-                /*
-		// RegionTimer r2(t_disjoint2);
-		kernel_shapesj = 0;
-		for (int ix = 0; ix < irtrig.Size(); ix++)
-		  for (int iy = 0; iy < irtrig.Size(); iy++)
-		    {
-		      Vec<3> x = mirx[ix].GetPoint();
-		      Vec<3> y = miry[iy].GetPoint();
-                  
-		      Vec<3> ny = miry[iy].GetNV();
-		      double nxy = InnerProduct(ny, (x-y));
-		      double normxy = L2Norm(x-y);
-		      double kernel = nxy / (4*M_PI*normxy*normxy*normxy);
-                    
-		      double fac = mirx[ix].GetWeight()*miry[iy].GetWeight();
-		      kernel_shapesj.Col(ix) += fac*kernel*shapesj.Col(iy);
-		    }
-                  
-		elmat += shapesi * Trans(kernel_shapesj);
-                */
 
 		FlatMatrix<> kernel_ixiy(irtrig.Size(), irtrig.Size(), lh);
 		for (int ix = 0; ix < irtrig.Size(); ix++)
@@ -1016,12 +935,7 @@ namespace ngbem
 		FlatMatrix<double> kernel_shapesj(irtrig.Size(), felj.GetNDof(), lh);
 		kernel_shapesj = kernel_ixiy * Trans(shapesj);
 		elmat += shapesi * kernel_shapesj;
-
-
                 
-		// cout << "new: disjoint elmat = " << elmat << endl;
-		// cout << "dnumsj = " << dnumsj[0] << ", rowdof = " << mapglob2bnd2[dnumsj[0]] << endl;
-		// cout << "dnumsi = " << dnumsi << endl;
 		break;
 	      }
 	    default:
@@ -1032,113 +946,7 @@ namespace ngbem
 	    for (int jj = 0; jj < dnumsj.Size(); jj++) // trial
 	      if(trialdofsinv[dnumsj[jj]] != -1 && testdofsinv[dnumsi[ii]] != -1)
 		matrix(testdofsinv[dnumsi[ii]], trialdofsinv[dnumsj[jj]]) += elmat(ii, jj);
-
 	}
   }
-
-  unique_ptr<LowRankMatrix> DoubleLayerPotentialOperator ::
-  CalcFarFieldBlock(FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, LocalHeap &lh) const
-  {
-    static Timer t("ngbem - DLP::CalcFarFieldBlock"); RegionTimer reg(t);
-    static Timer tsvd("ngbem - DLP::CalcFarFieldBlock svd"); 
-    int m = testdofs.Size();
-    int n = trialdofs.Size();
-    int p = min(n, m);
-    
-    Matrix<double> A(m, n);
-    CalcBlockMatrix(A, trialdofs, testdofs, lh);
-    
-    // Calculate SVD for A^\top = V S U^\top
-    Matrix<double, ColMajor> V(n, p), Ut(p, m);
-    Vector<> S(p);
-    Array<double> work(n * m + 100);
-    integer info;
-    char jobu = 'S', jobv = 'S';
-    integer lda = Trans(A).Dist(), ldu = Ut.Dist(), ldv = V.Dist();
-    integer lwork = work.Size();
-    int k;
-    {
-      RegionTimer reg(tsvd);          
-      // dgesvd_(&jobv, &jobu, &n, &m, Trans(A).Data(), &lda, S.Data(), V.Data(), &ldv,
-      // Ut.Data(), &ldu, work.Data(), &lwork, &info);
-      
-      k = StochasticTSVD (A, Trans(Ut), Trans(V), S, param.eps);      
-    }
-    //Truncate according to eps. k is the rank
-    
-    // Low-rank approximation from truncated svd
-    // if (n > 200 || m > 200)
-    // *testout << "svd, n,m = " << n << ", " << m << ", k = " << k << endl;
-    
-    Matrix<double> U_trc(m, k), Vt_trc(k, n);
-    for (size_t j = 0; j < k; j++)
-      U_trc.Col(j) = sqrt(S(j)) * Ut.Row(j);
-
-    for (size_t i = 0; i < k; i++)    
-      Vt_trc.Row(i) = sqrt(S(i)) * V.Col(i);
-
-    return make_unique<LowRankMatrix> (Matrix<>(U_trc), Matrix<>(Vt_trc));
-  }
-
-  void DoubleLayerPotentialOperator :: CalcHMatrix(HMatrix & hmatrix, LocalHeap &clh, struct BEMParameters &param) const
-  {
-    static Timer t("ngbem - DLP::CalcHMatrix"); RegionTimer reg(t);    
-    auto & matList = hmatrix.GetMatList();
-
-    // run through all blocks of the #HMatrix    
-    // for (int k = 0; k < matList.Size(); k++)
-
-    ParallelForRange (matList.Size(), [&](IntRange r)
-    {
-      LocalHeap lh = clh.Split();
-      for (int k : r)
-        {
-	HeapReset hr(lh);
-          
-	BEMBlock & block = matList[k];
-	auto trialdofs = block.GetTrialDofs();
-	auto testdofs = block.GetTestDofs();
-	if(block.IsNearField())
-	  {
-	    //// Compute dense block
-	    Matrix<> near(testdofs.Size(), trialdofs.Size());
-	    CalcBlockMatrix(near, trialdofs, testdofs, lh);
-	    block.SetMat(make_unique<BaseMatrixFromMatrix<>>(near));
-	  }
-	else
-	  {
-	    // Compute low-rank block
-	    block.SetMat(CalcFarFieldBlock(trialdofs, testdofs, lh));	    
-	  }
-      }
-    }, TasksPerThread(4));
-  }
-
-  void DoubleLayerPotentialOperator :: Apply(FlatVector<double> elx, FlatVector<double> ely, 
-					     LocalHeap & lh) const
-  {
-    static Timer t("ngbem - SLP::Apply"); RegionTimer reg(t);
-    VVector<> vx(hmatrix->Width());
-    VVector<> vy(hmatrix->Height());
-
-    vy = 0.0;
-    for (int i = 0; i < mapbnd2glob.Size(); i++)
-      vx(mapbnd2glob[i]) = elx[i];
-    hmatrix -> MultAdd (1, vx, vy);
-    for (int i = 0; i < mapbnd2glob2.Size(); i++)
-      ely[i] = vy(mapbnd2glob2[i]);
-    
-  }
-
-  void DoubleLayerPotentialOperator :: GetDofNrs(Array<int> &dnums) const
-  {
-    dnums = mapbnd2glob;
-  }
-
-  void DoubleLayerPotentialOperator ::  GetDofNrs2(Array<int> &dnums) const   
-  {
-    dnums = mapbnd2glob2;
-  }
-
 
 }
