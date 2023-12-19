@@ -15,6 +15,9 @@ namespace ngbem
                    BEMParameters _param)
     : trial_space(_trial_space), test_space(_test_space), param(_param)
   {
+    if (!test_space)
+      test_space = trial_space;
+    
     trial_ct = make_shared<ClusterTree>(trial_space, param.leafsize);
     if (trial_space == test_space)
       test_ct = trial_ct; // the same
@@ -108,14 +111,6 @@ namespace ngbem
   void IntegralOperator<T> ::
   CalcElementMatrix(FlatMatrix<double> matrix, LocalHeap &lh) const
   {
-    /*
-    Array<int> range, range2;
-    for (int i = 0; i < trial_space->GetNDof(); i++) // trial H1
-      range.Append(i);
-    for (int j = 0; j < test_space->GetNDof(); j++) // test L2
-      range2.Append(j);
-    CalcBlockMatrix(matrix, range, range2, lh);
-    */
     if constexpr (is_same<T,double>())
       CalcBlockMatrix(matrix, mapbnd2glob, mapbnd2glob2, lh);    
   }
@@ -187,6 +182,21 @@ namespace ngbem
     U = Matrix<T> (U * tmp);
   }
 
+  void StochasticTSVD1 (MatrixView<Complex> A, MatrixView<Complex> U, MatrixView<Complex> V, VectorView<> S)
+  {
+    for (int i = 0; i < V.Height(); i++)
+      for (int j = 0; j < V.Width(); j++)
+        V(i,j) = double (rand()) / RAND_MAX;
+
+    Matrix<Complex> AVt = A * Conj(Trans(V));
+    Matrix<Complex> tmp(V.Height(), V.Height());
+    LapackSVD (AVt, U, tmp, S, false);    
+    Matrix<Complex> UtA = Conj(Trans(U)) * A;
+    LapackSVD (UtA, tmp, V, S, false);
+    U = Matrix<Complex> (U * tmp);
+  }
+
+  
   template <typename T>
   size_t StochasticTSVD (MatrixView<T> A, MatrixView<T> U, MatrixView<T> V, VectorView<> S, double eps)
   {
@@ -226,13 +236,13 @@ namespace ngbem
     
     Matrix<T> A(m, n);
     CalcBlockMatrix(A, trialdofs, testdofs, lh);
-    
+
     // Calculate SVD for A^\top = V S U^\top
     Matrix<T, ColMajor> V(n, p), Ut(p, m);
     Vector<> S(p);
 
-    int k = StochasticTSVD<T> (A, Trans(Ut), Trans(V), S, param.eps);      
-    
+    int k = StochasticTSVD<T> (A, Trans(Ut), Trans(V), S, param.eps);
+
     // Low-rank approximation from truncated svd
     
     Matrix<T> U_trc(m, k), Vt_trc(k, n);

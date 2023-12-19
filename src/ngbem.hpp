@@ -196,11 +196,9 @@ namespace ngbem
     auto Evaluate (Vec<3> x, Vec<3> y, Vec<3> nx, Vec<3> ny) const
     {
       double norm = L2Norm(x-y);
-      return Mat<1,1,Complex> (exp(Complex(0,1)*kappa) / (4 * M_PI * norm));
+      return Mat<1,1,Complex> (exp(Complex(0,kappa*norm)) / (4 * M_PI * norm));
     }
   };
-
-
   
 }
 
