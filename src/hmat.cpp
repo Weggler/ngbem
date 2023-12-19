@@ -592,20 +592,7 @@ namespace ngbem
 	return;
       }
 
-    /*
-    Array<DofId> testdofs(row_cluster.Number);
-    for (int k=0; k<testdofs.Size(); k++)
-      testdofs[k] = row_ct.mapcluster2glob[row_cluster.PermuPos+k];
-
-    Array<DofId> trialdofs(col_cluster.Number);	
-    for (int k=0; k<trialdofs.Size(); k++)
-      trialdofs[k] = col_ct.mapcluster2glob[col_cluster.PermuPos+k];
-    
-    matList.Append(BEMBlock(trialdofs, testdofs, isNearField));
-    */
-    matList.Append(BEMBlock<T>(col_ct.mapcluster2glob.Range(col_cluster.PermuPos, col_cluster.PermuPos+col_cluster.Number),
-                               row_ct.mapcluster2glob.Range(row_cluster.PermuPos, row_cluster.PermuPos+row_cluster.Number),
-                               isNearField));    
+    matList.Append(BEMBlock<T>(col_ct.ClusterDofs(j), row_ct.ClusterDofs(i), isNearField));
   }
 
   template <typename T>
@@ -623,15 +610,10 @@ namespace ngbem
     static Timer t("ngbem - HMatrix::MultAdd");
     RegionTimer reg(t);
 
-    for (int i = 0; i < matList.Size(); i++)
-      matList[i].MultAdd(s, x, y);
-    /*
-    // working, but not effective when called inside parallel thread
     ParallelFor (matList.Size(), [&](size_t i)
     {
-    matList[i].MultAdd(s, x, y);
-    });
-    */
+      matList[i].MultAdd(s, x, y);
+    }, TasksPerThread(4));
   }
 
   template <typename T>  
@@ -644,7 +626,6 @@ namespace ngbem
   template <typename T>
   AutoVector HMatrix<T> :: CreateRowVector () const
   {
-    // missing parallel: 1 dof for all
     shared_ptr<BaseVector> sp = make_shared<VVector<T>>(width_vol_dof);   
     return sp;
   }

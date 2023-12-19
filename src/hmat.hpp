@@ -58,6 +58,12 @@ namespace ngbem
 
     /** Constructor (leafsize defines the minimal size of a #Cluster) */
     ClusterTree(shared_ptr<FESpace> space, int leafsize);
+
+    FlatArray<DofId> ClusterDofs (size_t nr)
+    {
+      const auto & cluster = arr_clusters[nr];
+      return mapcluster2glob.Range(cluster.PermuPos, cluster.PermuPos+cluster.Number);
+    }
   };
   
   /** BEMBlock.
@@ -181,10 +187,6 @@ namespace ngbem
     virtual void MultTransAdd (double s, const BaseVector & x, BaseVector & y) const override;
     bool IsComplex() const override { return std::is_same<T,Complex>(); }
 
-    /*
-    virtual int VHeight() const override { return row_ct->mapcluster2glob.Size(); }
-    virtual int VWidth() const override { return col_ct->mapcluster2glob.Size(); }
-    */
     virtual int VHeight() const override { return height_vol_dof; }
     virtual int VWidth() const override { return width_vol_dof; }
     
