@@ -19,7 +19,10 @@ PYBIND11_MODULE(libbem, m)
                                            string method, bool testhmatrix) -> shared_ptr<IntegralOperator>
   {
     BEMParameters param({intorder, leafsize, eta, eps, method, testhmatrix});
-    return make_unique<SingleLayerPotentialOperator>(space, param);
+    // return make_unique<SingleLayerPotentialOperator>(space, param);
+
+    return make_unique<GenericIntegralOperator<LaplaceSLKernel<3>>>(space, space, LaplaceSLKernel<3>(), param);
+    
   }, py::arg("space"), py::arg("intorder")=3, py::arg("leafsize")=40, py::arg("eta")=2., py::arg("eps")=1e-6,
     py::arg("method")="svd", py::arg("testhmatrix")=false);
 
@@ -29,7 +32,8 @@ PYBIND11_MODULE(libbem, m)
                                            string method, bool testhmatrix) -> shared_ptr<IntegralOperator>
   {
     BEMParameters param({intorder, leafsize, eta, eps, method, testhmatrix});
-    return make_shared<DoubleLayerPotentialOperator>(trial_space, test_space, param);
+    // return make_shared<DoubleLayerPotentialOperator>(trial_space, test_space, param);
+    return make_unique<GenericIntegralOperator<LaplaceDLKernel<3>>>(trial_space, test_space, LaplaceDLKernel<3>(), param);    
   }, py::arg("trial_space"), py::arg("test_space"), py::arg("intorder")=3, py::arg("leafsize")=40,
         py::arg("eta")=2., py::arg("eps")=1e-6,
         py::arg("method")="svd", py::arg("testhmatrix")=false);

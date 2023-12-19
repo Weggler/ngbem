@@ -949,4 +949,341 @@ namespace ngbem
 	}
   }
 
+
+
+
+  template <typename KERNEL>
+  GenericIntegralOperator<KERNEL> ::
+  GenericIntegralOperator(shared_ptr<FESpace> _trial_space, shared_ptr<FESpace> _test_space,
+                          KERNEL _kernel,
+                          BEMParameters _param)
+    : IntegralOperator(_trial_space, _test_space, _param), kernel(_kernel)
+  {
+    hmatrix =
+      make_shared<HMatrix>(trial_ct, test_ct, 
+                           param.eta, trial_space->GetNDof(), test_space->GetNDof());
+
+    LocalHeap lh(100000000);
+    CalcHMatrix(*hmatrix, lh, param);
+  }
+                                  
+  template <typename KERNEL>
+  void GenericIntegralOperator<KERNEL> ::
+  CalcBlockMatrix(FlatMatrix<double> matrix, FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, 
+                  LocalHeap &lh) const
+  {
+    auto mesh = trial_space->GetMeshAccess();  
+    auto mesh2 = test_space->GetMeshAccess();  
+    
+    static Timer tall("ngbem DLP - all");
+    static Timer tloops("ngbem DLP - loops");    
+    static Timer t_identic("ngbem DLP - identic panel");
+    static Timer t_common_vertex("ngbem DLP - common vertex");        
+    static Timer t_common_edge("ngbem DLP - common edge");        
+    static Timer t_disjoint("ngbem DLP - disjoint");
+
+    RegionTimer reg(tall);
+
+    IntegrationRule irtrig(ET_TRIG, param.intorder);
+    
+    auto [ identic_panel_x, identic_panel_y, identic_panel_weight ] =
+      IdenticPanelIntegrationRule(param.intorder);
+
+    auto [ common_vertex_x, common_vertex_y, common_vertex_weight ] =
+      CommonVertexIntegrationRule(param.intorder);
+    
+    auto [ common_edge_x, common_edge_y, common_edge_weight ] =
+      CommonEdgeIntegrationRule(param.intorder);
+
+    matrix = 0; 
+
+    auto evaluator = trial_space->GetEvaluator(BND);
+    auto evaluator2 = test_space->GetEvaluator(BND);
+
+    Array<int> tmp, tmp2;
+    Array<int> patchi, patchj;
+    Array<int> trialdofsinv(trial_space->GetNDof()); 
+    Array<int> testdofsinv(test_space->GetNDof());
+
+    trialdofsinv = -1;
+    testdofsinv = -1;
+  
+    for (int i = 0; i < testdofs.Size(); i++)
+      {
+	testdofsinv[testdofs[i]] = i;
+	tmp2.Append(elems4dof2[ testdofs[i] ]);
+      }
+    QuickSort( tmp2 );
+    for (int i = 0; i < tmp2.Size(); i++)
+      {
+	patchi.Append(tmp2[i]);
+	int tmpi = tmp2[i];
+	while (i < tmp2.Size() && tmp2[i] == tmpi)
+	  i++;
+	i--;
+      }
+    
+    for (int j = 0; j < trialdofs.Size(); j++)
+      {
+	trialdofsinv[trialdofs[j]] = j;
+	tmp.Append(elems4dof[ trialdofs[j] ]);
+      }
+    QuickSort( tmp );
+    for (int j = 0; j < tmp.Size(); j++)
+      {
+	patchj.Append(tmp[j]);
+	int tmpj = tmp[j];
+	while (j < tmp.Size() && tmp[j] == tmpj)
+	  j++;
+	j--;
+      }
+
+    RegionTimer regloops(tloops);    
+    for (int i = 0; i < patchi.Size(); i++) // test
+      for (int j = 0; j < patchj.Size(); j++) // trial
+	{
+	  HeapReset hr(lh);
+	  ElementId ei(BND, patchi[i]);
+	  ElementId ej(BND, patchj[j]);
+          
+	  auto verti = mesh2->GetElement(ei).Vertices();
+	  auto vertj = mesh->GetElement(ej).Vertices();          
+            
+	  BaseScalarFiniteElement &feli = dynamic_cast<BaseScalarFiniteElement &>(test_space->GetFE(ei, lh));
+	  BaseScalarFiniteElement &felj = dynamic_cast<BaseScalarFiniteElement &>(trial_space->GetFE(ej, lh));
+              
+	  ElementTransformation &trafoi = mesh2->GetTrafo(ei, lh);
+	  ElementTransformation &trafoj = mesh->GetTrafo(ej, lh);
+              
+	  Array<DofId> dnumsi, dnumsj;
+	  test_space->GetDofNrs(ei, dnumsi); // mapping to global dof
+	  trial_space->GetDofNrs(ej, dnumsj);
+        
+	  FlatVector<> shapei(feli.GetNDof(), lh);
+	  FlatVector<> shapej(felj.GetNDof(), lh);
+          
+	  FlatMatrix elmat(feli.GetNDof(), felj.GetNDof(), lh); 
+	  elmat = 0;
+          
+	  int n_common_vertices = 0;
+	  for (auto vi : verti)
+	    if (vertj.Contains(vi))
+	      n_common_vertices++;
+
+
+	  switch (n_common_vertices)
+	    {
+	    case 3: //identical panel
+	      {
+                RegionTimer reg(t_identic);    
+                      
+		elmat = 0.0;
+		for (int k = 0; k < identic_panel_weight.Size(); k++)
+		  {
+		    IntegrationPoint xhat (identic_panel_x[k]);
+		    IntegrationPoint yhat (identic_panel_y[k]);
+                
+		    MappedIntegrationPoint<2,3> mipx(xhat, trafoi);
+		    MappedIntegrationPoint<2,3> mipy(yhat, trafoj);
+                        
+		    Vec<3> x = mipx.Point();
+		    Vec<3> y = mipy.Point();
+                
+		    Vec<3> nx = mipx.GetNV();
+		    Vec<3> ny = mipy.GetNV();                    
+		    double nxy = InnerProduct(ny, (x-y));
+		    double normxy = L2Norm(x-y);
+		    // double kernel = nxy / (4*M_PI*normxy*normxy*normxy);
+                    double kernel_ = kernel.Evaluate(x, y, nx, ny)(0,0);
+                        
+		    evaluator2->CalcMatrix(feli, mipx, Trans(shapei.AsMatrix(feli.GetNDof(),1)), lh);
+		    evaluator->CalcMatrix(felj, mipy, Trans(shapej.AsMatrix(felj.GetNDof(),1)), lh);
+                        
+		    double fac = mipx.GetMeasure()*mipy.GetMeasure()*identic_panel_weight[k];
+		    elmat += fac*kernel_* shapei * Trans(shapej);
+		  }
+
+		break;
+	      }
+	    case 2: //common edge
+	      {
+                RegionTimer reg(t_common_edge);    
+          
+		const EDGE * edges = ElementTopology::GetEdges (ET_TRIG); // 0 1 | 1 2 | 2 0 
+		int cex, cey;
+		for (int cx = 0; cx < 3; cx++)
+		  for (int cy = 0; cy < 3; cy++)
+		    {
+		      INT<2> ex (verti[edges[cx][0]], verti[edges[cx][1]]); 
+		      INT<2> ey (vertj[edges[cy][0]], vertj[edges[cy][1]]); 
+		      if (ex.Sort() == ey.Sort()) 
+			{
+			  cex = cx;  // -> "common" edge number triangle i
+			  cey = cy;  // -> "common" edge number triangle j
+			  break;
+			}
+		    }
+		int vpermx[3] = { edges[cex][0], edges[cex][1], -1 }; // common edge gets first
+		vpermx[2] = 3-vpermx[0]-vpermx[1]; 
+		int vpermy[3] = { edges[cey][1], edges[cey][0], -1 }; // common edge gets first
+		vpermy[2] = 3-vpermy[0]-vpermy[1];
+                
+		elmat = 0.0;
+		for (int k = 0; k < common_edge_weight.Size(); k++)
+		  {
+
+		    Vec<2> xk = common_edge_x[k]; // int point in [(0,0), (1,0), (0,1)] 
+		    Vec<2> yk = common_edge_y[k]; // int point in [(0,0), (1,0), (0,1)] 
+
+		    Vec<3> lamx (1-xk(0)-xk(1), xk(0), xk(1) ); 
+		    Vec<3> lamy (1-yk(0)-yk(1), yk(0), yk(1) );
+
+              
+		    // consider permuation 
+		    Vec<3> plamx, plamy;
+		    for (int i = 0; i < 3; i++)
+		      {
+			plamx(vpermx[i]) = lamx(i);
+			plamy(vpermy[i]) = lamy(i);
+		      }
+
+		    IntegrationPoint xhat(plamx(0), plamx(1), 0, 0); // int point in [(0,1),(1,0),(0,0)]
+		    IntegrationPoint yhat(plamy(0), plamy(1), 0, 0);
+                        
+		    MappedIntegrationPoint<2,3> mipx(xhat, trafoi);
+		    MappedIntegrationPoint<2,3> mipy(yhat, trafoj);
+                        
+		    Vec<3> x = mipx.Point();
+		    Vec<3> y = mipy.Point();
+
+		    Vec<3> nx = mipx.GetNV();
+		    Vec<3> ny = mipy.GetNV();
+		    // double nxy = InnerProduct(ny, (x-y));
+		    // double normxy = L2Norm(x-y);
+		    double kernel_ = kernel.Evaluate(x,y,nx,ny)(0,0);
+                        
+		    evaluator2->CalcMatrix(feli, mipx, Trans(shapei.AsMatrix(feli.GetNDof(),1)), lh);
+		    evaluator->CalcMatrix(felj, mipy, Trans(shapej.AsMatrix(felj.GetNDof(),1)), lh);
+                        
+		    double fac = mipx.GetMeasure()*mipy.GetMeasure() * common_edge_weight[k];
+		    elmat += fac*kernel_* shapei * Trans(shapej);
+		  }
+
+		break;
+	      }
+
+	    case 1: //common vertex
+	      {
+                RegionTimer reg(t_common_vertex);    
+                  
+		int cvx=-1, cvy=-1;
+		for (int cx = 0; cx < 3; cx++)
+		  for (int cy = 0; cy < 3; cy++)
+		    {
+		      if (verti[cx] == vertj[cy])
+			{
+			  cvx = cx;
+			  cvy = cy;
+			  break;
+			}
+		    }
+
+		int vpermx[3] = { cvx, (cvx+1)%3, (cvx+2)%3 };
+		vpermx[2] = 3-vpermx[0]-vpermx[1];
+		int vpermy[3] = { cvy, (cvy+1)%3, (cvy+2)%3 };
+		vpermy[2] = 3-vpermy[0]-vpermy[1];
+                  
+		elmat = 0.0;
+		for (int k = 0; k < common_vertex_weight.Size(); k++)
+		  {
+		    Vec<2> xk = common_vertex_x[k];
+		    Vec<2> yk = common_vertex_y[k];
+          
+		    Vec<3> lamx (1-xk(0)-xk(1), xk(0), xk(1) );
+		    Vec<3> lamy (1-yk(0)-yk(1), yk(0), yk(1) );
+          
+		    Vec<3> plamx, plamy;
+		    for (int i = 0; i < 3; i++)
+		      {
+			plamx(vpermx[i]) = lamx(i);
+			plamy(vpermy[i]) = lamy(i);
+		      }
+                    
+		    IntegrationPoint xhat(plamx(0), plamx(1), 0, 0);
+		    IntegrationPoint yhat(plamy(0), plamy(1), 0, 0);
+                  
+		    MappedIntegrationPoint<2,3> mipx(xhat, trafoi);
+		    MappedIntegrationPoint<2,3> mipy(yhat, trafoj);
+                  
+		    Vec<3> x = mipx.Point();
+		    Vec<3> y = mipy.Point();
+		    Vec<3> nx = mipy.GetNV();
+		    Vec<3> ny = mipy.GetNV();
+                    
+		    double kernel_ = kernel.Evaluate(x, y, nx, ny)(0,0);
+          
+		    evaluator2->CalcMatrix(feli, mipx, Trans(shapei.AsMatrix(feli.GetNDof(),1)), lh);
+		    evaluator->CalcMatrix(felj, mipy, Trans(shapej.AsMatrix(felj.GetNDof(),1)), lh);
+                  
+		    double fac = mipx.GetMeasure()*mipy.GetMeasure()*common_vertex_weight[k];
+		    elmat += fac*kernel_* shapei * Trans(shapej);
+		  }
+
+		break;
+	      }
+
+	    case 0: //disjoint panels
+	      {
+                RegionTimer r(t_disjoint);    
+                  
+		elmat = 0.0;
+                  
+		// shapes+geom out of loop, matrix multiplication
+		MappedIntegrationRule<2,3> mirx(irtrig, trafoi, lh);
+		MappedIntegrationRule<2,3> miry(irtrig, trafoj, lh);
+                  
+		FlatMatrix<> shapesi(feli.GetNDof(), irtrig.Size(), lh);
+		FlatMatrix<> shapesj(felj.GetNDof(), irtrig.Size(), lh);
+                
+		evaluator2 -> CalcMatrix(feli, mirx, Trans(shapesi), lh);
+		evaluator-> CalcMatrix(felj, miry, Trans(shapesj), lh);
+
+
+		FlatMatrix<> kernel_ixiy(irtrig.Size(), irtrig.Size(), lh);
+		for (int ix = 0; ix < irtrig.Size(); ix++)
+		  {
+		    for (int iy = 0; iy < irtrig.Size(); iy++)
+		      {
+			Vec<3> x = mirx[ix].GetPoint();
+			Vec<3> y = miry[iy].GetPoint();
+
+                        Vec<3> nx = miry[iy].GetNV();
+                        Vec<3> ny = miry[iy].GetNV();
+                        double kernel_ = kernel.Evaluate(x, y, nx, ny)(0,0);
+                        
+			double fac = mirx[ix].GetWeight()*miry[iy].GetWeight();
+			kernel_ixiy(ix, iy) = fac*kernel_;
+		      }
+		  }
+          
+		FlatMatrix<double> kernel_shapesj(irtrig.Size(), felj.GetNDof(), lh);
+		kernel_shapesj = kernel_ixiy * Trans(shapesj);
+		elmat += shapesi * kernel_shapesj;
+                
+		break;
+	      }
+	    default:
+	      throw Exception ("not possible");
+	    }
+	  
+	  for (int ii = 0; ii < dnumsi.Size(); ii++) // test
+	    for (int jj = 0; jj < dnumsj.Size(); jj++) // trial
+	      if(trialdofsinv[dnumsj[jj]] != -1 && testdofsinv[dnumsi[ii]] != -1)
+		matrix(testdofsinv[dnumsi[ii]], trialdofsinv[dnumsj[jj]]) += elmat(ii, jj);
+	}
+  }
+
+  template class GenericIntegralOperator<LaplaceSLKernel<3>>;
+  template class GenericIntegralOperator<LaplaceDLKernel<3>>;
+  
 }

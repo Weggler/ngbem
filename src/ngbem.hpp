@@ -111,6 +111,53 @@ namespace ngbem
 			 LocalHeap &lh) const override;
   };
 
+  
+  template <typename KERNEL>
+  class GenericIntegralOperator : public IntegralOperator
+  {
+    KERNEL kernel;
+  public:
+    GenericIntegralOperator(shared_ptr<FESpace> _trial_space, shared_ptr<FESpace> _test_space,
+                            KERNEL _kernel,
+                            struct BEMParameters param);
+    
+    /** Compute the sub-block of DL potential matrix which belongs to the given dofs, 
+        where #matrix is dense with dim = size(testdofs) x size(trialdofs). 
+        We use the routine to compute a #BEMBlock of type "nearfield". */
+    void CalcBlockMatrix(FlatMatrix<double> matrix, FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, 
+			 LocalHeap &lh) const override;
+  };
+
+
+
+  template <int DIM> class LaplaceSLKernel;
+
+  template<>
+  class LaplaceSLKernel<3> 
+  {
+  public:
+    auto Evaluate (Vec<3> x, Vec<3> y, Vec<3> nx, Vec<3> ny) const
+    {
+      double norm = L2Norm(x-y);
+      return Mat<1,1> (1.0 / (4 * M_PI * norm));
+    }
+  };
+
+
+  template <int DIM> class LaplaceDLKernel;
+
+  template<>
+  class LaplaceDLKernel<3> 
+  {
+  public:
+    auto Evaluate (Vec<3> x, Vec<3> y, Vec<3> nx, Vec<3> ny) const
+    {
+      double norm = L2Norm(x-y);
+      double nxy = InnerProduct(ny, (x-y));
+      return Mat<1,1> (nxy / (4 * M_PI * norm*norm*norm));
+    }
+  };
+
 }
 
 
