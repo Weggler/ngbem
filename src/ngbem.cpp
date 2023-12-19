@@ -548,8 +548,7 @@ namespace ngbem
 	}
   }
 
-  /*
-  void StochasticTSVD (MatrixView<> A, MatrixView<> U, MatrixView<> V, VectorView<> S)
+  void StochasticTSVD1 (MatrixView<> A, MatrixView<> U, MatrixView<> V, VectorView<> S)
   {
     for (int i = 0; i < V.Height(); i++)
       for (int j = 0; j < V.Width(); j++)
@@ -562,7 +561,31 @@ namespace ngbem
     LapackSVD (UtA, tmp, V, S, false);
     U = Matrix<> (U * tmp);
   }
-  */
+
+  size_t StochasticTSVD (MatrixView<> A, MatrixView<> U, MatrixView<> V, VectorView<> S, double eps)
+  {
+    int rank = 5;
+    int p = min(A.Height(), A.Width());
+    while (rank < p)
+      {
+        StochasticTSVD1 (A, U.Cols(rank), V.Rows(rank), S.Range(rank));
+        if (S[rank-1] < eps)
+          {
+            for (int j = 1; j < p; j++)
+              if (S[j] < eps)
+                return j-1;
+          }
+
+        rank = int (rank*1.5);
+      }
+    
+    LapackSVD(A, U, V, S, false);
+    for (int j = 1; j < p; j++)
+      if (S[j] < eps)
+        return j-1;
+    return p;
+  }
+  
 
   unique_ptr<LowRankMatrix> SingleLayerPotentialOperator ::
   CalcFarFieldBlock(FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, LocalHeap &lh) const
@@ -574,7 +597,6 @@ namespace ngbem
     int m = testdofs.Size();
     int n = trialdofs.Size();
     int p = min(n, m);
-    // if (p > 40) p = 40;
   
     Matrix<double> A(m, n);
     {
@@ -582,47 +604,34 @@ namespace ngbem
       CalcBlockMatrix(A, trialdofs, testdofs, lh);
     }
     // Calculate SVD for A^\top = V S U^\top
-    Matrix<double, ColMajor> V(n, p), Ut(p, m);
+    Matrix<double> V(p, n), Ut(m, p);
     Vector<> S(p);
-    Array<double> work(n * m + 100);
-    integer info;
-    char jobu = 'S', jobv = 'S';
-    integer lda = Trans(A).Dist(), ldu = Ut.Dist(), ldv = V.Dist();
-    integer lwork = work.Size();
-
+    // Array<double> work(n * m + 100);
+    // integer info;
+    // char jobu = 'S', jobv = 'S';
+    // integer lda = Trans(A).Dist(), ldu = Ut.Dist(), ldv = V.Dist();
+    // integer lwork = work.Size();
+    int k;
     {
       RegionTimer rsvd(tsvd);
-      dgesvd_(&jobv, &jobu, &n, &m, Trans(A).Data(), &lda, S.Data(), V.Data(), &ldv,
-              Ut.Data(), &ldu, work.Data(), &lwork, &info);
+      // dgesvd_(&jobv, &jobu, &n, &m, Trans(A).Data(), &lda, S.Data(), V.Data(), &ldv,
+      // Ut.Data(), &ldu, work.Data(), &lwork, &info);
       // needs ngsolve update, prefer to call NGSolve wrapper function:
       // LapackSVD (A, Trans(Ut), Trans(V), S, false);
-      // StochasticTSVD (A, Trans(Ut), Trans(V), S);
+      k = StochasticTSVD (A, Ut, V, S, param.eps);
     }
     //Truncate according to eps. k is the rank
-    int k = 1;
-    for (int j = 1; j < p; j++)
-      {
-	if (S(j) > param.eps)
-	  k++;
-      }
-
-    if (n > 200 || m > 200)
-      *testout << "svd, n,m = " << n << ", " << m << ", k = " << k << endl;
+    
+    // if (n > 200 || m > 200)
+    // *testout << "svd, n,m = " << n << ", " << m << ", k = " << k << endl;
     
     // Low-rank approximation from truncated svd
     Matrix<double> U_trc(m, k), Vt_trc(k, n);
     for (size_t j = 0; j < k; j++)
-      // for (size_t i = 0; i < m; i++)
-      // U_trc(i, j) = Ut(j, i) * sqrt(S(j));
-      U_trc.Col(j) = sqrt(S(j)) * Ut.Row(j);
+      U_trc.Col(j) = sqrt(S(j)) * Ut.Col(j);
 
-    /*
-    for (size_t j = 0; j < n; j++)
-      for (size_t i = 0; i < k; i++)
-        Vt_trc(i, j) = V(j, i) * sqrt(S(i));
-    */
     for (size_t i = 0; i < k; i++)    
-      Vt_trc.Row(i) = sqrt(S(i)) * V.Col(i);
+      Vt_trc.Row(i) = sqrt(S(i)) * V.Row(i);
 
     return make_unique<LowRankMatrix> (std::move(U_trc), std::move(Vt_trc));
   }
@@ -845,12 +854,13 @@ namespace ngbem
     auto mesh = space->GetMeshAccess();    // trialspace = H1
     auto mesh2 = space2->GetMeshAccess();  // testspace = L2
     
-    static Timer tall("DoubleLayer - all");
-    static Timer t_identic("DoubleLayer - identic panel");
-    static Timer t_common_vertex("DoubleLayer - common vertex");        
-    static Timer t_common_edge("DoubleLayer - common edge");        
-    // static Timer t_disjoint("DoubleLayer - disjoint");
-    // static Timer t_disjoint2("DoubleLayer - disjoint2");        
+    static Timer tall("ngbem DLP - all");
+    static Timer tloops("ngbem DLP - loops");    
+    static Timer t_identic("ngbem DLP - identic panel");
+    static Timer t_common_vertex("ngbem DLP - common vertex");        
+    static Timer t_common_edge("ngbem DLP - common edge");        
+     static Timer t_disjoint("ngbem DLP - disjoint");
+    // static Timer t_disjoint2("ngbem DLP - disjoint2");        
 
     RegionTimer reg(tall);
 
@@ -914,7 +924,9 @@ namespace ngbem
 	j--;
       }
     int nj = patchj.Size(); 
-    
+
+
+    RegionTimer regloops(tloops);    
     for (int i = 0; i < ni; i++) // test
       for (int j = 0; j < nj; j++) // trial
 	{
@@ -952,7 +964,7 @@ namespace ngbem
 	    {
 	    case 3: //identical panel
 	      {
-		// RegionTimer reg(t_identic);    
+                RegionTimer reg(t_identic);    
                       
 		elmat = 0.0;
 		for (int k = 0; k < identic_panel_weight.Size(); k++)
@@ -983,7 +995,7 @@ namespace ngbem
 	      }
 	    case 2: //common edge
 	      {
-		// RegionTimer reg(t_common_edge);    
+                RegionTimer reg(t_common_edge);    
           
 		const EDGE * edges = ElementTopology::GetEdges (ET_TRIG); // 0 1 | 1 2 | 2 0 
 		int cex, cey;
@@ -1049,7 +1061,7 @@ namespace ngbem
 
 	    case 1: //common vertex
 	      {
-		// RegionTimer reg(t_common_vertex);    
+                RegionTimer reg(t_common_vertex);    
                   
 		int cvx=-1, cvy=-1;
 		for (int cx = 0; cx < 3; cx++)
@@ -1111,7 +1123,7 @@ namespace ngbem
 
 	    case 0: //disjoint panels
 	      {
-		// RegionTimer r(t_disjoint);    
+                RegionTimer r(t_disjoint);    
                   
 		elmat = 0.0;
                   
@@ -1121,11 +1133,12 @@ namespace ngbem
                   
 		FlatMatrix<> shapesi(feli.GetNDof(), irtrig.Size(), lh);
 		FlatMatrix<> shapesj(felj.GetNDof(), irtrig.Size(), lh);
-		FlatMatrix<> kernel_shapesj(felj.GetNDof(), irtrig.Size(), lh);
+		// FlatMatrix<> kernel_shapesj(felj.GetNDof(), irtrig.Size(), lh);
                 
 		evaluator2 -> CalcMatrix(feli, mirx, Trans(shapesi), lh);
 		evaluator-> CalcMatrix(felj, miry, Trans(shapesj), lh);
-                  
+
+                /*
 		// RegionTimer r2(t_disjoint2);
 		kernel_shapesj = 0;
 		for (int ix = 0; ix < irtrig.Size(); ix++)
@@ -1144,7 +1157,33 @@ namespace ngbem
 		    }
                   
 		elmat += shapesi * Trans(kernel_shapesj);
+                */
+
+		FlatMatrix<> kernel_ixiy(irtrig.Size(), irtrig.Size(), lh);
+		for (int ix = 0; ix < irtrig.Size(); ix++)
+		  {
+		    for (int iy = 0; iy < irtrig.Size(); iy++)
+		      {
+			Vec<3> x = mirx[ix].GetPoint();
+			Vec<3> y = miry[iy].GetPoint();
+
+                        Vec<3> ny = miry[iy].GetNV();
+                        double nxy = InnerProduct(ny, (x-y));
+                        double normxy = L2Norm(x-y);
+                        double kernel = nxy / (4*M_PI*normxy*normxy*normxy);
+                        
+			// double kernel = 1.0 / (4*M_PI*L2Norm(x-y));
+			double fac = mirx[ix].GetWeight()*miry[iy].GetWeight();
+			kernel_ixiy(ix, iy) = fac*kernel;
+		      }
+		  }
           
+		FlatMatrix<double> kernel_shapesj(irtrig.Size(), felj.GetNDof(), lh);
+		kernel_shapesj = kernel_ixiy * Trans(shapesj);
+		elmat += shapesi * kernel_shapesj;
+
+
+                
 		// cout << "new: disjoint elmat = " << elmat << endl;
 		// cout << "dnumsj = " << dnumsj[0] << ", rowdof = " << mapglob2bnd2[dnumsj[0]] << endl;
 		// cout << "dnumsi = " << dnumsi << endl;
@@ -1166,10 +1205,11 @@ namespace ngbem
   CalcFarFieldBlock(FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, LocalHeap &lh) const
   {
     static Timer t("ngbem - DLP::CalcFarFieldBlock"); RegionTimer reg(t);
+    static Timer tsvd("ngbem - DLP::CalcFarFieldBlock svd"); 
     int m = testdofs.Size();
     int n = trialdofs.Size();
     int p = min(n, m);
-  
+    
     Matrix<double> A(m, n);
     CalcBlockMatrix(A, trialdofs, testdofs, lh);
     
@@ -1181,30 +1221,19 @@ namespace ngbem
     char jobu = 'S', jobv = 'S';
     integer lda = Trans(A).Dist(), ldu = Ut.Dist(), ldv = V.Dist();
     integer lwork = work.Size();
-    
-    dgesvd_(&jobv, &jobu, &n, &m, Trans(A).Data(), &lda, S.Data(), V.Data(), &ldv,
-	    Ut.Data(), &ldu, work.Data(), &lwork, &info);
-    
+    int k;
+    {
+      RegionTimer reg(tsvd);          
+      // dgesvd_(&jobv, &jobu, &n, &m, Trans(A).Data(), &lda, S.Data(), V.Data(), &ldv,
+      // Ut.Data(), &ldu, work.Data(), &lwork, &info);
+      
+      k = StochasticTSVD (A, Trans(Ut), Trans(V), S, param.eps);      
+    }
     //Truncate according to eps. k is the rank
-    int k = 1;
-    for (int j = 1; j < p; j++)
-      {
-	if (S(j) > param.eps)
-	  k++;
-      }
     
     // Low-rank approximation from truncated svd
-    /*
-    Matrix<double, ColMajor> U_trc(m, k), Vt_trc(k, n);
-    for (size_t j = 0; j < k; j++)
-      for (size_t i = 0; i < m; i++)
-        U_trc(i, j) = Ut(j, i) * sqrt(S(j));
-    for (size_t j = 0; j < n; j++)
-      for (size_t i = 0; i < k; i++)
-        Vt_trc(i, j) = V(j, i) * sqrt(S(i));
-    */
-    if (n > 200 || m > 200)
-      *testout << "svd, n,m = " << n << ", " << m << ", k = " << k << endl;
+    // if (n > 200 || m > 200)
+    // *testout << "svd, n,m = " << n << ", " << m << ", k = " << k << endl;
     
     Matrix<double> U_trc(m, k), Vt_trc(k, n);
     for (size_t j = 0; j < k; j++)
