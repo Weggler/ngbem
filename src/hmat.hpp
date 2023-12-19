@@ -54,7 +54,7 @@ namespace ngbem
     int n_cluster;
 
     /** Array of length #n_cluster containing the clusters. */
-    Array<struct Cluster> arr_clusters;
+    Array<Cluster> arr_clusters;
 
     /** Constructor (leafsize defines the minimal size of a #Cluster) */
     ClusterTree(shared_ptr<FESpace> space, int leafsize);
@@ -103,6 +103,8 @@ namespace ngbem
       \f$ C = A B^\top \f$, where \f$A, B\f$ are matrices of dimensions
       \$fn\times r\$f and \f$m \times r \f$ with \$fr<m,n\f$.
   */
+
+  template <typename T = double>
   class LowRankMatrix : public BaseMatrix 
   {
     /** Height of the matrix #A. */
@@ -112,14 +114,14 @@ namespace ngbem
     /** The rank is the width of #A and height of #Bt. */
     size_t rank;
     /** The Matrix \f$A\f$ of the low-rank factorization. */
-    Matrix<> A;
+    Matrix<T> A;
     /** The transpose of the matrix \f$B\f$ of the low-rank factorization. */
-    Matrix<> Bt;
+    Matrix<T> Bt;
   public:
     /** Empty constructor. */
     // LowRankMatrix();
     /** Constructor. */
-    LowRankMatrix(Matrix<> A, Matrix<> Bt);
+    LowRankMatrix(Matrix<T> A, Matrix<T> Bt);
 
     /** Access matrices of factorization . */
     const auto & GetA() const { return A; }
@@ -129,6 +131,8 @@ namespace ngbem
     virtual void Mult(const BaseVector & x, BaseVector & y) const override;    
     virtual void MultAdd (double s, const BaseVector & x, BaseVector & y) const override;
     virtual void MultTransAdd (double s, const BaseVector & x, BaseVector & y) const override;
+    virtual void MultAdd (Complex s, const BaseVector & x, BaseVector & y) const override;
+    virtual void MultTransAdd (Complex s, const BaseVector & x, BaseVector & y) const override;
 
     bool IsComplex() const override { return false; }
 
@@ -145,6 +149,8 @@ namespace ngbem
       based on clusters. It consists of near-field dense blocks and far-field
       low-rank blocks. A block is  #BEMBlock. 
   */
+
+  template <typename T = double>
   class HMatrix : public BaseMatrix
   {
     /** Row cluster tree. */

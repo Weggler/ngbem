@@ -26,7 +26,7 @@ namespace ngbem
   };
 
 
-
+  template <typename T = double>
   class IntegralOperator : public SpecialElement
   {
   protected:
@@ -46,7 +46,7 @@ namespace ngbem
     shared_ptr<ClusterTree> trial_ct; 
     shared_ptr<ClusterTree> test_ct;
     
-    shared_ptr<HMatrix> hmatrix;
+    shared_ptr<HMatrix<T>> hmatrix;
 
 
   public:
@@ -54,15 +54,15 @@ namespace ngbem
     shared_ptr<BaseMatrix> GetMatrix() const { return hmatrix; }
 
     /** Given a #HMatrix structure, compute all block. Memory for farfield blocks gets clear here. */
-    void CalcHMatrix(HMatrix & hmatrix, LocalHeap &lh, struct BEMParameters &param) const;
+    void CalcHMatrix(HMatrix<T> & hmatrix, LocalHeap &lh, struct BEMParameters &param) const;
 
-    virtual void CalcBlockMatrix(FlatMatrix<double> matrix,
+    virtual void CalcBlockMatrix(FlatMatrix<T> matrix,
                                  FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, 
                                  LocalHeap &lh) const = 0;
     
     /** Compute the sub-block of integral operator matrix which belongs to the given dofs,  
         where #matrix is a #LowRankMatrix. We use the routine to compute a #BEMBlock of type "farfield". */
-    virtual unique_ptr<LowRankMatrix>
+    virtual unique_ptr<LowRankMatrix<T>>
     CalcFarFieldBlock(FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs,
                       LocalHeap &lh) const;
 
@@ -85,7 +85,7 @@ namespace ngbem
   
   /** SingleLayerPotentialOperator. 
       */
-  class SingleLayerPotentialOperator : public IntegralOperator
+  class SingleLayerPotentialOperator : public IntegralOperator<double>
   {
   public:
     /** Constructor */
@@ -98,7 +98,7 @@ namespace ngbem
   };
 
 
-  class DoubleLayerPotentialOperator : public IntegralOperator
+  class DoubleLayerPotentialOperator : public IntegralOperator<double>
   {
   public:
     DoubleLayerPotentialOperator(shared_ptr<FESpace> aspace, shared_ptr<FESpace> bspace, struct BEMParameters param);
@@ -113,9 +113,31 @@ namespace ngbem
 
   
   template <typename KERNEL>
-  class GenericIntegralOperator : public IntegralOperator
+  class GenericIntegralOperator : public IntegralOperator<typename KERNEL::value_type>
   {
     KERNEL kernel;
+    typedef typename KERNEL::value_type value_type;
+    typedef IntegralOperator<typename KERNEL::value_type> BASE;
+    
+    using BASE::trial_space; 
+    using BASE::test_space; 
+    
+    using BASE::param;
+
+    using BASE::mapglob2bnd;
+    using BASE::mapbnd2glob;
+    using BASE::mapglob2bnd2;
+    using BASE::mapbnd2glob2;
+
+    using BASE::elems4dof; // contains list of elems contributing to bnd-dof
+    using BASE::elems4dof2; // contains list of elems contributing to bnd-dof
+    
+    using BASE::trial_ct; 
+    using BASE::test_ct;
+    
+    using BASE::hmatrix;
+
+    
   public:
     GenericIntegralOperator(shared_ptr<FESpace> _trial_space, shared_ptr<FESpace> _test_space,
                             KERNEL _kernel,
@@ -124,7 +146,7 @@ namespace ngbem
     /** Compute the sub-block of DL potential matrix which belongs to the given dofs, 
         where #matrix is dense with dim = size(testdofs) x size(trialdofs). 
         We use the routine to compute a #BEMBlock of type "nearfield". */
-    void CalcBlockMatrix(FlatMatrix<double> matrix, FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, 
+    void CalcBlockMatrix(FlatMatrix<value_type> matrix, FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, 
 			 LocalHeap &lh) const override;
   };
 
@@ -136,6 +158,7 @@ namespace ngbem
   class LaplaceSLKernel<3> 
   {
   public:
+    typedef double value_type;
     auto Evaluate (Vec<3> x, Vec<3> y, Vec<3> nx, Vec<3> ny) const
     {
       double norm = L2Norm(x-y);
@@ -150,6 +173,7 @@ namespace ngbem
   class LaplaceDLKernel<3> 
   {
   public:
+    typedef double value_type;    
     auto Evaluate (Vec<3> x, Vec<3> y, Vec<3> nx, Vec<3> ny) const
     {
       double norm = L2Norm(x-y);
@@ -158,6 +182,26 @@ namespace ngbem
     }
   };
 
+
+
+  template <int DIM> class HelmholtzSLKernel;
+
+  template<>
+  class HelmholtzSLKernel<3> 
+  {
+    double kappa;
+  public:
+    typedef Complex value_type;
+    HelmholtzSLKernel (double _kappa) : kappa(_kappa) { }
+    auto Evaluate (Vec<3> x, Vec<3> y, Vec<3> nx, Vec<3> ny) const
+    {
+      double norm = L2Norm(x-y);
+      return Mat<1,1,Complex> (exp(Complex(0,1)*kappa) / (4 * M_PI * norm));
+    }
+  };
+
+
+  
 }
 
 

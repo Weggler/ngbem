@@ -11,12 +11,17 @@ PYBIND11_MODULE(libbem, m)
   cout << "Loading ngbem library" << endl;
 
 
-  py::class_<IntegralOperator, shared_ptr<IntegralOperator>> (m, "IntegralOperator")
-    .def_property_readonly("mat", &IntegralOperator::GetMatrix)
+  py::class_<IntegralOperator<double>, shared_ptr<IntegralOperator<double>>> (m, "IntegralOperator")
+    .def_property_readonly("mat", &IntegralOperator<double>::GetMatrix)
     ;
+  py::class_<IntegralOperator<Complex>, shared_ptr<IntegralOperator<Complex>>> (m, "IntegralOperatorC")
+    .def_property_readonly("mat", &IntegralOperator<Complex>::GetMatrix)
+    ;
+
+
   
   m.def("SingleLayerPotentialOperator", [](shared_ptr<FESpace> space, int intorder, int leafsize, double eta, double eps,
-                                           string method, bool testhmatrix) -> shared_ptr<IntegralOperator>
+                                           string method, bool testhmatrix) -> shared_ptr<IntegralOperator<>>
   {
     BEMParameters param({intorder, leafsize, eta, eps, method, testhmatrix});
     // return make_unique<SingleLayerPotentialOperator>(space, param);
@@ -29,7 +34,7 @@ PYBIND11_MODULE(libbem, m)
 
   m.def("DoubleLayerPotentialOperator", [](shared_ptr<FESpace> trial_space, shared_ptr<FESpace> test_space,
                                            int intorder, int leafsize, double eta, double eps,
-                                           string method, bool testhmatrix) -> shared_ptr<IntegralOperator>
+                                           string method, bool testhmatrix) -> shared_ptr<IntegralOperator<>>
   {
     BEMParameters param({intorder, leafsize, eta, eps, method, testhmatrix});
     // return make_shared<DoubleLayerPotentialOperator>(trial_space, test_space, param);
@@ -37,6 +42,19 @@ PYBIND11_MODULE(libbem, m)
   }, py::arg("trial_space"), py::arg("test_space"), py::arg("intorder")=3, py::arg("leafsize")=40,
         py::arg("eta")=2., py::arg("eps")=1e-6,
         py::arg("method")="svd", py::arg("testhmatrix")=false);
+
+
+
+  m.def("HolmholtzSingleLayerPotentialOperator", [](shared_ptr<FESpace> space, double kappa,
+                                                    int intorder, int leafsize, double eta, double eps,
+                                                    string method, bool testhmatrix) -> shared_ptr<IntegralOperator<Complex>>
+  {
+    BEMParameters param({intorder, leafsize, eta, eps, method, testhmatrix});
+    return make_unique<GenericIntegralOperator<HelmholtzSLKernel<3>>>(space, space, HelmholtzSLKernel<3>(kappa), param);
+    
+  }, py::arg("space"), py::arg("kappa"), py::arg("intorder")=3, py::arg("leafsize")=40, py::arg("eta")=2., py::arg("eps")=1e-6,
+    py::arg("method")="svd", py::arg("testhmatrix")=false);
+
   
 }
 

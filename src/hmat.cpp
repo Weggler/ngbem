@@ -495,7 +495,8 @@ namespace ngbem
     y.SetIndirect(testdofs, yp);
   }
 
-  LowRankMatrix :: LowRankMatrix(Matrix<> _A, Matrix<> _Bt) :
+  template <typename T>
+  LowRankMatrix<T> :: LowRankMatrix(Matrix<T> _A, Matrix<T> _Bt) :
     A(std::move(_A)), Bt(std::move(_Bt))
   {
     if (A.Width() == Bt.Height())
@@ -504,41 +505,58 @@ namespace ngbem
       throw Exception ("Low-rank matrix: ranks incompatible");
   }
 
-  void LowRankMatrix :: Mult (const BaseVector & x, BaseVector & y) const
+  template <typename T>  
+  void LowRankMatrix<T> :: Mult (const BaseVector & x, BaseVector & y) const
   {
-    Vector<> tmp(A.Width());
-    tmp = Bt * x.FV<double>();
-    y.FV<double>() = A * tmp;
+    Vector<T> tmp(A.Width());
+    tmp = Bt * x.FV<T>();
+    y.FV<T>() = A * tmp;
   }
+
+  template <typename T>  
+  void LowRankMatrix<T> :: MultAdd (double s, const BaseVector & x, BaseVector & y) const
+  {
+    Vector<T> tmp(A.Width());
+    tmp = Bt * x.FV<T>();
+    y.FV<T>() += s * A * tmp;
+  }
+
+  template <typename T>  
+  void LowRankMatrix<T> :: MultTransAdd (double s, const BaseVector & x, BaseVector & y) const
+  {
+    Vector<T> tmp(Bt.Height());
+    tmp = Trans(A) * x.FV<T>();
+    y.FV<T>() += s * Trans(Bt) * tmp;
+  }
+
+  template <typename T>  
+  void LowRankMatrix<T> :: MultAdd (Complex s, const BaseVector & x, BaseVector & y) const
+  {
+    Vector<Complex> tmp(A.Width());
+    tmp = Bt * x.FV<Complex>();
+    y.FV<Complex>() += s * A * tmp;
+  }
+
+  template <typename T>  
+  void LowRankMatrix<T> :: MultTransAdd (Complex s, const BaseVector & x, BaseVector & y) const
+  {
+    Vector<Complex> tmp(Bt.Height());
+    tmp = Trans(A) * x.FV<Complex>();
+    y.FV<Complex>() += s * Trans(Bt) * tmp;
+  }
+
   
-  void LowRankMatrix :: MultAdd (double s, const BaseVector & x, BaseVector & y) const
+  template <typename T>
+  AutoVector LowRankMatrix<T> :: CreateRowVector () const
   {
-    // Vector<> tmp = x.FV<double>();
-    // tmp *= s;
-    
-    // y.FV<double>() += s * (*A) * (*Bt) * x.FV<double>(); // performance nightmare
-    Vector<> tmp(A.Width());
-    tmp = Bt * x.FV<double>();
-    y.FV<double>() += s * A * tmp;
-  }
-
-  void LowRankMatrix :: MultTransAdd (double s, const BaseVector & x, BaseVector & y) const
-  {
-    //y.FV<double>() += s * Trans(Bt) * Trans(A) * x.FV<double>();
-    Vector<> tmp(Bt.Height());
-    tmp = Trans(A) * x.FV<double>();
-    y.FV<double>() += s * Trans(Bt) * tmp;
-  }
-
-  AutoVector LowRankMatrix :: CreateRowVector () const
-  {
-    shared_ptr<BaseVector> sp = make_shared<VVector<double>>(A.Height());   
+    shared_ptr<BaseVector> sp = make_shared<VVector<T>>(A.Height());   
     return sp;
   }
-  
-  AutoVector LowRankMatrix :: CreateColVector () const
+
+  template <typename T>  
+  AutoVector LowRankMatrix<T> :: CreateColVector () const
   {
-    shared_ptr<BaseVector> sp = make_shared<VVector<double>>(Bt.Width());   
+    shared_ptr<BaseVector> sp = make_shared<VVector<T>>(Bt.Width());   
     return sp;
   }
   
@@ -585,16 +603,18 @@ namespace ngbem
                             row_ct.mapcluster2glob.Range(row_cluster.PermuPos, row_cluster.PermuPos+row_cluster.Number),
                             isNearField));    
   }
-  
-  HMatrix :: HMatrix(shared_ptr<ClusterTree> _col_ct, shared_ptr<ClusterTree> _row_ct,
-                     double _eta, int _width_vol_dof, int _height_vol_dof)
+
+  template <typename T>
+  HMatrix<T> :: HMatrix(shared_ptr<ClusterTree> _col_ct, shared_ptr<ClusterTree> _row_ct,
+                        double _eta, int _width_vol_dof, int _height_vol_dof)
     : col_ct(_col_ct), row_ct(_row_ct), eta(_eta),
       width_vol_dof(_width_vol_dof), height_vol_dof(_height_vol_dof)
   {    
     HMatrix_help(*row_ct, *col_ct, 0, 0, eta, matList);
   }
-    
-  void HMatrix :: MultAdd (double s, const BaseVector & x, BaseVector & y) const
+
+  template <typename T>  
+  void HMatrix<T> :: MultAdd (double s, const BaseVector & x, BaseVector & y) const
   {
     static Timer t("ngbem - HMatrix::MultAdd");
     RegionTimer reg(t);
@@ -610,20 +630,23 @@ namespace ngbem
     */
   }
 
-  void HMatrix :: MultTransAdd (double s, const BaseVector & x, BaseVector & y) const
+  template <typename T>  
+  void HMatrix<T> :: MultTransAdd (double s, const BaseVector & x, BaseVector & y) const
   {
     for (int i = 0; i < matList.Size(); i++)
       matList[i].MultTransAdd(s, x, y);
   }
-
-  AutoVector HMatrix :: CreateRowVector () const
+  
+  template <typename T>
+  AutoVector HMatrix<T> :: CreateRowVector () const
   {
     // missing parallel: 1 dof for all
     shared_ptr<BaseVector> sp = make_shared<VVector<double>>(width_vol_dof);   
     return sp;
   }
-  
-  AutoVector HMatrix :: CreateColVector () const
+
+  template <typename T>  
+  AutoVector HMatrix<T> :: CreateColVector () const
   {
     shared_ptr<BaseVector> sp = make_shared<VVector<double>>(height_vol_dof);   
     return sp;
@@ -635,4 +658,11 @@ namespace ngbem
   //   for (int i = 0; i < matList.Size(); i++)
   //     matList[i]
   // }
+
+
+  template class LowRankMatrix<double>;
+  template class LowRankMatrix<Complex>;
+  template class HMatrix<double>;
+  template class HMatrix<Complex>;
+  
 }

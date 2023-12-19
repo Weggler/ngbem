@@ -8,8 +8,9 @@
 
 namespace ngbem
 {
-  
-  IntegralOperator ::
+
+  template <typename T>  
+  IntegralOperator<T> ::
   IntegralOperator(shared_ptr<FESpace> _trial_space, shared_ptr<FESpace> _test_space,
                    BEMParameters _param)
     : trial_space(_trial_space), test_space(_test_space), param(_param)
@@ -89,20 +90,22 @@ namespace ngbem
     elems4dof2 = creator2.MoveTable();
   }
 
-  
-  void IntegralOperator :: GetDofNrs(Array<int> &dnums) const
+  template <typename T>    
+  void IntegralOperator<T> :: GetDofNrs(Array<int> &dnums) const
   {
     dnums = mapbnd2glob;
   }
 
-  void IntegralOperator ::  GetDofNrs2(Array<int> &dnums) const   
+  template <typename T>    
+  void IntegralOperator<T> ::  GetDofNrs2(Array<int> &dnums) const   
   {
     dnums = mapbnd2glob2;
   }
 
 
   /* compute dense double layer matrix,  dim = ndof_bnd_L2 x ndof_bnd_H1 */
-  void IntegralOperator ::
+  template <typename T>    
+  void IntegralOperator<T> ::
   CalcElementMatrix(FlatMatrix<double> matrix, LocalHeap &lh) const
   {
     /*
@@ -113,10 +116,12 @@ namespace ngbem
       range2.Append(j);
     CalcBlockMatrix(matrix, range, range2, lh);
     */
-    CalcBlockMatrix(matrix, mapbnd2glob, mapbnd2glob2, lh);    
+    if constexpr (is_same<T,double>())
+      CalcBlockMatrix(matrix, mapbnd2glob, mapbnd2glob2, lh);    
   }
 
-  void IntegralOperator :: Apply(FlatVector<double> elx, FlatVector<double> ely, 
+  template <typename T>    
+  void IntegralOperator<T> :: Apply(FlatVector<double> elx, FlatVector<double> ely, 
                                  LocalHeap & lh) const
   {
     static Timer t("ngbem - IntegralOperator::Apply"); RegionTimer reg(t);
@@ -134,8 +139,8 @@ namespace ngbem
 
 
   
-  
-  void IntegralOperator :: CalcHMatrix(HMatrix & hmatrix, LocalHeap & clh, struct BEMParameters &param) const
+  template <typename T>    
+  void IntegralOperator<T> :: CalcHMatrix(HMatrix<T> & hmatrix, LocalHeap & clh, struct BEMParameters &param) const
   {
     static Timer t("ngbem - BaseClass::CalcHMatrix"); RegionTimer reg(t);    
     auto & matList = hmatrix.GetMatList();
@@ -152,9 +157,9 @@ namespace ngbem
           if(block.IsNearField())
             {
               // Compute dense block
-              Matrix<> near(testdofs.Size(), trialdofs.Size());
+              Matrix<T> near(testdofs.Size(), trialdofs.Size());
               CalcBlockMatrix(near, trialdofs, testdofs, lh);	    
-              block.SetMat(make_unique<BaseMatrixFromMatrix<>>(std::move(near)));
+              block.SetMat(make_unique<BaseMatrixFromMatrix<T>>(std::move(near)));
             }
           else
             {
@@ -167,22 +172,23 @@ namespace ngbem
 
 
 
-
-  void StochasticTSVD1 (MatrixView<> A, MatrixView<> U, MatrixView<> V, VectorView<> S)
+  template <typename T>
+  void StochasticTSVD1 (MatrixView<T> A, MatrixView<T> U, MatrixView<T> V, VectorView<> S)
   {
     for (int i = 0; i < V.Height(); i++)
       for (int j = 0; j < V.Width(); j++)
         V(i,j) = double (rand()) / RAND_MAX;
 
-    Matrix AVt = A * Trans(V);
-    Matrix tmp(V.Height(), V.Height());
+    Matrix<T> AVt = A * Trans(V);
+    Matrix<T> tmp(V.Height(), V.Height());
     LapackSVD (AVt, U, tmp, S, false);    
-    Matrix UtA = Trans(U) * A;
+    Matrix<T> UtA = Trans(U) * A;
     LapackSVD (UtA, tmp, V, S, false);
-    U = Matrix<> (U * tmp);
+    U = Matrix<T> (U * tmp);
   }
 
-  size_t StochasticTSVD (MatrixView<> A, MatrixView<> U, MatrixView<> V, VectorView<> S, double eps)
+  template <typename T>
+  size_t StochasticTSVD (MatrixView<T> A, MatrixView<T> U, MatrixView<T> V, VectorView<> S, double eps)
   {
     static Timer tsvd("ngbem - StochasticTSVD"); 
     RegionTimer reg(tsvd);
@@ -208,8 +214,9 @@ namespace ngbem
         return j-1;
     return p;
   }
-  
-  unique_ptr<LowRankMatrix> IntegralOperator ::
+
+  template <typename T>    
+  unique_ptr<LowRankMatrix<T>> IntegralOperator<T> ::
   CalcFarFieldBlock(FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, LocalHeap &lh) const
   {
     static Timer t("ngbem - IntegralOperator::CalcFarFieldBlock"); RegionTimer reg(t);
@@ -217,25 +224,25 @@ namespace ngbem
     int n = trialdofs.Size();
     int p = min(n, m);
     
-    Matrix<double> A(m, n);
+    Matrix<T> A(m, n);
     CalcBlockMatrix(A, trialdofs, testdofs, lh);
     
     // Calculate SVD for A^\top = V S U^\top
-    Matrix<double, ColMajor> V(n, p), Ut(p, m);
+    Matrix<T, ColMajor> V(n, p), Ut(p, m);
     Vector<> S(p);
 
-    int k = StochasticTSVD (A, Trans(Ut), Trans(V), S, param.eps);      
+    int k = StochasticTSVD<T> (A, Trans(Ut), Trans(V), S, param.eps);      
     
     // Low-rank approximation from truncated svd
     
-    Matrix<double> U_trc(m, k), Vt_trc(k, n);
+    Matrix<T> U_trc(m, k), Vt_trc(k, n);
     for (size_t j = 0; j < k; j++)
       U_trc.Col(j) = sqrt(S(j)) * Ut.Row(j);
 
     for (size_t i = 0; i < k; i++)    
       Vt_trc.Row(i) = sqrt(S(i)) * V.Col(i);
 
-    return make_unique<LowRankMatrix> (Matrix<>(U_trc), Matrix<>(Vt_trc));
+    return make_unique<LowRankMatrix<T>> (Matrix<T>(U_trc), Matrix<T>(Vt_trc));
   }
 
   
@@ -249,8 +256,8 @@ namespace ngbem
     /*START: TEST hmatrix: compare approximation with dense matrix. */   
 
     // create hmatrix
-    hmatrix = make_shared<HMatrix>(trial_ct, test_ct,
-                                   param.eta, trial_space->GetNDof(), trial_space->GetNDof());
+    hmatrix = make_shared<HMatrix<double>>(trial_ct, test_ct,
+                                           param.eta, trial_space->GetNDof(), trial_space->GetNDof());
     // compute all its blocks
     LocalHeap lh(10000000);
     CalcHMatrix(*hmatrix, lh, param);
@@ -599,9 +606,8 @@ namespace ngbem
     : IntegralOperator(aspace, bspace, _param)
   {
     // create hmatrix
-    hmatrix = make_shared<HMatrix>(trial_ct, // trial space H1
-                                   test_ct, // test space L2
-                                   param.eta, trial_space->GetNDof(), test_space->GetNDof());
+    hmatrix = make_shared<HMatrix<double>>(trial_ct, test_ct, 
+                                           param.eta, trial_space->GetNDof(), test_space->GetNDof());
 
     LocalHeap lh(100000000);
     CalcHMatrix(*hmatrix, lh, param);
@@ -957,23 +963,23 @@ namespace ngbem
   GenericIntegralOperator(shared_ptr<FESpace> _trial_space, shared_ptr<FESpace> _test_space,
                           KERNEL _kernel,
                           BEMParameters _param)
-    : IntegralOperator(_trial_space, _test_space, _param), kernel(_kernel)
+    : IntegralOperator<value_type>(_trial_space, _test_space, _param), kernel(_kernel)
   {
     hmatrix =
-      make_shared<HMatrix>(trial_ct, test_ct, 
-                           param.eta, trial_space->GetNDof(), test_space->GetNDof());
-
+      make_shared<HMatrix<value_type>>(trial_ct, test_ct, 
+                                       param.eta, trial_space->GetNDof(), test_space->GetNDof());
+    
     LocalHeap lh(100000000);
-    CalcHMatrix(*hmatrix, lh, param);
+    this->CalcHMatrix(*hmatrix, lh, param);
   }
                                   
   template <typename KERNEL>
   void GenericIntegralOperator<KERNEL> ::
-  CalcBlockMatrix(FlatMatrix<double> matrix, FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, 
+  CalcBlockMatrix(FlatMatrix<value_type> matrix, FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, 
                   LocalHeap &lh) const
   {
-    auto mesh = trial_space->GetMeshAccess();  
-    auto mesh2 = test_space->GetMeshAccess();  
+    auto mesh = this->trial_space->GetMeshAccess();  
+    auto mesh2 = this->test_space->GetMeshAccess();  
     
     static Timer tall("ngbem DLP - all");
     static Timer tloops("ngbem DLP - loops");    
@@ -1062,7 +1068,7 @@ namespace ngbem
 	  FlatVector<> shapei(feli.GetNDof(), lh);
 	  FlatVector<> shapej(felj.GetNDof(), lh);
           
-	  FlatMatrix elmat(feli.GetNDof(), felj.GetNDof(), lh); 
+	  FlatMatrix<value_type> elmat(feli.GetNDof(), felj.GetNDof(), lh); 
 	  elmat = 0;
           
 	  int n_common_vertices = 0;
@@ -1094,7 +1100,7 @@ namespace ngbem
 		    double nxy = InnerProduct(ny, (x-y));
 		    double normxy = L2Norm(x-y);
 		    // double kernel = nxy / (4*M_PI*normxy*normxy*normxy);
-                    double kernel_ = kernel.Evaluate(x, y, nx, ny)(0,0);
+                    value_type kernel_ = kernel.Evaluate(x, y, nx, ny)(0,0);
                         
 		    evaluator2->CalcMatrix(feli, mipx, Trans(shapei.AsMatrix(feli.GetNDof(),1)), lh);
 		    evaluator->CalcMatrix(felj, mipy, Trans(shapej.AsMatrix(felj.GetNDof(),1)), lh);
@@ -1160,7 +1166,7 @@ namespace ngbem
 		    Vec<3> ny = mipy.GetNV();
 		    // double nxy = InnerProduct(ny, (x-y));
 		    // double normxy = L2Norm(x-y);
-		    double kernel_ = kernel.Evaluate(x,y,nx,ny)(0,0);
+		    value_type kernel_ = kernel.Evaluate(x,y,nx,ny)(0,0);
                         
 		    evaluator2->CalcMatrix(feli, mipx, Trans(shapei.AsMatrix(feli.GetNDof(),1)), lh);
 		    evaluator->CalcMatrix(felj, mipy, Trans(shapej.AsMatrix(felj.GetNDof(),1)), lh);
@@ -1220,7 +1226,7 @@ namespace ngbem
 		    Vec<3> nx = mipy.GetNV();
 		    Vec<3> ny = mipy.GetNV();
                     
-		    double kernel_ = kernel.Evaluate(x, y, nx, ny)(0,0);
+		    value_type kernel_ = kernel.Evaluate(x, y, nx, ny)(0,0);
           
 		    evaluator2->CalcMatrix(feli, mipx, Trans(shapei.AsMatrix(feli.GetNDof(),1)), lh);
 		    evaluator->CalcMatrix(felj, mipy, Trans(shapej.AsMatrix(felj.GetNDof(),1)), lh);
@@ -1249,7 +1255,7 @@ namespace ngbem
 		evaluator-> CalcMatrix(felj, miry, Trans(shapesj), lh);
 
 
-		FlatMatrix<> kernel_ixiy(irtrig.Size(), irtrig.Size(), lh);
+		FlatMatrix<value_type> kernel_ixiy(irtrig.Size(), irtrig.Size(), lh);
 		for (int ix = 0; ix < irtrig.Size(); ix++)
 		  {
 		    for (int iy = 0; iy < irtrig.Size(); iy++)
@@ -1259,14 +1265,14 @@ namespace ngbem
 
                         Vec<3> nx = miry[iy].GetNV();
                         Vec<3> ny = miry[iy].GetNV();
-                        double kernel_ = kernel.Evaluate(x, y, nx, ny)(0,0);
+                        value_type kernel_ = kernel.Evaluate(x, y, nx, ny)(0,0);
                         
 			double fac = mirx[ix].GetWeight()*miry[iy].GetWeight();
 			kernel_ixiy(ix, iy) = fac*kernel_;
 		      }
 		  }
           
-		FlatMatrix<double> kernel_shapesj(irtrig.Size(), felj.GetNDof(), lh);
+		FlatMatrix<value_type> kernel_shapesj(irtrig.Size(), felj.GetNDof(), lh);
 		kernel_shapesj = kernel_ixiy * Trans(shapesj);
 		elmat += shapesi * kernel_shapesj;
                 
@@ -1286,4 +1292,5 @@ namespace ngbem
   template class GenericIntegralOperator<LaplaceSLKernel<3>>;
   template class GenericIntegralOperator<LaplaceDLKernel<3>>;
   
+  template class GenericIntegralOperator<HelmholtzSLKernel<3>>;  
 }
