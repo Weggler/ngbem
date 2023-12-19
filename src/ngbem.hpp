@@ -24,24 +24,40 @@ namespace ngbem
     // testing hmatrix accuracy
     bool testhmatrix;
   };
-  
-  /** SingleLayerPotentialOperator. 
-      */
-  class SingleLayerPotentialOperator : public SpecialElement
-  {
-    shared_ptr<FESpace> space; 
-    Array<DofId> mapglob2bnd;
-    Array<DofId> mapbnd2glob;
-    // Array<Array<int>> elems4dof; // contains list of elems contributing to dof
-    Table<int> elems4dof;
 
+
+
+  class IntegralOperator : public SpecialElement
+  {
+  protected:
+    shared_ptr<FESpace> trial_space; 
+    shared_ptr<FESpace> test_space; 
+    
     BEMParameters param;
-    shared_ptr<ClusterTree> cluster_tree;
+    
+    shared_ptr<ClusterTree> trial_ct; 
+    shared_ptr<ClusterTree> test_ct;
+    
     shared_ptr<HMatrix> hmatrix;
 
   public:
+    IntegralOperator (shared_ptr<FESpace> _trial_space, shared_ptr<FESpace> _test_space, BEMParameters param);
+    shared_ptr<BaseMatrix> GetMatrix() const { return hmatrix; }
+  };
+
+  
+  /** SingleLayerPotentialOperator. 
+      */
+  class SingleLayerPotentialOperator : public IntegralOperator
+  {
+    Array<DofId> mapglob2bnd;
+    Array<DofId> mapbnd2glob;
+
+    Table<int> elems4dof; // contains list of elems contributing to dof
+
+  public:
     /** Constructor */
-    SingleLayerPotentialOperator(shared_ptr<FESpace> aspace, struct BEMParameters param);
+    SingleLayerPotentialOperator(shared_ptr<FESpace> aspace, BEMParameters param);
 
     /** Routine computes the SL potential matrix according to the given FE space. 
         The matrix is dense with dim = ndof(L2) x ndof(L2), where volume dofs are not used */
@@ -70,25 +86,15 @@ namespace ngbem
 
 
 
-  class DoubleLayerPotentialOperator : public SpecialElement
+  class DoubleLayerPotentialOperator : public IntegralOperator
   {
-    shared_ptr<FESpace> space;
-    shared_ptr<FESpace> space2;
-    
     Array<DofId> mapglob2bnd;
     Array<DofId> mapbnd2glob;
     Array<DofId> mapglob2bnd2;
     Array<DofId> mapbnd2glob2;
 
-    struct BEMParameters param;
-
-    shared_ptr<ClusterTree> cluster_tree;
-    //Array<Array<int>> elems4dof; 
     Table<int> elems4dof; // contains list of elems contributing to bnd-dof
-    shared_ptr<ClusterTree> cluster_tree2;
-    //Array<Array<int>> elems4dof2; 
     Table<int> elems4dof2; // contains list of elems contributing to bnd-dof
-    shared_ptr<HMatrix> hmatrix;
 
   public:
     DoubleLayerPotentialOperator(shared_ptr<FESpace> aspace, shared_ptr<FESpace> bspace, struct BEMParameters param);

@@ -10,50 +10,45 @@ namespace ngbem
 {
 
   
-  SingleLayerPotentialOperator :: SingleLayerPotentialOperator(shared_ptr<FESpace> aspace, struct BEMParameters _param)
-    : space(aspace), param(_param)
+  IntegralOperator ::
+  IntegralOperator(shared_ptr<FESpace> _trial_space, shared_ptr<FESpace> _test_space,
+                   BEMParameters _param)
+    : trial_space(_trial_space), test_space(_test_space), param(_param)
   {
-    auto mesh = space->GetMeshAccess();
-    cluster_tree = make_shared<ClusterTree>(space, param.leafsize);
+    trial_ct = make_shared<ClusterTree>(trial_space, param.leafsize);
+    if (trial_space == test_space)
+      test_ct = trial_ct; // the same
+    else
+      test_ct = make_shared<ClusterTree>(test_space, param.leafsize);      
+  }
+  
+  
+  SingleLayerPotentialOperator ::
+  SingleLayerPotentialOperator(shared_ptr<FESpace> aspace, struct BEMParameters _param)
+    : IntegralOperator(aspace, aspace, _param)
+  {
+    auto mesh = trial_space->GetMeshAccess();
     
     // setup global-2-boundary mappings:
-    BitArray bnddofs(space->GetNDof());
+    BitArray bnddofs(trial_space->GetNDof());
     bnddofs.Clear();
     for (int i = 0; i < mesh->GetNE(BND); i++)
       {
 	Array<DofId> dnums;
-	space->GetDofNrs(ElementId(BND, i), dnums);
+	trial_space->GetDofNrs(ElementId(BND, i), dnums);
 	for (auto d : dnums) 
 	  bnddofs.SetBit(d);
       }
     
-    mapglob2bnd.SetSize(space->GetNDof());
+    mapglob2bnd.SetSize(trial_space->GetNDof());
     mapglob2bnd = -1;
-    for (int i = 0; i < space->GetNDof(); i++)
+    for (int i = 0; i < trial_space->GetNDof(); i++)
       if (bnddofs.Test(i))
         {
           mapglob2bnd[i] = mapbnd2glob.Size();
           mapbnd2glob.Append(i);
         }    
 
-    //cout << "dim: " << space->GetSpatialDimension() << endl;
-    //cout << "dofs: " << mapbnd2glob << endl;
-
-    // run through bnd elements, for each element get its dofs and add the elem
-    /*
-    elems4dof.SetSize(space->GetNDof());
-    for (int i = 0; i < mesh->GetNSE(); i++)
-      {
-	ElementId ei(BND, i);
-      
-	Array<DofId> dnumsi;
-	space->GetDofNrs(ei, dnumsi); 
-	for (int ii = 0; ii < dnumsi.Size(); ii++)
-	  {
-	    elems4dof[dnumsi[ii]].Append(i);
-	  }
-      }
-    */
     // Table-creator creates table with one big block of memory,
     // avoids memory fragmentation 
     TableCreator<int> creator;
@@ -61,7 +56,7 @@ namespace ngbem
     for ( ; !creator.Done(); creator++)
       for (int i = 0; i < mesh->GetNSE(); i++)
         {
-          space->GetDofNrs( ElementId(BND, i), dnumsi); 
+          trial_space->GetDofNrs( ElementId(BND, i), dnumsi); 
           for (auto d : dnumsi)
             creator.Add (d, i);
         }
@@ -71,8 +66,8 @@ namespace ngbem
     /*START: TEST hmatrix: compare approximation with dense matrix. */   
 
     // create hmatrix
-    hmatrix = make_shared<HMatrix>(cluster_tree, cluster_tree,
-                                   param.eta, space->GetNDof(), space->GetNDof());
+    hmatrix = make_shared<HMatrix>(trial_ct, test_ct,
+                                   param.eta, trial_space->GetNDof(), trial_space->GetNDof());
     // compute all its blocks
     LocalHeap lh(10000000);
     CalcHMatrix(*hmatrix, lh, param);
@@ -83,18 +78,18 @@ namespace ngbem
       {
         HeapReset hr(lh);    
         
-        Matrix<double> dense(space->GetNDof(), space->GetNDof());
+        Matrix<double> dense(trial_space->GetNDof(), trial_space->GetNDof());
         CalcElementMatrix(dense, lh);
         cout << "dense: " << dense.Height() << " x " << dense.Width() << endl;
         
         // Test with vector
-        Vector<double> x(space->GetNDof()), y(space->GetNDof());
+        Vector<double> x(trial_space->GetNDof()), y(trial_space->GetNDof());
         x = 1.;
         y = 0.;
         y = dense * x;
         
-        S_BaseVectorPtr<> x_base(space->GetNDof(), 1, x.Data());
-        S_BaseVectorPtr<> y_base(space->GetNDof(), 1, y.Data());    
+        S_BaseVectorPtr<> x_base(trial_space->GetNDof(), 1, x.Data());
+        S_BaseVectorPtr<> y_base(trial_space->GetNDof(), 1, y.Data());    
         hmatrix->MultAdd(-1., x_base, y_base);
         
         double err = 0.;
@@ -110,7 +105,7 @@ namespace ngbem
 		    LocalHeap &lh) const
   {
     Array<int> range;
-    for (int i = 0; i < space->GetNDof(); i++)
+    for (int i = 0; i < trial_space->GetNDof(); i++)
       {
 	range.Append(i);
       }
@@ -144,15 +139,15 @@ namespace ngbem
     auto [ common_edge_x, common_edge_y, common_edge_weight ] =
       CommonEdgeIntegrationRule(param.intorder);
 
-    auto mesh = space->GetMeshAccess();
-    auto evaluator = space->GetEvaluator(BND);
+    auto mesh = trial_space->GetMeshAccess();
+    auto evaluator = trial_space->GetEvaluator(BND);
 
     Array<int> tmp, tmp2;
     Array<int> patchi, patchj;
     Array<int> trialdofsinv;
     Array<int> testdofsinv;
-    trialdofsinv.SetSize(space->GetNDof()); 
-    testdofsinv.SetSize(space->GetNDof());
+    trialdofsinv.SetSize(trial_space->GetNDof()); 
+    testdofsinv.SetSize(trial_space->GetNDof());
 
     trialdofsinv = -1;
     testdofsinv = -1;
@@ -204,15 +199,15 @@ namespace ngbem
 	  auto verti = mesh->GetElement(ei).Vertices();
 	  auto vertj = mesh->GetElement(ej).Vertices();          
               
-	  BaseScalarFiniteElement &feli = dynamic_cast<BaseScalarFiniteElement &>(space->GetFE(ei, lh));
-	  BaseScalarFiniteElement &felj = dynamic_cast<BaseScalarFiniteElement &>(space->GetFE(ej, lh));
+	  BaseScalarFiniteElement &feli = dynamic_cast<BaseScalarFiniteElement &>(trial_space->GetFE(ei, lh));
+	  BaseScalarFiniteElement &felj = dynamic_cast<BaseScalarFiniteElement &>(trial_space->GetFE(ej, lh));
             
 	  ElementTransformation &trafoi = mesh->GetTrafo(ei, lh);
 	  ElementTransformation &trafoj = mesh->GetTrafo(ej, lh);
               
 	  Array<DofId> dnumsi, dnumsj;
-	  space->GetDofNrs(ei, dnumsi); // mapping to global dof 
-	  space->GetDofNrs(ej, dnumsj);
+	  trial_space->GetDofNrs(ei, dnumsi); // mapping to global dof 
+	  trial_space->GetDofNrs(ej, dnumsj);
             
 	  FlatMatrix<double,ColMajor> mshapei(1, feli.GetNDof(), lh);
 	  FlatMatrix<double,ColMajor> mshapej(1, felj.GetNDof(), lh);
@@ -540,7 +535,7 @@ namespace ngbem
               // Compute dense block
               Matrix<> near(testdofs.Size(), trialdofs.Size());
               CalcBlockMatrix(near, trialdofs, testdofs, lh);	    
-              block.SetMat(make_unique<BaseMatrixFromMatrix>(std::move(near)));
+              block.SetMat(make_unique<BaseMatrixFromMatrix<>>(std::move(near)));
             }
           else
             {
@@ -555,13 +550,7 @@ namespace ngbem
 					     LocalHeap & lh) const
   {
     static Timer t("ngbem - SLP::Apply"); RegionTimer reg(t);
-    /*
-    for (int i = 0; i < ely.Size(); i++)
-      ely(i) = 0.;
-    S_BaseVectorPtr<> xp_base(elx.Size(), 1, elx.Data());
-    S_BaseVectorPtr<> yp_base(ely.Size(), 1, ely.Data());
-    hmatrix->MultAdd(1., xp_base, yp_base);
-    */
+
     ely = 0.0;
     VFlatVector<> xp_base(elx);
     VFlatVector<> yp_base(ely);
@@ -576,30 +565,27 @@ namespace ngbem
   // aspace, space == H1 trialspace, bspace, space2 ==  L2 testspace
   DoubleLayerPotentialOperator ::
   DoubleLayerPotentialOperator (shared_ptr<FESpace> aspace, shared_ptr<FESpace> bspace,
-                                struct BEMParameters _param)
-    : space(aspace), space2(bspace), param(_param)
+                                BEMParameters _param)
+    : IntegralOperator(aspace, bspace, _param) // , space(aspace), space2(bspace)
   {
 
-    auto mesh = space->GetMeshAccess(); // trialspace
-    auto mesh2 = space2->GetMeshAccess(); // testspace
+    auto mesh = trial_space->GetMeshAccess(); // trialspace
+    auto mesh2 = test_space->GetMeshAccess(); // testspace
 
-
-    cluster_tree = make_shared<ClusterTree>(aspace, param.leafsize);
-    cluster_tree2 = make_shared<ClusterTree>(bspace, param.leafsize);
     
     // setup global-2-boundary mappings;
-    BitArray bnddofs(space->GetNDof());
+    BitArray bnddofs(trial_space->GetNDof());
     bnddofs.Clear();
     for (int i = 0; i < mesh->GetNSE(); i++)
       {
 	Array<DofId> dnums;
-	space->GetDofNrs(ElementId(BND, i), dnums);
+	trial_space->GetDofNrs(ElementId(BND, i), dnums);
 	for (auto d : dnums)
 	  bnddofs.SetBit(d);
       }
-    mapglob2bnd.SetSize(space->GetNDof());
+    mapglob2bnd.SetSize(trial_space->GetNDof());
     mapglob2bnd = -1;
-    for (int i = 0; i < space->GetNDof(); i++)
+    for (int i = 0; i < trial_space->GetNDof(); i++)
       if (bnddofs.Test(i))
 	{
 	  mapglob2bnd[i] = mapbnd2glob.Size();
@@ -607,18 +593,6 @@ namespace ngbem
 	}
 
     // run through surface elements and add elem to related trial dofs
-    /*
-    elems4dof.SetSize(space->GetNDof());
-    for (int i = 0; i < mesh->GetNSE(); i++)
-      {
-        ElementId ei(BND, i);
-          
-        Array<DofId> dnumsi;
-        space->GetDofNrs(ei, dnumsi); 
-        for (int ii = 0; ii < dnumsi.Size(); ii++)
-          elems4dof[dnumsi[ii]].Append(i);
-      }
-    */
     // Table-creator creates table with one big block of memory,
     // avoids memory fragmentation 
     TableCreator<int> creator;
@@ -626,31 +600,31 @@ namespace ngbem
     for ( ; !creator.Done(); creator++)
       for (int i = 0; i < mesh->GetNSE(); i++)
         {
-          space->GetDofNrs( ElementId(BND, i), dnumsi); 
+          trial_space->GetDofNrs( ElementId(BND, i), dnumsi); 
           for (auto d : dnumsi)
             creator.Add (d, i);
         }
     elems4dof = creator.MoveTable();
     //cout << "elems4dof: " << elems4dof << endl;
 
-    // cout << "dim1: " << space->GetSpatialDimension() << endl;
+    // cout << "dim1: " << trial_space->GetSpatialDimension() << endl;
     // cout << "bnddofs1: " << bnddofs << endl;
     // cout << "mapglob2bnd: " << mapglob2bnd << endl;
     // cout << "mapbnd2glob: " << mapbnd2glob << endl;
 
-    BitArray bnddofs2(space2->GetNDof());
+    BitArray bnddofs2(test_space->GetNDof());
     bnddofs2.Clear();
     for (int i = 0; i < mesh2->GetNSE(); i++)
       {
 	Array<DofId> dnums;
-	space2->GetDofNrs(ElementId(BND, i), dnums);
+	test_space->GetDofNrs(ElementId(BND, i), dnums);
 	for (auto d : dnums)
 	  bnddofs2.SetBit(d);
       }
     
-    mapglob2bnd2.SetSize(space2->GetNDof());
+    mapglob2bnd2.SetSize(test_space->GetNDof());
     mapglob2bnd2 = -1;
-    for (int i = 0; i < space2->GetNDof(); i++)
+    for (int i = 0; i < test_space->GetNDof(); i++)
       if (bnddofs2.Test(i))
 	{
 	  mapglob2bnd2[i] = mapbnd2glob2.Size();
@@ -658,25 +632,11 @@ namespace ngbem
 	}
 
     // run through surface elements and add elem to related test dofs
-/*
-    elems4dof2.SetSize(space2->GetNDof());
-    for (int i = 0; i < mesh2->GetNSE(); i++)
-      {
-        ElementId ei(BND, i);
-            
-        Array<DofId> dnumsi;
-        space2->GetDofNrs(ei, dnumsi); 
-        for (int ii = 0; ii < dnumsi.Size(); ii++)
-          {
-            elems4dof2[dnumsi[ii]].Append(i);
-          }
-      }
-*/
     TableCreator<int> creator2;
     for ( ; !creator2.Done(); creator2++)
       for (int i = 0; i < mesh2->GetNSE(); i++)
         {
-          space2->GetDofNrs( ElementId(BND, i), dnumsi); 
+          test_space->GetDofNrs( ElementId(BND, i), dnumsi); 
           for (auto d : dnumsi)
             creator2.Add (d, i);
         }
@@ -684,9 +644,9 @@ namespace ngbem
     //cout << "elems4dof: " << elems4dof2 << endl;
 
     // create hmatrix
-    hmatrix = make_shared<HMatrix>(cluster_tree, // trial space H1
-                                   cluster_tree2, // test space L2
-                                   param.eta, space->GetNDof(), space2->GetNDof());
+    hmatrix = make_shared<HMatrix>(trial_ct, // trial space H1
+                                   test_ct, // test space L2
+                                   param.eta, trial_space->GetNDof(), test_space->GetNDof());
 
     LocalHeap lh(100000000);
     CalcHMatrix(*hmatrix, lh, param);
@@ -694,7 +654,7 @@ namespace ngbem
     /*START: TEST hmatrix: compare approximation with dense matrix. */
     if (param.testhmatrix)
       {
-        Matrix<double> dense(space2->GetNDof(), space->GetNDof()); // ndof(L2) x ndof(H1)
+        Matrix<double> dense(test_space->GetNDof(), trial_space->GetNDof()); // ndof(L2) x ndof(H1)
         CalcElementMatrix(dense, lh);
         cout << "dense: " << dense.Height() << " x " << dense.Width() << endl;
         
@@ -702,13 +662,13 @@ namespace ngbem
         HeapReset hr(lh);    
         
         // Test with vector
-        Vector<double> x(space->GetNDof()), y(space2->GetNDof());
+        Vector<double> x(trial_space->GetNDof()), y(test_space->GetNDof());
         x = 1.;
         y = 0.;
         y = dense * x;
         
-        S_BaseVectorPtr<> x_base(space->GetNDof(), 1, x.Data());
-        S_BaseVectorPtr<> y_base(space2->GetNDof(), 1, y.Data());    
+        S_BaseVectorPtr<> x_base(trial_space->GetNDof(), 1, x.Data());
+        S_BaseVectorPtr<> y_base(test_space->GetNDof(), 1, y.Data());    
         hmatrix->MultAdd(-1., x_base, y_base);
   
         cout << "error " << L2Norm (y) << endl;
@@ -721,9 +681,9 @@ namespace ngbem
   CalcElementMatrix(FlatMatrix<double> matrix, LocalHeap &lh) const
   {
     Array<int> range, range2;
-    for (int i = 0; i < space->GetNDof(); i++) // trial H1
+    for (int i = 0; i < trial_space->GetNDof(); i++) // trial H1
       range.Append(i);
-    for (int j = 0; j < space2->GetNDof(); j++) // test L2
+    for (int j = 0; j < test_space->GetNDof(); j++) // test L2
       range2.Append(j);
     CalcBlockMatrix(matrix, range, range2, lh);
   }
@@ -733,8 +693,8 @@ namespace ngbem
   CalcBlockMatrix(FlatMatrix<double> matrix, FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs,
 		  LocalHeap &lh) const 
   {
-    auto mesh = space->GetMeshAccess();    // trialspace = H1
-    auto mesh2 = space2->GetMeshAccess();  // testspace = L2
+    auto mesh = trial_space->GetMeshAccess();    // trialspace = H1
+    auto mesh2 = test_space->GetMeshAccess();  // testspace = L2
     
     static Timer tall("ngbem DLP - all");
     static Timer tloops("ngbem DLP - loops");    
@@ -760,17 +720,14 @@ namespace ngbem
     //cout << "CalcElementMatrix: " << endl;
     matrix = 0; 
 
-    auto evaluator = space->GetEvaluator(BND);
-    auto evaluator2 = space2->GetEvaluator(BND);
+    auto evaluator = trial_space->GetEvaluator(BND);
+    auto evaluator2 = test_space->GetEvaluator(BND);
     // cout << "type(eval2) = " << typeid(*evaluator2).name() << endl
 
     Array<int> tmp, tmp2;
     Array<int> patchi, patchj;
-    Array<int> testdofsinv;
-    Array<int> trialdofsinv;
-
-    trialdofsinv.SetSize(space->GetNDof()); 
-    testdofsinv.SetSize(space2->GetNDof());
+    Array<int> trialdofsinv(trial_space->GetNDof()); 
+    Array<int> testdofsinv(test_space->GetNDof());
 
     trialdofsinv = -1;
     testdofsinv = -1;
@@ -789,7 +746,6 @@ namespace ngbem
 	  i++;
 	i--;
       }
-    int ni = patchi.Size(); 
     
     for (int j = 0; j < trialdofs.Size(); j++)
       {
@@ -805,12 +761,10 @@ namespace ngbem
 	  j++;
 	j--;
       }
-    int nj = patchj.Size(); 
-
 
     RegionTimer regloops(tloops);    
-    for (int i = 0; i < ni; i++) // test
-      for (int j = 0; j < nj; j++) // trial
+    for (int i = 0; i < patchi.Size(); i++) // test
+      for (int j = 0; j < patchj.Size(); j++) // trial
 	{
 	  HeapReset hr(lh);
 	  ElementId ei(BND, patchi[i]);
@@ -820,15 +774,15 @@ namespace ngbem
 	  auto verti = mesh2->GetElement(ei).Vertices();
 	  auto vertj = mesh->GetElement(ej).Vertices();          
             
-	  BaseScalarFiniteElement &feli = dynamic_cast<BaseScalarFiniteElement &>(space2->GetFE(ei, lh));
-	  BaseScalarFiniteElement &felj = dynamic_cast<BaseScalarFiniteElement &>(space->GetFE(ej, lh));
+	  BaseScalarFiniteElement &feli = dynamic_cast<BaseScalarFiniteElement &>(test_space->GetFE(ei, lh));
+	  BaseScalarFiniteElement &felj = dynamic_cast<BaseScalarFiniteElement &>(trial_space->GetFE(ej, lh));
               
 	  ElementTransformation &trafoi = mesh2->GetTrafo(ei, lh);
 	  ElementTransformation &trafoj = mesh->GetTrafo(ej, lh);
               
 	  Array<DofId> dnumsi, dnumsj;
-	  space2->GetDofNrs(ei, dnumsi); // mapping to global dof
-	  space->GetDofNrs(ej, dnumsj);
+	  test_space->GetDofNrs(ei, dnumsi); // mapping to global dof
+	  trial_space->GetDofNrs(ej, dnumsj);
         
 	  FlatVector<> shapei(feli.GetNDof(), lh);
 	  FlatVector<> shapej(felj.GetNDof(), lh);
@@ -1054,7 +1008,6 @@ namespace ngbem
                         double normxy = L2Norm(x-y);
                         double kernel = nxy / (4*M_PI*normxy*normxy*normxy);
                         
-			// double kernel = 1.0 / (4*M_PI*L2Norm(x-y));
 			double fac = mirx[ix].GetWeight()*miry[iy].GetWeight();
 			kernel_ixiy(ix, iy) = fac*kernel;
 		      }
@@ -1150,7 +1103,7 @@ namespace ngbem
 	    //// Compute dense block
 	    Matrix<> near(testdofs.Size(), trialdofs.Size());
 	    CalcBlockMatrix(near, trialdofs, testdofs, lh);
-	    block.SetMat(make_unique<BaseMatrixFromMatrix>(near));
+	    block.SetMat(make_unique<BaseMatrixFromMatrix<>>(near));
 	  }
 	else
 	  {
@@ -1165,16 +1118,9 @@ namespace ngbem
 					     LocalHeap & lh) const
   {
     static Timer t("ngbem - SLP::Apply"); RegionTimer reg(t);
-    /*
-    for (int i = 0; i < ely.Size(); i++)
-      ely(i) = 0.;
-    S_BaseVectorPtr<> xp_base(elx.Size(), 1, elx.Data());
-    S_BaseVectorPtr<> yp_base(ely.Size(), 1, ely.Data());
-    hmatrix->MultAdd(1., xp_base, yp_base);
-    */
     VVector<> vx(hmatrix->Width());
     VVector<> vy(hmatrix->Height());
-    *testout << "Apply, hmat.h = " << hmatrix->Height() << ", w = " << hmatrix->Width() << endl;
+
     vy = 0.0;
     for (int i = 0; i < mapbnd2glob.Size(); i++)
       vx(mapbnd2glob[i]) = elx[i];
@@ -1183,7 +1129,6 @@ namespace ngbem
       ely[i] = vy(mapbnd2glob2[i]);
     
   }
-  
 
   void DoubleLayerPotentialOperator :: GetDofNrs(Array<int> &dnums) const
   {
