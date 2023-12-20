@@ -225,34 +225,119 @@ namespace ngbem
     return p;
   }
 
-  template <typename T>    
-  unique_ptr<LowRankMatrix<T>> IntegralOperator<T> ::
+
+
+
+  unique_ptr<LowRankMatrix> IntegralOperator :: 
+  LowRankSVD(FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, LocalHeap &lh) const     
+  {
+      int m = testdofs.Size();
+      int n = trialdofs.Size();
+      int p = min(n, m);
+      
+      Matrix<double> A(m, n);
+      CalcBlockMatrix(A, trialdofs, testdofs, lh);
+      
+      // Calculate SVD for A^\top = V S U^\top
+      Matrix<double, ColMajor> V(n, p), Ut(p, m);
+      Vector<> S(p);
+
+/* 
+      Array<double> work(n * m + 100);
+      integer info;
+      char jobu = 'S', jobv = 'S';
+      integer lda = Trans(A).Dist(), ldu = Ut.Dist(), ldv = V.Dist();
+      integer lwork = work.Size();
+      {
+        dgesvd_(&jobv, &jobu, &n, &m, Trans(A).Data(), &lda, S.Data(), V.Data(), &ldv,
+                Ut.Data(), &ldu, work.Data(), &lwork, &info);
+      }
+*/
+      int k = StochasticTSVD (A, Trans(Ut), Trans(V), S, param.eps);      
+      
+      // Low-rank approximation from truncated svd
+      
+      Matrix<double> U_trc(m, k), Vt_trc(k, n);
+      for (size_t j = 0; j < k; j++)
+        U_trc.Col(j) = sqrt(S(j)) * Ut.Row(j);
+
+      for (size_t i = 0; i < k; i++)    
+        Vt_trc.Row(i) = sqrt(S(i)) * V.Col(i);
+
+      return make_unique<LowRankMatrix> (Matrix<>(U_trc), Matrix<>(Vt_trc));
+  }
+
+  unique_ptr<LowRankMatrix> IntegralOperator :: 
+  LowRankACA(FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, LocalHeap &lh) const     
+  {
+
+      
+      // Set first row (Ipivot < m)
+      // do while error > threshold and m<IPivot
+        // generate actual row
+        // check row sum, if zero: 
+              // 1) choose different row (pivot element)
+              // 2) store row permutation and restart
+        // otherwise: 
+              // 1) append row to V
+              // 2) mark row as generated 
+              // 3) compute residuum and find max element -> next Jpivot
+              // 4) if next Jpivot too small: stop algorithm
+                  // otherwise scale row and continue same as above with row
+      
+
+      int m = testdofs.Size();
+      int n = trialdofs.Size();
+      int p = min(n, m);
+      
+      Matrix<double> A(m, n);
+      CalcBlockMatrix(A, trialdofs, testdofs, lh);
+      
+      // Calculate SVD for A^\top = V S U^\top
+      Matrix<double, ColMajor> V(n, p), Ut(p, m);
+      Vector<> S(p);
+
+      Array<double> work(n * m + 100);
+      integer info;
+      char jobu = 'S', jobv = 'S';
+      integer lda = Trans(A).Dist(), ldu = Ut.Dist(), ldv = V.Dist();
+      integer lwork = work.Size();
+      {
+        dgesvd_(&jobv, &jobu, &n, &m, Trans(A).Data(), &lda, S.Data(), V.Data(), &ldv,
+                Ut.Data(), &ldu, work.Data(), &lwork, &info);
+      }
+      
+      // Low-rank approximation from truncated svd
+      
+      Matrix<double> U_trc(m, k), Vt_trc(k, n);
+      for (size_t j = 0; j < k; j++)
+        U_trc.Col(j) = sqrt(S(j)) * Ut.Row(j);
+
+      for (size_t i = 0; i < k; i++)    
+        Vt_trc.Row(i) = sqrt(S(i)) * V.Col(i);
+
+      return make_unique<LowRankMatrix> (Matrix<>(U_trc), Matrix<>(Vt_trc));
+
+  }
+  
+  unique_ptr<LowRankMatrix> IntegralOperator ::
   CalcFarFieldBlock(FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, LocalHeap &lh) const
   {
     static Timer t("ngbem - IntegralOperator::CalcFarFieldBlock"); RegionTimer reg(t);
-    int m = testdofs.Size();
-    int n = trialdofs.Size();
-    int p = min(n, m);
-    
-    Matrix<T> A(m, n);
-    CalcBlockMatrix(A, trialdofs, testdofs, lh);
 
-    // Calculate SVD for A^\top = V S U^\top
-    Matrix<T, ColMajor> V(n, p), Ut(p, m);
-    Vector<> S(p);
+    if( param.method == "svd" ) 
+    {
+      return LowRankSVD(trialdofs,testdofs,lh); 
+    }
+    else if( param.method == "aca")  
+    {
+      return LowRankACA(trialdofs,testdofs,lh); 
+    }
+    else   
+    {
+      return LowRankSVD(trialdofs,testdofs,lh); 
+    }
 
-    int k = StochasticTSVD<T> (A, Trans(Ut), Trans(V), S, param.eps);
-
-    // Low-rank approximation from truncated svd
-    
-    Matrix<T> U_trc(m, k), Vt_trc(k, n);
-    for (size_t j = 0; j < k; j++)
-      U_trc.Col(j) = sqrt(S(j)) * Ut.Row(j);
-
-    for (size_t i = 0; i < k; i++)    
-      Vt_trc.Row(i) = sqrt(S(i)) * V.Col(i);
-
-    return make_unique<LowRankMatrix<T>> (Matrix<T>(U_trc), Matrix<T>(Vt_trc));
   }
 
   
