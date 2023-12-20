@@ -183,8 +183,9 @@ namespace ngbem
     Array<BEMBlock<T>> & GetMatList() { return matList; }
 
     /** Matrix-vector-multiply-add: \f$y = y + s A x \f$. */
-    virtual void MultAdd (double s, const BaseVector & x, BaseVector & y) const override;
-    virtual void MultTransAdd (double s, const BaseVector & x, BaseVector & y) const override;
+    virtual void Mult (const BaseVector & x, BaseVector & y) const override;    
+    virtual void MultAdd (T s, const BaseVector & x, BaseVector & y) const override;
+    virtual void MultTransAdd (T s, const BaseVector & x, BaseVector & y) const override;
     bool IsComplex() const override { return std::is_same<T,Complex>(); }
 
     virtual int VHeight() const override { return height_vol_dof; }

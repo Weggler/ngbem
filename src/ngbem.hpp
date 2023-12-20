@@ -199,6 +199,26 @@ namespace ngbem
       return Mat<1,1,Complex> (exp(Complex(0,kappa*norm)) / (4 * M_PI * norm));
     }
   };
+
+
+  template <int DIM> class HelmholtzDLKernel;
+
+  template<>
+  class HelmholtzDLKernel<3> 
+  {
+    double kappa;
+  public:
+    typedef Complex value_type;
+    HelmholtzDLKernel (double _kappa) : kappa(_kappa) { }
+    auto Evaluate (Vec<3> x, Vec<3> y, Vec<3> nx, Vec<3> ny) const
+    {
+      double norm = L2Norm(x-y);
+      double nxy = InnerProduct(ny, (x-y));
+      return Mat<1,1,Complex> (exp(Complex(0,kappa*norm)) / (4 * M_PI * norm*norm*norm)
+                               * nxy * (1.-Complex(0,kappa*norm)));
+    }
+  };
+
   
 }
 

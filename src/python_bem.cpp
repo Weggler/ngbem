@@ -55,6 +55,20 @@ PYBIND11_MODULE(libbem, m)
   }, py::arg("trial_space"), py::arg("test_space")=nullptr, py::arg("kappa"), py::arg("intorder")=3, py::arg("leafsize")=40, py::arg("eta")=2., py::arg("eps")=1e-6,
     py::arg("method")="svd", py::arg("testhmatrix")=false);
 
+
+
+  m.def("HelmholtzDoubleLayerPotentialOperator", [](shared_ptr<FESpace> trial_space, shared_ptr<FESpace> test_space, double kappa,
+                                                    int intorder, int leafsize, double eta, double eps,
+                                                    string method, bool testhmatrix) -> shared_ptr<IntegralOperator<Complex>>
+  {
+    BEMParameters param({intorder, leafsize, eta, eps, method, testhmatrix});
+    return make_unique<GenericIntegralOperator<HelmholtzDLKernel<3>>>(trial_space, test_space, HelmholtzDLKernel<3>(kappa), param);
+    
+  }, py::arg("trial_space"), py::arg("test_space")=nullptr, py::arg("kappa"), py::arg("intorder")=3, py::arg("leafsize")=40, py::arg("eta")=2., py::arg("eps")=1e-6,
+    py::arg("method")="svd", py::arg("testhmatrix")=false);
+
+
+  
   
 }
 

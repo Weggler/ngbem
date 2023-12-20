@@ -604,8 +604,15 @@ namespace ngbem
     HMatrix_help(*row_ct, *col_ct, 0, 0, eta, matList);
   }
 
+  template <typename T>
+  void HMatrix<T> ::Mult (const BaseVector & x, BaseVector & y) const
+  {
+    y = 0.0;
+    MultAdd (T(1.0), x, y);
+  }
+  
   template <typename T>  
-  void HMatrix<T> :: MultAdd (double s, const BaseVector & x, BaseVector & y) const
+  void HMatrix<T> :: MultAdd (T s, const BaseVector & x, BaseVector & y) const
   {
     static Timer t("ngbem - HMatrix::MultAdd");
     RegionTimer reg(t);
@@ -617,11 +624,12 @@ namespace ngbem
   }
 
   template <typename T>  
-  void HMatrix<T> :: MultTransAdd (double s, const BaseVector & x, BaseVector & y) const
+  void HMatrix<T> :: MultTransAdd (T s, const BaseVector & x, BaseVector & y) const
   {
     for (int i = 0; i < matList.Size(); i++)
       matList[i].MultTransAdd(s, x, y);
   }
+
   
   template <typename T>
   AutoVector HMatrix<T> :: CreateRowVector () const

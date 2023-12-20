@@ -188,12 +188,15 @@ namespace ngbem
       for (int j = 0; j < V.Width(); j++)
         V(i,j) = double (rand()) / RAND_MAX;
 
-    Matrix<Complex> AVt = A * Conj(Trans(V));
+    // Matrix<Complex> AVt = A * Conj(Trans(V));
+    Matrix<Complex> AVt = A * Trans(V) | Lapack;
+    
     Matrix<Complex> tmp(V.Height(), V.Height());
     LapackSVD (AVt, U, tmp, S, false);    
-    Matrix<Complex> UtA = Conj(Trans(U)) * A;
+    // Matrix<Complex> UtA = Conj(Trans(U)) * A;
+    Matrix<Complex> UtA = Matrix<Complex>(Conj(Trans(U))) * A | Lapack;
     LapackSVD (UtA, tmp, V, S, false);
-    U = Matrix<Complex> (U * tmp);
+    U = Matrix<Complex> (U * tmp | Lapack);
   }
 
   
@@ -401,7 +404,7 @@ namespace ngbem
 	  FlatMatrix<double,ColMajor> mshapei(1, feli.GetNDof(), lh);
 	  FlatMatrix<double,ColMajor> mshapej(1, felj.GetNDof(), lh);
             
-	  FlatMatrix elmat(feli.GetNDof(), felj.GetNDof(), lh); // e.g. 3 x 3
+	  FlatMatrix<> elmat(feli.GetNDof(), felj.GetNDof(), lh); // e.g. 3 x 3
 	  elmat = 0;
               
 	  // get number of common nodes for integration rule
@@ -745,7 +748,7 @@ namespace ngbem
 	  FlatVector<> shapei(feli.GetNDof(), lh);
 	  FlatVector<> shapej(felj.GetNDof(), lh);
           
-	  FlatMatrix elmat(feli.GetNDof(), felj.GetNDof(), lh); 
+	  FlatMatrix<> elmat(feli.GetNDof(), felj.GetNDof(), lh); 
 	  elmat = 0;
           
 	  int n_common_vertices = 0;
@@ -1302,5 +1305,6 @@ namespace ngbem
   template class GenericIntegralOperator<LaplaceSLKernel<3>>;
   template class GenericIntegralOperator<LaplaceDLKernel<3>>;
   
-  template class GenericIntegralOperator<HelmholtzSLKernel<3>>;  
+  template class GenericIntegralOperator<HelmholtzSLKernel<3>>;
+  template class GenericIntegralOperator<HelmholtzDLKernel<3>>;    
 }
