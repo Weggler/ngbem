@@ -243,8 +243,22 @@ namespace ngbem
 
     int k = StochasticTSVD<T> (A, Trans(Ut), Trans(V), S, param.eps);
 
+/* 
+      if constexpr (is_same<T,double>())
+      {
+        Array<double> work(n * m + 100);
+        integer info;
+        char jobu = 'S', jobv = 'S';
+        integer lda = Trans(A).Dist(), ldu = Ut.Dist(), ldv = V.Dist();
+        integer lwork = work.Size();
+        {
+          dgesvd_(&jobv, &jobu, &n, &m, Trans(A).Data(), &lda, S.Data(), V.Data(), &ldv,
+                  Ut.Data(), &ldu, work.Data(), &lwork, &info);
+        }
+      }
+*/
+
     // Low-rank approximation from truncated svd
-    
     Matrix<T> U_trc(m, k), Vt_trc(k, n);
     for (size_t j = 0; j < k; j++)
       U_trc.Col(j) = sqrt(S(j)) * Ut.Row(j);
@@ -264,6 +278,52 @@ namespace ngbem
     /* NOTE: SVD as long as ACA is not yet implemented */
     return LowRankSVD (trialdofs, testdofs, lh);
 
+    // NOTE: ACA must also be working for complex and double data types
+    // NOTE: Goal is a factorisation of the form A ~ P (U V) Q, where P and Q hold permutations
+    //       such as in lapack dgetc2 routine (lu factorisation with full pivotisation: A = P (L U) Q )
+
+    // Sketch of the ACA-algorithm based on PartialACA.c by S. Rjasanow
+
+
+    // n = trialdofs.Size()
+    // m = testdofs.Size()
+    // ipiv = testdofs // right now same as testdofs, later permutation of rows (such as Q)
+    // jpiv = trialdofs // right now same as trialdofs, later  permutation of cols (such as P)
+
+    // rank = 0
+    // for rank=0,..,min(n,m)
+      // RESTART (1) compute row i with i = ipiv[rank] of matrix
+      // mark row as generated 
+      // compute row sum and compute residuum row: res_row 
+            // if row sum zero: 
+                  // swap ipiv[rank] <=> ipiv[new_i] where new_i is first row not yet generated
+                    // if all rows have been generated STOP 
+                    // if new_i is found: set i = new_i and RESTART (1) otherwise STOP
+            // if row sum not zero: 
+                  //  in res_row: find max abs entry (=:PRow) and its index (=:j) 
+                      // STOP if PRow is zero: return actual low-rank approximation (wrt to testdofs, trialdofs order).
+                      // CONTINUE if PRow is not zero: 
+                          // update max pivot PMax = max(PRow, PMax)
+                          // scale res_row and append it to V: V.Append(rank) = res_row/PRow 
+
+      // RESTART (2) compute col with j = jpiv[rank] of matrix
+      // mark col j as generated 
+      // compute col sum and compute residuum col: res_col 
+            // if col sum zero: 
+                  // swap jpiv[rank] <=> jpiv[new_j] where new_j is first col not yet generated
+                  // set j = new_j and RESTART (2) 
+            // if col sum not zero: 
+                  //  in res_col: find max abs entry (=:PCol) and its index (=:i) 
+                      // STOP if PCol is zero: return actual low-rank approximation (wrt to testdofs, trialdofs order)
+                      // CONTINUE if PCol is not zero: 
+                          // update max pivot PMax = max(PCol, PMax)
+                          // append res_col to U: U.Append(rank) = res_col 
+            
+      // cross generated A_(testdof(ipiv(rank)), trialdof(jpiv(rank)): 
+          // actual permutation history of rows and cols stored in ipiv and jpiv
+          // new col in U[:,rank] and new row in V[rank,:]
+          // compute error of low rank approximation
+          // STOP if error<eps stop algorithm of if rank is enough
   }
 
   template <typename T>    
