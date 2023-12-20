@@ -4,5 +4,6 @@ find_package(NGSolve CONFIG REQUIRED
   HINTS /usr $ENV{NETGENDIR}/.. /opt/netgen/ /Applications/Netgen.app/Contents/Resources/CMake C:/netgen
 )
 
-add_ngsolve_python_module(libbem src/ngbem.cpp src/python_bem.cpp src/hmat.cpp src/intrules.cpp)
+add_ngsolve_python_module(libbem src/ngbem.cpp src/python_bem.cpp
+      src/hmat.cpp src/intrules.cpp src/test_compression.cpp)
 

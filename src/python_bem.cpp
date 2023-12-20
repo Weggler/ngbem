@@ -4,6 +4,7 @@
 using namespace ngsolve;
 
 #include "ngbem.hpp"
+#include "test_compression.hpp"
 using namespace ngbem;
 
 PYBIND11_MODULE(libbem, m)
@@ -69,6 +70,22 @@ PYBIND11_MODULE(libbem, m)
 
 
   
-  
+  m.def("TestCompression", [](int nx, int ny, double eta, double eps, string method) -> py::object
+  {
+    if (method=="svd")
+      return py::cast(TestCompressionSVD (nx, ny, eta, eps));
+    
+    if (method=="tsvd")
+      return py::cast(TestCompressionTSVD (nx, ny, eta, eps));
+
+    if (method=="aca")
+      return py::cast(TestCompressionACA (nx, ny, eta, eps));
+    
+    return py::cast(tuple<int,double>{ 0, 0 });
+  },
+    "methods: 'svd', 'tsvd', to come: 'aca'\n"
+    "returns rank, error, time",
+    py::arg("nx")=100, py::arg("ny")=100, py::arg("eta")=2.0,
+    py::arg("eps")=1e-10, py::arg("method")="svd");
 }
 
