@@ -66,6 +66,14 @@ namespace ngbem
     CalcFarFieldBlock(FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs,
                       LocalHeap &lh) const;
 
+    virtual unique_ptr<LowRankMatrix<T>> 
+    LowRankSVD(FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, 
+                      LocalHeap &lh) const;
+
+    virtual unique_ptr<LowRankMatrix<T>> 
+    LowRankACA(FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, 
+                      LocalHeap &lh) const;
+
 
     /** Routine computes the DL potential matrix according to the given FE space. 
         The matrix is dense with dim = ndof(L2) x ndof(H1), where volume dofs are not used */

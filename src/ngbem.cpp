@@ -225,11 +225,11 @@ namespace ngbem
     return p;
   }
 
-  template <typename T>    
-  unique_ptr<LowRankMatrix<T>> IntegralOperator<T> ::
-  CalcFarFieldBlock(FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, LocalHeap &lh) const
+  template <typename T>
+  unique_ptr<LowRankMatrix<T>> IntegralOperator<T> :: 
+  LowRankSVD(FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, LocalHeap &lh) const     
   {
-    static Timer t("ngbem - IntegralOperator::CalcFarFieldBlock"); RegionTimer reg(t);
+    static Timer t("ngbem - IntegralOperator::CalcFarFieldBlock SVD"); RegionTimer reg(t);
     int m = testdofs.Size();
     int n = trialdofs.Size();
     int p = min(n, m);
@@ -253,6 +253,38 @@ namespace ngbem
       Vt_trc.Row(i) = sqrt(S(i)) * V.Col(i);
 
     return make_unique<LowRankMatrix<T>> (Matrix<T>(U_trc), Matrix<T>(Vt_trc));
+  }
+
+  template <typename T>
+  unique_ptr<LowRankMatrix<T>> IntegralOperator<T> :: 
+  LowRankACA(FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, LocalHeap &lh) const     
+  {
+    static Timer t("ngbem - IntegralOperator::CalcFarFieldBlock ACA"); RegionTimer reg(t);
+
+    /* NOTE: SVD as long as ACA is not yet implemented */
+    return LowRankSVD (trialdofs, testdofs, lh);
+
+  }
+
+  template <typename T>    
+  unique_ptr<LowRankMatrix<T>> IntegralOperator<T> ::
+  CalcFarFieldBlock(FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, LocalHeap &lh) const
+  {
+    static Timer t("ngbem - IntegralOperator::CalcFarFieldBlock"); RegionTimer reg(t);
+
+    if( param.method == "svd" ) 
+    {
+      return LowRankSVD (trialdofs,testdofs,lh); 
+    }
+    else if( param.method == "aca")  
+    {
+      return LowRankACA (trialdofs,testdofs,lh); 
+    }
+    else   
+    {
+      return LowRankSVD (trialdofs,testdofs,lh); 
+    }
+
   }
 
   
