@@ -163,7 +163,7 @@ namespace ngbem
         V.Row(k) *= 1.0 / V(k,jmax);
         U.Col(k) = mat.Col(jmax);
         for (int l = 0; l < k; l++)
-          U.Col(k) -= V(l,k) * U.Col(l);
+          U.Col(k) -= V(l,jmax) * U.Col(l);
       }
     return U.Width();
   }
