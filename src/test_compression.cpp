@@ -142,18 +142,27 @@ namespace ngbem
   }
 
   
+  void TestFunc (FlatMatrix<double> U, FlatMatrix<double> V, int k, int jmax)
+  {
+    U.Col(k) -= U.Cols(0,k) * V.Col(jmax).Range(0,k);    
+  }
 
 
-  template <typename MATRIX, typename T>
-  int CalcACA (const MATRIX & mat, FlatMatrix<T> U, FlatMatrix<T> V, double eps)
+  template <typename MATRIX, typename T, ORDERING O, typename ...TU, typename TV>
+  int CalcACA (const MATRIX & mat, MatrixView<T,O,TU...> U, FlatMatrix<TV> V, double eps)
   {
     for (int k = 0; k < U.Width(); k++)
       {
-        V.Row(k) = mat.Row(k);
-        for (int l = 0; l < k; l++)
-          V.Row(k) -= U(k,l) * V.Row(l);
+        int ik = k;  // what else ?
+        
+        V.Row(k) = mat.Row(ik);
+        // for (int l = 0; l < k; l++)
+        // V.Row(k) -= U(ik,l) * V.Row(l);
+
+        V.Row(k) -= Trans(V.Rows(0,k)) * U.Row(ik).Range(0,k);
+         
         double err = L2Norm(V.Row(k));
-        cout << "Norm vk = " << err << endl;
+        // cout << "Norm vk = " << err << endl;
         if (err < eps) return k;
         
         int jmax = 0;
@@ -162,14 +171,23 @@ namespace ngbem
             jmax = j;
         V.Row(k) *= 1.0 / V(k,jmax);
         U.Col(k) = mat.Col(jmax);
-        for (int l = 0; l < k; l++)
-          U.Col(k) -= V(l,jmax) * U.Col(l);
+
+        // for (int l = 0; l < k; l++)
+        // U.Col(k) -= V(l,jmax) * U.Col(l);
+
+        U.Col(k) -= U.Cols(0,k) * V.Col(jmax).Range(0,k);
       }
+    
     return U.Width();
   }
   
 
-    
+  int CalcACA1 (FlatMatrix<> mat, FlatMatrix<double> U, FlatMatrix<double> V, double eps)
+
+  {
+    return CalcACA (mat, U, V, eps);
+  }
+  
   tuple<int, double, double> TestCompressionACA (int nx, int ny, double eta, double eps)
   {
     auto mat = CreateMatrix(nx, ny, eta);
@@ -188,7 +206,6 @@ namespace ngbem
     double err = L2Norm(savemat - U.Cols(num)*V.Rows(num));
     return { num, err, t.GetTime() };
   }
-
   
 
 

@@ -117,7 +117,7 @@ namespace ngbem
 
   template <typename T>    
   void IntegralOperator<T> :: Apply(FlatVector<double> elx, FlatVector<double> ely, 
-                                 LocalHeap & lh) const
+                                    LocalHeap & lh) const
   {
     static Timer t("ngbem - IntegralOperator::Apply"); RegionTimer reg(t);
     VVector<> vx(hmatrix->Width());
@@ -159,7 +159,17 @@ namespace ngbem
           else
             {
               // Compute low-rank block
-              block.SetMat(CalcFarFieldBlock(trialdofs, testdofs, lh));	    
+              try
+                {
+                  block.SetMat(CalcFarFieldBlock(trialdofs, testdofs, lh));
+                }
+              catch (netgen::NgException & e)
+                {
+                  // cout << "not seperated, size = " << testdofs.Size() << " x " << trialdofs.Size() << endl;
+                  Matrix<T> near(testdofs.Size(), trialdofs.Size());
+                  CalcBlockMatrix(near, trialdofs, testdofs, lh);	    
+                  block.SetMat(make_unique<BaseMatrixFromMatrix<T>>(std::move(near)));
+                }
             }
         }
     }, TasksPerThread(4));
@@ -646,7 +656,7 @@ namespace ngbem
         hmatrix->MultAdd(-1., x_base, y_base);
   
         cout << "error " << L2Norm (y) << endl;
-    }
+      }
     /*END: TEST hmatrix: compare approximation with dense matrix. */   
   }
 
@@ -664,7 +674,7 @@ namespace ngbem
     static Timer t_identic("ngbem DLP - identic panel");
     static Timer t_common_vertex("ngbem DLP - common vertex");        
     static Timer t_common_edge("ngbem DLP - common edge");        
-     static Timer t_disjoint("ngbem DLP - disjoint");
+    static Timer t_disjoint("ngbem DLP - disjoint");
     // static Timer t_disjoint2("ngbem DLP - disjoint2");        
 
     RegionTimer reg(tall);
@@ -1302,6 +1312,265 @@ namespace ngbem
 	}
   }
 
+
+
+
+  template <typename KERNEL>
+  unique_ptr<LowRankMatrix<typename KERNEL::value_type>> GenericIntegralOperator<KERNEL> ::    
+  CalcFarFieldBlock(FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs,
+                    LocalHeap &lh) const 
+  
+  {
+    auto mesh = this->trial_space->GetMeshAccess();  
+    auto mesh2 = this->test_space->GetMeshAccess();  
+    
+    static Timer tall("ngbem generic FarFieldBlock");
+    static Timer tkernel("ngbem generic FarFieldBlock - kernel");    
+    RegionTimer reg(tall);
+
+    IntegrationRule irtrig(ET_TRIG, param.intorder);
+    
+    auto evaluator = trial_space->GetEvaluator(BND);
+    auto evaluator2 = test_space->GetEvaluator(BND);
+
+    Array<int> tmp, tmp2;
+    Array<int> patchi, patchj;
+    Array<int> trialdofsinv(trial_space->GetNDof()); 
+    Array<int> testdofsinv(test_space->GetNDof());
+
+    trialdofsinv = -1;
+    testdofsinv = -1;
+  
+    for (int i = 0; i < testdofs.Size(); i++)
+      {
+	testdofsinv[testdofs[i]] = i;
+	tmp2.Append(elems4dof2[ testdofs[i] ]);
+      }
+    QuickSort( tmp2 );
+    for (int i = 0; i < tmp2.Size(); i++)
+      {
+	patchi.Append(tmp2[i]);
+	int tmpi = tmp2[i];
+	while (i < tmp2.Size() && tmp2[i] == tmpi)
+	  i++;
+	i--;
+      }
+    
+    for (int j = 0; j < trialdofs.Size(); j++)
+      {
+	trialdofsinv[trialdofs[j]] = j;
+	tmp.Append(elems4dof[ trialdofs[j] ]);
+      }
+    QuickSort( tmp );
+    for (int j = 0; j < tmp.Size(); j++)
+      {
+	patchj.Append(tmp[j]);
+	int tmpj = tmp[j];
+	while (j < tmp.Size() && tmp[j] == tmpj)
+	  j++;
+	j--;
+      }
+
+    Matrix<value_type> matrix(testdofs.Size(), trialdofs.Size());
+    matrix = value_type(0.0);
+
+
+    // new code
+    Array<Vec<3>> xi, yj, nxi, nyj;  // i..test, j... trial
+    Array<double> wxi, wyj;
+    
+    BitArray test_vertices(mesh->GetNV());
+    test_vertices.Clear();
+
+    // test patches
+    for (int i = 0; i < patchi.Size(); i++)
+      {
+        HeapReset hr(lh);
+        ElementId ei(BND, patchi[i]);
+          
+        for (auto v : mesh2->GetElement(ei).Vertices())
+          test_vertices.SetBit(v);
+        
+        ElementTransformation &trafoi = mesh2->GetTrafo(ei, lh);
+        MappedIntegrationRule<2,3> mirx(irtrig, trafoi, lh);
+        
+        for (int ix = 0; ix < irtrig.Size(); ix++)
+          {
+            xi.Append (mirx[ix].GetPoint());
+            nxi.Append (mirx[ix].GetNV());
+            wxi.Append (mirx[ix].GetWeight());
+          }
+      }
+
+    // trial patches
+    for (int j = 0; j < patchj.Size(); j++)
+      {
+        HeapReset hr(lh);
+        ElementId ej(BND, patchj[j]);
+
+        if (mesh == mesh2)
+          for (auto v : mesh->GetElement(ej).Vertices())
+            if (test_vertices.Test(v))
+              throw Exception("far field block must not have common vertices");              
+        
+        FiniteElement &felj = trial_space->GetFE(ej, lh);
+        ElementTransformation &trafoj = mesh->GetTrafo(ej, lh);
+
+        MappedIntegrationRule<2,3> miry(irtrig, trafoj, lh);
+            
+        for (int iy = 0; iy < irtrig.Size(); iy++)
+          {
+            yj.Append (miry[iy].GetPoint());
+            nyj.Append (miry[iy].GetNV());
+            wyj.Append (miry[iy].GetWeight());
+          }
+      }
+
+    tkernel.Start();
+    /*
+    Matrix<value_type> kernel_matrix(xi.Size(), yj.Size());
+    for (int i = 0; i < xi.Size(); i++)
+      for (int j = 0; j < yj.Size(); j++)
+        kernel_matrix(i,j) = kernel.Evaluate(xi[i], yj[j], nxi[i], nyj[j])(0,0);
+
+    size_t p = 200;
+    Matrix<value_type> Umax(kernel_matrix.Height(), p), Vmax(p, kernel_matrix.Width());
+    Vector<> S(p);
+
+    int k = StochasticTSVD<value_type> (kernel_matrix, Umax, Vmax, S, param.eps);
+
+
+    for (size_t j = 0; j < k; j++)
+      {
+        Umax.Col(j) *= sqrt(S(j));
+        Vmax.Row(j) *= sqrt(S(j));
+      }
+    
+    */
+
+    size_t p = 300;
+    int rank = p;
+    auto GetRow = [&](int i, SliceVector<value_type> row)
+    {
+      for (int j = 0; j < yj.Size(); j++)
+        row(j) = kernel.Evaluate(xi[i], yj[j], nxi[i], nyj[j])(0,0);
+    };
+    auto GetCol = [&](int j, SliceVector<value_type> col)
+    {
+      for (int i = 0; i < xi.Size(); i++)
+        col(i) = kernel.Evaluate(xi[i], yj[j], nxi[i], nyj[j])(0,0);
+    };
+
+    Matrix<value_type> Umax(xi.Size(), p), Vmax(p, yj.Size());
+
+    // for quasi random sequence of pivot indices
+    size_t primes[] = { 71, 73, 79, 83, 89, 97 };
+    size_t prime;
+    for (auto tp : primes)
+      {
+        if (xi.Size()%tp != 0)
+          {
+            prime = tp;
+            break;
+          }
+      }
+    // ACA compression 
+    for (size_t k = 0; k < p; k++)
+      {
+        // int ik = k;  // what else ?
+        size_t ik = (k*prime)%xi.Size(); 
+        
+        GetRow(ik, Vmax.Row(k));
+        Vmax.Row(k) -= Trans(Vmax.Rows(0,k)) * Umax.Row(ik).Range(0,k);
+         
+        double err = L2Norm(Vmax.Row(k));
+        // cout << "Norm vk = " << err << endl;
+        if (err < param.eps)
+          {
+            rank = k;
+            break;
+          }
+        
+        int jmax = 0;
+        for (int j = 0; j < Vmax.Width(); j++)
+          if (fabs (Vmax(k,j)) > fabs(Vmax(k,jmax)))
+            jmax = j;
+        Vmax.Row(k) *= 1.0 / Vmax(k,jmax);
+
+        GetCol(jmax, Umax.Col(k));
+        Umax.Col(k) -= Umax.Cols(0,k) * Vmax.Col(jmax).Range(0,k);
+      }
+    // *testout << "rank = " << rank << endl;
+    int k = rank;
+    tkernel.Stop();
+    
+    auto U = Umax.Cols(0,k);
+    auto V = Vmax.Rows(0,k);
+    // cout << "k = " << k << ", err = " << L2Norm(help-U*V) << endl;
+    
+    for (int i = 0; i < U.Height(); i++)
+      U.Row(i) *= wxi[i];
+    for (int j = 0; j < V.Width(); j++)
+      V.Col(j) *= wyj[j];
+
+    Matrix<value_type> U2(testdofs.Size(), k);
+    Matrix<value_type> V2(k, trialdofs.Size());
+    U2 = value_type(0.0);
+    V2 = value_type(0.0);
+    
+    int cnt = 0;
+    for (int i = 0; i < patchi.Size(); i++) // test
+      {
+        HeapReset hr(lh);
+        ElementId ei(BND, patchi[i]);
+            
+        FiniteElement &feli = test_space->GetFE(ei, lh);
+        ElementTransformation &trafoi = mesh2->GetTrafo(ei, lh);
+              
+        Array<DofId> dnumsi;
+        test_space->GetDofNrs(ei, dnumsi);
+          
+        MappedIntegrationRule<2,3> mirx(irtrig, trafoi, lh);
+        FlatMatrix<> shapesi(feli.GetNDof(), irtrig.Size(), lh);
+            
+        evaluator2 -> CalcMatrix(feli, mirx, Trans(shapesi), lh);
+
+        Matrix<value_type> tmp = shapesi * U.Rows(cnt, cnt+irtrig.Size());
+        cnt += irtrig.Size();
+        for (int ii = 0; ii < dnumsi.Size(); ii++) // test
+          if (testdofsinv[dnumsi[ii]] != -1)
+            U2.Row(testdofsinv[dnumsi[ii]]) += tmp.Row(ii);
+      }
+
+    cnt = 0;
+    for (int j = 0; j < patchj.Size(); j++) // test
+      {
+        HeapReset hr(lh);
+        ElementId ej(BND, patchj[j]);
+            
+        FiniteElement &felj = trial_space->GetFE(ej, lh);
+        ElementTransformation &trafoj = mesh->GetTrafo(ej, lh);
+        
+        Array<DofId> dnumsj;
+        trial_space->GetDofNrs(ej, dnumsj);
+        
+        MappedIntegrationRule<2,3> miry(irtrig, trafoj, lh);
+        FlatMatrix<> shapesj(felj.GetNDof(), irtrig.Size(), lh);
+            
+        evaluator -> CalcMatrix(felj, miry, Trans(shapesj), lh);
+
+        Matrix<value_type> tmp = V.Cols(cnt, cnt+irtrig.Size()) * Trans(shapesj);
+        cnt += irtrig.Size();
+                     
+        for (int jj = 0; jj < dnumsj.Size(); jj++) // trial
+          if(trialdofsinv[dnumsj[jj]] != -1)
+            V2.Col(trialdofsinv[dnumsj[jj]]) += tmp.Col(jj);
+      }
+
+    return make_unique<LowRankMatrix<value_type>> (std::move(U2), std::move(V2));
+  }
+
+  
   template class GenericIntegralOperator<LaplaceSLKernel<3>>;
   template class GenericIntegralOperator<LaplaceDLKernel<3>>;
   

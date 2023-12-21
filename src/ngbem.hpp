@@ -148,6 +148,10 @@ namespace ngbem
         We use the routine to compute a #BEMBlock of type "nearfield". */
     void CalcBlockMatrix(FlatMatrix<value_type> matrix, FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, 
 			 LocalHeap &lh) const override;
+    
+    unique_ptr<LowRankMatrix<value_type>>
+    CalcFarFieldBlock(FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs,
+                      LocalHeap &lh) const override;
   };
 
 
