@@ -144,6 +144,30 @@ namespace ngbem
   
 
 
+  template <typename MATRIX, typename T>
+  int CalcACA (const MATRIX & mat, FlatMatrix<T> U, FlatMatrix<T> V, double eps)
+  {
+    for (int k = 0; k < U.Width(); k++)
+      {
+        V.Row(k) = mat.Row(k);
+        for (int l = 0; l < k; l++)
+          V.Row(k) -= U(k,l) * V.Row(l);
+        double err = L2Norm(V.Row(k));
+        cout << "Norm vk = " << err << endl;
+        if (err < eps) return k;
+        
+        int jmax = 0;
+        for (int j = 0; j < V.Width(); j++)
+          if (fabs (V(k,j)) > fabs(V(k,jmax)))
+            jmax = j;
+        V.Row(k) *= 1.0 / V(k,jmax);
+        U.Col(k) = mat.Col(jmax);
+        for (int l = 0; l < k; l++)
+          U.Col(k) -= V(l,k) * U.Col(l);
+      }
+    return U.Width();
+  }
+  
 
     
   tuple<int, double, double> TestCompressionACA (int nx, int ny, double eta, double eps)
@@ -157,9 +181,8 @@ namespace ngbem
     Timer t("compression");
     t.Start();
 
-    throw Exception("aca not implemented");
+    int num = CalcACA (mat, U, V, eps);
 
-    int num = 1;
     t.Stop();
 
     double err = L2Norm(savemat - U.Cols(num)*V.Rows(num));
