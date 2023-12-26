@@ -105,7 +105,7 @@ namespace ngbem
               if (S[j] < eps)
                 return j-1;
           }
-
+        
         rank = int (rank*1.5);
       }
 
@@ -148,8 +148,8 @@ namespace ngbem
   }
 
 
-  template <typename MATRIX, typename T, ORDERING O, typename ...TU, typename TV>
-  int CalcACA (const MATRIX & mat, MatrixView<T,O,TU...> U, FlatMatrix<TV> V, double eps)
+  template <typename MATRIX, typename TU, typename TV>
+  int CalcACA (const MATRIX & mat, FlatMatrix<TU> U, FlatMatrix<TV> V, double eps)
   {
     for (int k = 0; k < U.Width(); k++)
       {
@@ -187,6 +187,24 @@ namespace ngbem
   {
     return CalcACA (mat, U, V, eps);
   }
+
+  int CalcACA1Complex (FlatMatrix<Complex> mat, FlatMatrix<Complex> U, FlatMatrix<Complex> V, double eps)
+
+  {
+    return CalcACA (mat, U, V, eps);
+  }
+
+  void TestDispatch1 (FlatMatrix<Complex> U, FlatMatrix<Complex> V, int jmax, int k)
+  {
+    V.Row(k) -= Trans(V.Rows(0,k)) * U.Row(jmax).Range(0,k);
+  }
+
+  void TestDispatch2 (FlatMatrix<Complex> U, FlatMatrix<Complex> V, int jmax, int k)
+  {
+    U.Col(k) -= U.Cols(0,k) * V.Col(jmax).Range(0,k);    
+  }
+
+  
   
   tuple<int, double, double> TestCompressionACA (int nx, int ny, double eta, double eps)
   {

@@ -2,6 +2,7 @@
 #define NGBEM_hpp
 
 #include "hmat.hpp"
+#include "diffops.hpp"
 
 namespace ngbem
 {
@@ -163,10 +164,13 @@ namespace ngbem
   {
   public:
     typedef double value_type;
-    auto Evaluate (Vec<3> x, Vec<3> y, Vec<3> nx, Vec<3> ny) const
+    static string Name() { return "LaplaceSL"; }
+
+    template <typename T>        
+    auto Evaluate (Vec<3,T> x, Vec<3,T> y, Vec<3,T> nx, Vec<3,T> ny) const
     {
-      double norm = L2Norm(x-y);
-      return Mat<1,1> (1.0 / (4 * M_PI * norm));
+      T norm = L2Norm(x-y);
+      return Mat<1,1,T> (1.0 / (4 * M_PI * norm));
     }
   };
 
@@ -177,12 +181,15 @@ namespace ngbem
   class LaplaceDLKernel<3> 
   {
   public:
-    typedef double value_type;    
-    auto Evaluate (Vec<3> x, Vec<3> y, Vec<3> nx, Vec<3> ny) const
+    typedef double value_type;
+    static string Name() { return "LaplaceDL"; }
+
+    template <typename T>
+    auto Evaluate (Vec<3,T> x, Vec<3,T> y, Vec<3,T> nx, Vec<3,T> ny) const
     {
-      double norm = L2Norm(x-y);
-      double nxy = InnerProduct(ny, (x-y));
-      return Mat<1,1> (nxy / (4 * M_PI * norm*norm*norm));
+      T norm = L2Norm(x-y);
+      T nxy = InnerProduct(ny, (x-y));
+      return Mat<1,1,T> (nxy / (4 * M_PI * norm*norm*norm));
     }
   };
 
@@ -196,11 +203,16 @@ namespace ngbem
     double kappa;
   public:
     typedef Complex value_type;
+    static string Name() { return "HelmholtzSL"; }
+    
     HelmholtzSLKernel (double _kappa) : kappa(_kappa) { }
-    auto Evaluate (Vec<3> x, Vec<3> y, Vec<3> nx, Vec<3> ny) const
+
+    template <typename T>
+    auto Evaluate (Vec<3,T> x, Vec<3,T> y, Vec<3,T> nx, Vec<3,T> ny) const
     {
-      double norm = L2Norm(x-y);
-      return Mat<1,1,Complex> (exp(Complex(0,kappa*norm)) / (4 * M_PI * norm));
+      T norm = L2Norm(x-y);
+      auto kern = exp(Complex(0,kappa)*norm) / (4 * M_PI * norm);
+      return Mat<1,1,decltype(kern)> (kern);
     }
   };
 
@@ -213,15 +225,46 @@ namespace ngbem
     double kappa;
   public:
     typedef Complex value_type;
+    static string Name() { return "HelmholtzDL"; }
+    
     HelmholtzDLKernel (double _kappa) : kappa(_kappa) { }
-    auto Evaluate (Vec<3> x, Vec<3> y, Vec<3> nx, Vec<3> ny) const
+
+    template <typename T>    
+    auto Evaluate (Vec<3,T> x, Vec<3,T> y, Vec<3,T> nx, Vec<3,T> ny) const
     {
-      double norm = L2Norm(x-y);
-      double nxy = InnerProduct(ny, (x-y));
-      return Mat<1,1,Complex> (exp(Complex(0,kappa*norm)) / (4 * M_PI * norm*norm*norm)
-                               * nxy * (1.-Complex(0,kappa*norm)));
+      T norm = L2Norm(x-y);
+      T nxy = InnerProduct(ny, (x-y));
+      auto kern = exp(Complex(0,kappa)*norm) / (4 * M_PI * norm*norm*norm)
+        * nxy * (Complex(1,0)*T(1.) - Complex(0,kappa)*norm);
+      return Mat<1,1,decltype(kern)> (kern);
     }
   };
+
+
+
+  template <int DIM> class CombinedFieldKernel;
+
+  template<>
+  class CombinedFieldKernel<3> 
+  {
+    double kappa;
+  public:
+    typedef Complex value_type;
+    static string Name() { return "HelmholtzDL"; }
+    
+    CombinedFieldKernel (double _kappa) : kappa(_kappa) { }
+
+    template <typename T>    
+    auto Evaluate (Vec<3,T> x, Vec<3,T> y, Vec<3,T> nx, Vec<3,T> ny) const
+    {
+      T norm = L2Norm(x-y);
+      T nxy = InnerProduct(ny, (x-y));
+      auto kern = exp(Complex(0,kappa)*norm) / (4 * M_PI * norm*norm*norm)
+        * ( nxy * (Complex(1,0)*T(1.) - Complex(0,kappa)*norm)  - Complex(0,kappa)*norm*norm);
+      return Mat<1,1,decltype(kern)> (kern);
+    }
+  };
+
 
   
 }
