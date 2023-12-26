@@ -28,7 +28,7 @@ namespace ngbem
 
 
   template <typename T = double>
-  class IntegralOperator : public SpecialElement
+  class IntegralOperator
   {
   protected:
     shared_ptr<FESpace> trial_space; 
@@ -52,6 +52,7 @@ namespace ngbem
 
   public:
     IntegralOperator (shared_ptr<FESpace> _trial_space, shared_ptr<FESpace> _test_space, BEMParameters param);
+    virtual ~IntegralOperator() = default;
     shared_ptr<BaseMatrix> GetMatrix() const { return hmatrix; }
 
     /** Given a #HMatrix structure, compute all block. Memory for farfield blocks gets clear here. */
@@ -66,51 +67,8 @@ namespace ngbem
     virtual unique_ptr<LowRankMatrix<T>>
     CalcFarFieldBlock(FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs,
                       LocalHeap &lh) const;
-
-
-    /** Routine computes the DL potential matrix according to the given FE space. 
-        The matrix is dense with dim = ndof(L2) x ndof(H1), where volume dofs are not used */
-    void CalcElementMatrix(FlatMatrix<double> matrix, LocalHeap &lh) const override;
-
-
-    /** Compute the matrix-vector multiplication $y = A x$. Apply is used by the iterative solver. */
-    virtual void Apply (FlatVector<double> elx, FlatVector<double> ely, LocalHeap & lh) const override;
-    
-    /** Get list of boundary degrees of freedom of trial space.  */
-    void GetDofNrs(Array<int> &dnums) const override; 
-
-    /** Get list of boundary degrees of freedom of test space.  */
-    void GetDofNrs2(Array<int> &dnums) const override;
   };
 
-  
-  /** SingleLayerPotentialOperator. 
-      */
-  class SingleLayerPotentialOperator : public IntegralOperator<double>
-  {
-  public:
-    /** Constructor */
-    SingleLayerPotentialOperator(shared_ptr<FESpace> aspace, BEMParameters param);
-
-    /** Compute the sub-block of SL potential matrix which belongs to the given dofs, 
-        where #matrix is dense. We use the routine to compute a #BEMBlock of type "nearfield". */
-    void CalcBlockMatrix(FlatMatrix<double> matrix, FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, 
-			 LocalHeap &lh) const override;
-  };
-
-
-  class DoubleLayerPotentialOperator : public IntegralOperator<double>
-  {
-  public:
-    DoubleLayerPotentialOperator(shared_ptr<FESpace> aspace, shared_ptr<FESpace> bspace, struct BEMParameters param);
-
-    
-    /** Compute the sub-block of DL potential matrix which belongs to the given dofs, 
-        where #matrix is dense with dim = size(testdofs) x size(trialdofs). 
-        We use the routine to compute a #BEMBlock of type "nearfield". */
-    void CalcBlockMatrix(FlatMatrix<double> matrix, FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, 
-			 LocalHeap &lh) const override;
-  };
 
   
   template <typename KERNEL>
