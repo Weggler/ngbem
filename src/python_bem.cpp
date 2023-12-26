@@ -45,6 +45,19 @@ PYBIND11_MODULE(libbem, m)
         py::arg("method")="svd", py::arg("testhmatrix")=false);
 
 
+  m.def("HypersingularOperator", [](shared_ptr<FESpace> space, int intorder, int leafsize, double eta, double eps,
+                                    string method, bool testhmatrix) -> shared_ptr<IntegralOperator<>>
+  {
+    BEMParameters param({intorder, leafsize, eta, eps, method, testhmatrix});
+    return make_unique<GenericIntegralOperator<LaplaceSLKernel<3>>>(space, space,
+                                                                    make_shared<T_DifferentialOperator<DiffOpBoundaryRot>>(),
+                                                                    make_shared<T_DifferentialOperator<DiffOpBoundaryRot>>(), 
+                                                                    LaplaceSLKernel<3>(), param);
+    
+  }, py::arg("space"), py::arg("intorder")=3, py::arg("leafsize")=40, py::arg("eta")=2., py::arg("eps")=1e-6,
+        py::arg("method")="svd", py::arg("testhmatrix")=false);
+  
+  
 
   m.def("HelmholtzSingleLayerPotentialOperator", [](shared_ptr<FESpace> trial_space, shared_ptr<FESpace> test_space, double kappa,
                                                     int intorder, int leafsize, double eta, double eps,

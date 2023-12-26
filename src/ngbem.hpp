@@ -121,8 +121,8 @@ namespace ngbem
     typedef IntegralOperator<typename KERNEL::value_type> BASE;
     
     using BASE::trial_space; 
-    using BASE::test_space; 
-    
+    using BASE::test_space;
+       
     using BASE::param;
 
     using BASE::mapglob2bnd;
@@ -138,11 +138,20 @@ namespace ngbem
     
     using BASE::hmatrix;
 
+    shared_ptr<DifferentialOperator> trial_evaluator;
+    shared_ptr<DifferentialOperator> test_evaluator;
     
   public:
     GenericIntegralOperator(shared_ptr<FESpace> _trial_space, shared_ptr<FESpace> _test_space,
                             KERNEL _kernel,
                             struct BEMParameters param);
+
+    GenericIntegralOperator(shared_ptr<FESpace> _trial_space, shared_ptr<FESpace> _test_space,
+                            shared_ptr<DifferentialOperator> _trial_evaluator, 
+                            shared_ptr<DifferentialOperator> _test_evaluator, 
+                            KERNEL _kernel,
+                            struct BEMParameters param);
+
     
     /** Compute the sub-block of DL potential matrix which belongs to the given dofs, 
         where #matrix is dense with dim = size(testdofs) x size(trialdofs). 

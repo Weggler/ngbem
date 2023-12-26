@@ -989,6 +989,8 @@ namespace ngbem
                           BEMParameters _param)
     : IntegralOperator<value_type>(_trial_space, _test_space, _param), kernel(_kernel)
   {
+    trial_evaluator = trial_space -> GetEvaluator(BND);
+    test_evaluator = test_space -> GetEvaluator(BND);
     hmatrix =
       make_shared<HMatrix<value_type>>(trial_ct, test_ct, 
                                        param.eta, trial_space->GetNDof(), test_space->GetNDof());
@@ -996,7 +998,27 @@ namespace ngbem
     LocalHeap lh(100000000);
     this->CalcHMatrix(*hmatrix, lh, param);
   }
-                                  
+
+
+  template <typename KERNEL>
+  GenericIntegralOperator<KERNEL> ::
+  GenericIntegralOperator(shared_ptr<FESpace> _trial_space, shared_ptr<FESpace> _test_space,
+                          shared_ptr<DifferentialOperator> _trial_evaluator, 
+                          shared_ptr<DifferentialOperator> _test_evaluator, 
+                          KERNEL _kernel,
+                          BEMParameters _param)
+    : IntegralOperator<value_type>(_trial_space, _test_space, _param), kernel(_kernel),
+      trial_evaluator(_trial_evaluator), test_evaluator(_test_evaluator)
+  {
+    hmatrix =
+      make_shared<HMatrix<value_type>>(trial_ct, test_ct, 
+                                       param.eta, trial_space->GetNDof(), test_space->GetNDof());
+    
+    LocalHeap lh(100000000);
+    this->CalcHMatrix(*hmatrix, lh, param);
+  }
+
+  
   template <typename KERNEL>
   void GenericIntegralOperator<KERNEL> ::
   CalcBlockMatrix(FlatMatrix<value_type> matrix, FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, 
@@ -1031,8 +1053,8 @@ namespace ngbem
 
     matrix = 0; 
 
-    auto evaluator = trial_space->GetEvaluator(BND);
-    auto evaluator2 = test_space->GetEvaluator(BND);
+    // auto evaluator = trial_space->GetEvaluator(BND);
+    // auto evaluator2 = test_space->GetEvaluator(BND);
 
     Array<int> tmp, tmp2;
     Array<int> patchi, patchj;
@@ -1083,8 +1105,8 @@ namespace ngbem
 	  auto verti = mesh2->GetElement(ei).Vertices();
 	  auto vertj = mesh->GetElement(ej).Vertices();          
             
-	  BaseScalarFiniteElement &feli = dynamic_cast<BaseScalarFiniteElement &>(test_space->GetFE(ei, lh));
-	  BaseScalarFiniteElement &felj = dynamic_cast<BaseScalarFiniteElement &>(trial_space->GetFE(ej, lh));
+	  FiniteElement &feli = test_space->GetFE(ei, lh);
+	  FiniteElement &felj = trial_space->GetFE(ej, lh);
               
 	  ElementTransformation &trafoi = mesh2->GetTrafo(ei, lh);
 	  ElementTransformation &trafoj = mesh->GetTrafo(ej, lh);
@@ -1093,8 +1115,8 @@ namespace ngbem
 	  test_space->GetDofNrs(ei, dnumsi); // mapping to global dof
 	  trial_space->GetDofNrs(ej, dnumsj);
         
-	  FlatVector<> shapei(feli.GetNDof(), lh);
-	  FlatVector<> shapej(felj.GetNDof(), lh);
+	  FlatMatrix<> shapei(feli.GetNDof(), test_evaluator->Dim(), lh);
+	  FlatMatrix<> shapej(felj.GetNDof(), trial_evaluator->Dim(), lh);
           
 	  FlatMatrix<value_type> elmat(feli.GetNDof(), felj.GetNDof(), lh); 
 	  elmat = 0;
@@ -1122,16 +1144,13 @@ namespace ngbem
                         
 		    Vec<3> x = mipx.Point();
 		    Vec<3> y = mipy.Point();
-                
 		    Vec<3> nx = mipx.GetNV();
 		    Vec<3> ny = mipy.GetNV();                    
-		    double nxy = InnerProduct(ny, (x-y));
-		    double normxy = L2Norm(x-y);
-		    // double kernel = nxy / (4*M_PI*normxy*normxy*normxy);
+
                     value_type kernel_ = kernel.Evaluate(x, y, nx, ny)(0,0);
                         
-		    evaluator2->CalcMatrix(feli, mipx, Trans(shapei.AsMatrix(feli.GetNDof(),1)), lh);
-		    evaluator->CalcMatrix(felj, mipy, Trans(shapej.AsMatrix(felj.GetNDof(),1)), lh);
+		    test_evaluator->CalcMatrix(feli, mipx, Trans(shapei), lh);
+		    trial_evaluator->CalcMatrix(felj, mipy, Trans(shapej), lh);
                         
 		    double fac = mipx.GetMeasure()*mipy.GetMeasure()*identic_panel_weight[k];
 		    elmat += fac*kernel_* shapei * Trans(shapej);
@@ -1189,15 +1208,13 @@ namespace ngbem
                         
 		    Vec<3> x = mipx.Point();
 		    Vec<3> y = mipy.Point();
-
 		    Vec<3> nx = mipx.GetNV();
 		    Vec<3> ny = mipy.GetNV();
-		    // double nxy = InnerProduct(ny, (x-y));
-		    // double normxy = L2Norm(x-y);
+                    
 		    value_type kernel_ = kernel.Evaluate(x,y,nx,ny)(0,0);
                         
-		    evaluator2->CalcMatrix(feli, mipx, Trans(shapei.AsMatrix(feli.GetNDof(),1)), lh);
-		    evaluator->CalcMatrix(felj, mipy, Trans(shapej.AsMatrix(felj.GetNDof(),1)), lh);
+		    test_evaluator->CalcMatrix(feli, mipx, Trans(shapei), lh);
+		    trial_evaluator->CalcMatrix(felj, mipy, Trans(shapej), lh);
                         
 		    double fac = mipx.GetMeasure()*mipy.GetMeasure() * common_edge_weight[k];
 		    elmat += fac*kernel_* shapei * Trans(shapej);
@@ -1257,8 +1274,8 @@ namespace ngbem
                     
 		    value_type kernel_ = kernel.Evaluate(x, y, nx, ny)(0,0);
           
-		    evaluator2->CalcMatrix(feli, mipx, Trans(shapei.AsMatrix(feli.GetNDof(),1)), lh);
-		    evaluator->CalcMatrix(felj, mipy, Trans(shapej.AsMatrix(felj.GetNDof(),1)), lh);
+		    test_evaluator->CalcMatrix(feli, mipx, Trans(shapei), lh);
+		    trial_evaluator->CalcMatrix(felj, mipy, Trans(shapej), lh);
                   
 		    double fac = mipx.GetMeasure()*mipy.GetMeasure()*common_vertex_weight[k];
 		    elmat += fac*kernel_* shapei * Trans(shapej);
@@ -1309,12 +1326,12 @@ namespace ngbem
                     t_common_vertex2.Stop();
                     t_common_vertex3.Start();
 
-                    FlatMatrix<SIMD<double>> mshapesi(feli.GetNDof(), mirx.Size(), lh);
-                    FlatMatrix<SIMD<value_type>> mshapesi_kern(feli.GetNDof(), mirx.Size(), lh);                    
-                    FlatMatrix<SIMD<double>> mshapesj(felj.GetNDof(), miry.Size(), lh);
+                    FlatMatrix<SIMD<double>> mshapesi(feli.GetNDof()*test_evaluator->Dim(), mirx.Size(), lh);
+                    FlatMatrix<SIMD<value_type>> mshapesi_kern(feli.GetNDof()*test_evaluator->Dim(), mirx.Size(), lh);                    
+                    FlatMatrix<SIMD<double>> mshapesj(felj.GetNDof()*trial_evaluator->Dim(), miry.Size(), lh);
 
-                    evaluator2->CalcMatrix(feli, mirx, mshapesi);
-                    evaluator->CalcMatrix(felj, miry, mshapesj);
+                    test_evaluator->CalcMatrix(feli, mirx, mshapesi);
+                    trial_evaluator->CalcMatrix(felj, miry, mshapesj);
 
                     for (int k2 = 0; k2 < mirx.Size(); k2++)
                       {
@@ -1328,7 +1345,9 @@ namespace ngbem
                         mshapesi_kern.Col(k2) = fac*kernel_ * mshapesi.Col(k2);
                       }
 
-                    AddABt (mshapesi_kern, mshapesj, elmat);
+                    AddABt (mshapesi_kern.Reshape(feli.GetNDof(), test_evaluator->Dim()*mirx.Size()),
+                            mshapesj.Reshape(felj.GetNDof(), trial_evaluator->Dim()*miry.Size()),
+                            elmat);
                     t_common_vertex3.Stop();                    
                   }
 
@@ -1344,12 +1363,12 @@ namespace ngbem
 		// shapes+geom out of loop, matrix multiplication
 		MappedIntegrationRule<2,3> mirx(irtrig, trafoi, lh);
 		MappedIntegrationRule<2,3> miry(irtrig, trafoj, lh);
-                  
-		FlatMatrix<> shapesi(feli.GetNDof(), irtrig.Size(), lh);
-		FlatMatrix<> shapesj(felj.GetNDof(), irtrig.Size(), lh);
+
+		FlatMatrix<> shapesi(feli.GetNDof(), test_evaluator->Dim()*irtrig.Size(), lh);
+		FlatMatrix<> shapesj(felj.GetNDof(), trial_evaluator->Dim()*irtrig.Size(), lh);
                 
-		evaluator2 -> CalcMatrix(feli, mirx, Trans(shapesi), lh);
-		evaluator-> CalcMatrix(felj, miry, Trans(shapesj), lh);
+		test_evaluator -> CalcMatrix(feli, mirx, Trans(shapesi), lh);
+		trial_evaluator-> CalcMatrix(felj, miry, Trans(shapesj), lh);
 
 
 		FlatMatrix<value_type> kernel_ixiy(irtrig.Size(), irtrig.Size(), lh);
@@ -1368,11 +1387,28 @@ namespace ngbem
 			kernel_ixiy(ix, iy) = fac*kernel_;
 		      }
 		  }
-          
+
+
 		FlatMatrix<value_type> kernel_shapesj(irtrig.Size(), felj.GetNDof(), lh);
-		kernel_shapesj = kernel_ixiy * Trans(shapesj);
-		elmat += shapesi * kernel_shapesj;
-                
+                if (test_evaluator->Dim()==1)
+                  {
+                    kernel_shapesj = kernel_ixiy * Trans(shapesj);
+                    elmat += shapesi * kernel_shapesj;
+                  }
+                else
+                  {
+                    FlatMatrix<> shapesi1(feli.GetNDof(), irtrig.Size(), lh);
+                    FlatMatrix<> shapesj1(felj.GetNDof(), irtrig.Size(), lh);
+
+                    for (int k = 0; k < test_evaluator->Dim(); k++)
+                      for (int j = 0; j < irtrig.Size(); j++)
+                        {
+                          shapesi1.Col(j) = shapesi.Col(test_evaluator->Dim()*j+k);
+                          shapesj1.Col(j) = shapesj.Col(test_evaluator->Dim()*j+k);
+                          kernel_shapesj = kernel_ixiy * Trans(shapesj1);
+                          elmat += shapesi1 * kernel_shapesj;
+                        }
+                  }
 		break;
 	      }
 	    default:
@@ -1404,9 +1440,6 @@ namespace ngbem
 
     IntegrationRule irtrig(ET_TRIG, param.intorder);
     
-    auto evaluator = trial_space->GetEvaluator(BND);
-    auto evaluator2 = test_space->GetEvaluator(BND);
-
     Array<int> tmp, tmp2;
     Array<int> patchi, patchj;
     Array<int> trialdofsinv(trial_space->GetNDof()); 
@@ -1607,7 +1640,7 @@ namespace ngbem
         MappedIntegrationRule<2,3> mirx(irtrig, trafoi, lh);
         FlatMatrix<> shapesi(feli.GetNDof(), irtrig.Size(), lh);
             
-        evaluator2 -> CalcMatrix(feli, mirx, Trans(shapesi), lh);
+        test_evaluator -> CalcMatrix(feli, mirx, Trans(shapesi), lh);
 
         Matrix<value_type> tmp = shapesi * U.Rows(cnt, cnt+irtrig.Size());
         cnt += irtrig.Size();
@@ -1631,7 +1664,7 @@ namespace ngbem
         MappedIntegrationRule<2,3> miry(irtrig, trafoj, lh);
         FlatMatrix<> shapesj(felj.GetNDof(), irtrig.Size(), lh);
             
-        evaluator -> CalcMatrix(felj, miry, Trans(shapesj), lh);
+        trial_evaluator -> CalcMatrix(felj, miry, Trans(shapesj), lh);
 
         Matrix<value_type> tmp = V.Cols(cnt, cnt+irtrig.Size()) * Trans(shapesj);
         cnt += irtrig.Size();
