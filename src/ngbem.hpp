@@ -137,7 +137,8 @@ namespace ngbem
     auto Evaluate (Vec<3,T> x, Vec<3,T> y, Vec<3,T> nx, Vec<3,T> ny) const
     {
       T norm = L2Norm(x-y);
-      return Mat<1,1,T> (1.0 / (4 * M_PI * norm));
+      return 1.0 / (4 * M_PI * norm);   
+      // return Mat<1,1,T> (1.0 / (4 * M_PI * norm));
     }
   };
 
@@ -156,7 +157,8 @@ namespace ngbem
     {
       T norm = L2Norm(x-y);
       T nxy = InnerProduct(ny, (x-y));
-      return Mat<1,1,T> (nxy / (4 * M_PI * norm*norm*norm));
+      return nxy / (4 * M_PI * norm*norm*norm);
+      // return Mat<1,1,T> (nxy / (4 * M_PI * norm*norm*norm));
     }
   };
 
@@ -179,7 +181,8 @@ namespace ngbem
     {
       T norm = L2Norm(x-y);
       auto kern = exp(Complex(0,kappa)*norm) / (4 * M_PI * norm);
-      return Mat<1,1,decltype(kern)> (kern);
+      return kern;
+      // return Mat<1,1,decltype(kern)> (kern);
     }
   };
 
@@ -203,7 +206,8 @@ namespace ngbem
       T nxy = InnerProduct(ny, (x-y));
       auto kern = exp(Complex(0,kappa)*norm) / (4 * M_PI * norm*norm*norm)
         * nxy * (Complex(1,0)*T(1.) - Complex(0,kappa)*norm);
-      return Mat<1,1,decltype(kern)> (kern);
+      return kern;
+      // return Mat<1,1,decltype(kern)> (kern);
     }
   };
 
@@ -217,7 +221,7 @@ namespace ngbem
     double kappa;
   public:
     typedef Complex value_type;
-    static string Name() { return "HelmholtzDL"; }
+    static string Name() { return "Helmholtz Combined Field"; }
     
     CombinedFieldKernel (double _kappa) : kappa(_kappa) { }
 
@@ -228,7 +232,8 @@ namespace ngbem
       T nxy = InnerProduct(ny, (x-y));
       auto kern = exp(Complex(0,kappa)*norm) / (4 * M_PI * norm*norm*norm)
         * ( nxy * (Complex(1,0)*T(1.) - Complex(0,kappa)*norm)  - Complex(0,kappa)*norm*norm);
-      return Mat<1,1,decltype(kern)> (kern);
+      return kern;
+      // return Mat<1,1,decltype(kern)> (kern);
     }
   };
 
