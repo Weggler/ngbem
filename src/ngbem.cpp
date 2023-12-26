@@ -1401,20 +1401,21 @@ namespace ngbem
                     FlatMatrix<> shapesj1(felj.GetNDof(), irtrig.Size(), lh);
 
                     for (int k = 0; k < test_evaluator->Dim(); k++)
-                      for (int j = 0; j < irtrig.Size(); j++)
-                        {
-                          shapesi1.Col(j) = shapesi.Col(test_evaluator->Dim()*j+k);
-                          shapesj1.Col(j) = shapesj.Col(test_evaluator->Dim()*j+k);
-                          kernel_shapesj = kernel_ixiy * Trans(shapesj1);
-                          elmat += shapesi1 * kernel_shapesj;
-                        }
+                      {
+                        for (int j = 0; j < irtrig.Size(); j++)
+                          {
+                            shapesi1.Col(j) = shapesi.Col(test_evaluator->Dim()*j+k);
+                            shapesj1.Col(j) = shapesj.Col(test_evaluator->Dim()*j+k);
+                          }
+                        kernel_shapesj = kernel_ixiy * Trans(shapesj1);
+                        elmat += shapesi1 * kernel_shapesj;
+                      }
                   }
 		break;
 	      }
 	    default:
 	      throw Exception ("not possible");
 	    }
-	  
 	  for (int ii = 0; ii < dnumsi.Size(); ii++) // test
 	    for (int jj = 0; jj < dnumsj.Size(); jj++) // trial
 	      if(trialdofsinv[dnumsj[jj]] != -1 && testdofsinv[dnumsi[ii]] != -1)
@@ -1431,6 +1432,10 @@ namespace ngbem
                     LocalHeap &lh) const 
   
   {
+
+    if (trial_evaluator->Dim() > 1)
+      throw Exception("ACA not supported for vectorial evaluators");              
+    
     auto mesh = this->trial_space->GetMeshAccess();  
     auto mesh2 = this->test_space->GetMeshAccess();  
     
