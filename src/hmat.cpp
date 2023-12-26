@@ -178,9 +178,7 @@ namespace ngbem
       }
 
     // Centroid of cluster
-    //double Centre[3] = {Mom[1] / Mom[0], Mom[2] / Mom[0], Mom[3] / Mom[0]};
-    Vec<3> Centre;
-    Centre = Vec<3>(Mom[1] / Mom[0], Mom[2] / Mom[0], Mom[3] / Mom[0]);
+    Vec<3> Centre(Mom[1] / Mom[0], Mom[2] / Mom[0], Mom[3] / Mom[0]);
 
     // Covariance matrix of cluster
     double A[9];
@@ -195,11 +193,17 @@ namespace ngbem
     A[8] = Mom[9] - Centre[2] * Mom[3];
 
     // Get eigenvectors and eigenvalues
-    int N = 3, LDA = 3, LWORK = 8, INFO;
+    // int N = 3, LDA = 3, LWORK = 8, INFO;
     double W[3], WORK[8];
-    dsyev_((char *) "V", (char *) "U", &N, A, &LDA, W, WORK, &LWORK, &INFO);
+    // dsyev_((char *) "V", (char *) "U", &N, A, &LDA, W, WORK, &LWORK, &INFO);
 
-    // Radius and bounding box
+    FlatMatrix<> mat(3,3,&A[0]);
+    Mat<3,3> evecs;
+    FlatVector<> evals(3,&W[0]);
+    LapackEigenValuesSymmetric (mat, evals, evecs);
+    mat = evecs;
+
+    // bRadius and bounding box
     int jMin;
     //double XMin[3], XMax[3];
     Vec<3> XMin;
@@ -214,12 +218,11 @@ namespace ngbem
 	//Diff[0] -= Centre[0];
 	//Diff[1] -= Centre[1];
 	//Diff[2] -= Centre[2];
-    Vec<3> Diff;
-    Diff = Vec<3>(X[j](0)-Centre[0], X[j](1)-Centre[1], X[j](2)-Centre[2]);
+        Vec<3> Diff(X[j](0)-Centre[0], X[j](1)-Centre[1], X[j](2)-Centre[2]);
       
 	//double Dist = sqrt(fabs(Diff[0] * Diff[0] + Diff[1] * Diff[1] +
 	//			Diff[2] * Diff[2]));
-    double Dist = L2Norm(Diff);
+        double Dist = L2Norm(Diff);
       
 	if(i == ClBegin || Dist < DistMin)
 	  {
@@ -233,10 +236,14 @@ namespace ngbem
 	//XT[2] = A[6] * Diff[0] + A[7] * Diff[1] + A[8] * Diff[2];
 	//Radius = fmax(Radius, sqrt(fabs(XT[0] * XT[0] + XT[1] * XT[1] +
 	//				XT[2] * XT[2])));
-    Vec<3> XT;
-    XT = Vec<3>(A[0] * Diff[0] + A[1] * Diff[1] + A[2] * Diff[2], 
-                A[3] * Diff[0] + A[4] * Diff[1] + A[5] * Diff[2], 
-                A[6] * Diff[0] + A[7] * Diff[1] + A[8] * Diff[2]);
+        /*
+        Vec<3> XT;
+        XT = Vec<3>(A[0] * Diff[0] + A[1] * Diff[1] + A[2] * Diff[2], 
+                    A[3] * Diff[0] + A[4] * Diff[1] + A[5] * Diff[2], 
+                    A[6] * Diff[0] + A[7] * Diff[1] + A[8] * Diff[2]);
+        */
+        Vec<3> XT = FlatMatrix<>(3,3,&A[0]) * Diff;
+        
 	Radius = fmax(Radius, L2Norm(XT));
 
 
@@ -251,8 +258,8 @@ namespace ngbem
 	    XMin[2]=XT[2];
 	    XMax[2]=XT[2];
         */
-        XMin = XT;
-        XMax = XT;
+            XMin = XT;
+            XMax = XT;
 	  }
 	else
 	  {
@@ -271,8 +278,7 @@ namespace ngbem
     double DiagLength = sqrt(fabs(Diag[0] * Diag[0] + Diag[1] * Diag[1] +
 				  Diag[2] * Diag[2]));
     */
-    Vec<3> Diag;
-    Diag = Vec<3> (XMax[0] - XMin[0], XMax[1] - XMin[1], XMax[2] - XMin[2]);
+    Vec<3> Diag(XMax[0] - XMin[0], XMax[1] - XMin[1], XMax[2] - XMin[2]);
     double DiagLength = L2Norm(Diag); 
 
     if (DiagLength > 0.0)
