@@ -813,9 +813,8 @@ namespace ngbem
                     LocalHeap &lh) const 
   
   {
-
-    if (trial_evaluator->Dim() > 1)
-      throw Exception("ACA not supported for vectorial evaluators");              
+    // if (trial_evaluator->Dim() > 1)
+    // throw Exception("ACA not supported for vectorial evaluators");              
     
     auto mesh = this->trial_space->GetMeshAccess();  
     auto mesh2 = this->test_space->GetMeshAccess();  
@@ -826,7 +825,8 @@ namespace ngbem
     RegionTimer reg(tall);
 
     IntegrationRule irtrig(ET_TRIG, param.intorder);
-    
+    SIMD_IntegrationRule simd_irtrig(irtrig);
+
     Array<int> tmp, tmp2;
     Array<int> patchi, patchj;
     Array<int> trialdofsinv(trial_space->GetNDof()); 
@@ -1012,8 +1012,8 @@ namespace ngbem
     for (int j = 0; j < V.Width(); j++)
       V.Col(j) *= wyj[j];
 
-    Matrix<value_type> U2(testdofs.Size(), k);
-    Matrix<value_type> V2(k, trialdofs.Size());
+    Matrix<value_type> U2(testdofs.Size(), k*test_evaluator->Dim());
+    Matrix<value_type> V2(k*test_evaluator->Dim(), trialdofs.Size());
     U2 = value_type(0.0);
     V2 = value_type(0.0);
     
@@ -1028,13 +1028,17 @@ namespace ngbem
               
         Array<DofId> dnumsi;
         test_space->GetDofNrs(ei, dnumsi);
-          
-        MappedIntegrationRule<2,3> mirx(irtrig, trafoi, lh);
-        FlatMatrix<> shapesi(feli.GetNDof(), irtrig.Size(), lh);
-            
-        test_evaluator -> CalcMatrix(feli, mirx, Trans(shapesi), lh);
 
-        Matrix<value_type> tmp = shapesi * U.Rows(cnt, cnt+irtrig.Size());
+        int dim = test_evaluator->Dim();
+        SIMD_MappedIntegrationRule<2,3> mirx(simd_irtrig, trafoi, lh);
+        FlatMatrix<SIMD<double>> shapesi(dim*feli.GetNDof(), simd_irtrig.Size(), lh);
+        SliceMatrix<double> dshapesi(dim*feli.GetNDof(), simd_irtrig.GetNIP(), simd_irtrig.Size()*SIMD<double>::Size(),
+                                     (double*)shapesi.Data());
+        
+        test_evaluator -> CalcMatrix(feli, mirx, shapesi);
+        Matrix<value_type> tmp1 = dshapesi * U.Rows(cnt, cnt+irtrig.Size());        
+        auto tmp = tmp1.Reshape(feli.GetNDof(), dim*U.Width());
+                                
         cnt += irtrig.Size();
         for (int ii = 0; ii < dnumsi.Size(); ii++) // test
           if (testdofsinv[dnumsi[ii]] != -1)
@@ -1052,18 +1056,22 @@ namespace ngbem
         
         Array<DofId> dnumsj;
         trial_space->GetDofNrs(ej, dnumsj);
-        
-        MappedIntegrationRule<2,3> miry(irtrig, trafoj, lh);
-        FlatMatrix<> shapesj(felj.GetNDof(), irtrig.Size(), lh);
-            
-        trial_evaluator -> CalcMatrix(felj, miry, Trans(shapesj), lh);
 
-        Matrix<value_type> tmp = V.Cols(cnt, cnt+irtrig.Size()) * Trans(shapesj);
+
+        int dim = trial_evaluator->Dim();        
+        SIMD_MappedIntegrationRule<2,3> miry(simd_irtrig, trafoj, lh);
+        FlatMatrix<SIMD<double>> shapesj(dim*felj.GetNDof(), simd_irtrig.Size(), lh);
+        SliceMatrix<double> dshapesj(dim*felj.GetNDof(), simd_irtrig.GetNIP(), simd_irtrig.Size()*SIMD<double>::Size(),
+                                     (double*)shapesj.Data());
+        
+        trial_evaluator -> CalcMatrix(felj, miry, shapesj);
+        Matrix<value_type> tmp1 = dshapesj * Trans(V).Rows(cnt, cnt+irtrig.Size());        
+        auto tmp = tmp1.Reshape(felj.GetNDof(), dim*V.Height());
+        
         cnt += irtrig.Size();
-                     
         for (int jj = 0; jj < dnumsj.Size(); jj++) // trial
           if(trialdofsinv[dnumsj[jj]] != -1)
-            V2.Col(trialdofsinv[dnumsj[jj]]) += tmp.Col(jj);
+            V2.Col(trialdofsinv[dnumsj[jj]]) += tmp.Row(jj);
       }
 
     return make_unique<LowRankMatrix<value_type>> (std::move(U2), std::move(V2));
