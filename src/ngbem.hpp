@@ -27,6 +27,8 @@ namespace ngbem
   };
 
 
+  /** The IntegralOperator provides methods for the assembly of and access to a matrix 
+      resulting from a variational formulation of a boundary integral equation.*/
   template <typename T = double>
   class IntegralOperator
   {
@@ -34,8 +36,10 @@ namespace ngbem
     shared_ptr<FESpace> trial_space; 
     shared_ptr<FESpace> test_space; 
     
+    /* parameters that specify the appoximation of linear operators and solving */
     BEMParameters param;
 
+    /* boundary to global fe dofs mappings */
     Array<DofId> mapglob2bnd;
     Array<DofId> mapbnd2glob;
     Array<DofId> mapglob2bnd2;
@@ -44,6 +48,7 @@ namespace ngbem
     Table<int> elems4dof; // contains list of elems contributing to bnd-dof
     Table<int> elems4dof2; // contains list of elems contributing to bnd-dof
     
+    /* #ClusterTree define cluster pairs, i.e., the blocks of the hmatrix */
     shared_ptr<ClusterTree> trial_ct; 
     shared_ptr<ClusterTree> test_ct;
     
@@ -51,19 +56,24 @@ namespace ngbem
 
 
   public:
+
+    /** Constructor. */
     IntegralOperator (shared_ptr<FESpace> _trial_space, shared_ptr<FESpace> _test_space, BEMParameters param);
     virtual ~IntegralOperator() = default;
+
+    /** GetHMatrix returns the #hmatrix. */
     shared_ptr<BaseMatrix> GetMatrix() const { return hmatrix; }
 
-    /** Given a #HMatrix structure, compute all block. Memory for farfield blocks gets clear here. */
+    /** CalcHMatrix fills the #hmatrix, i.e., memory for farfield blocks is allocated and 
+        all blocks are computed. */
     void CalcHMatrix(HMatrix<T> & hmatrix, LocalHeap &lh, struct BEMParameters &param) const;
 
+    /** CalcBlockMatrix computes the block of entries with trialdofs and testdofs indices. */
     virtual void CalcBlockMatrix(FlatMatrix<T> matrix,
                                  FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, 
                                  LocalHeap &lh) const = 0;
     
-    /** Compute the sub-block of integral operator matrix which belongs to the given dofs,  
-        where #matrix is a #LowRankMatrix. We use the routine to compute a #BEMBlock of type "farfield". */
+    /** CalcFarFieldBlock computes a low-rank approximation of block with trialdofs and testdofs. */
     virtual unique_ptr<LowRankMatrix<T>>
     CalcFarFieldBlock(FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs,
                       LocalHeap &lh) const;
@@ -71,6 +81,9 @@ namespace ngbem
 
 
   
+  /** The GenericIntegralOperator is a templated #IntegralOperator, the template type is 
+      the kernel the specific potential,i.e. a fundamental solution or its 
+      derivative of specific pde. */
   template <typename KERNEL>
   class GenericIntegralOperator : public IntegralOperator<typename KERNEL::value_type>
   {
@@ -88,8 +101,8 @@ namespace ngbem
     using BASE::mapglob2bnd2;
     using BASE::mapbnd2glob2;
 
-    using BASE::elems4dof; // contains list of elems contributing to bnd-dof
-    using BASE::elems4dof2; // contains list of elems contributing to bnd-dof
+    using BASE::elems4dof; 
+    using BASE::elems4dof2; 
     
     using BASE::trial_ct; 
     using BASE::test_ct;
@@ -110,10 +123,6 @@ namespace ngbem
                             KERNEL _kernel,
                             struct BEMParameters param);
 
-    
-    /** Compute the sub-block of DL potential matrix which belongs to the given dofs, 
-        where #matrix is dense with dim = size(testdofs) x size(trialdofs). 
-        We use the routine to compute a #BEMBlock of type "nearfield". */
     void CalcBlockMatrix(FlatMatrix<value_type> matrix, FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, 
 			 LocalHeap &lh) const override;
     
@@ -124,8 +133,13 @@ namespace ngbem
 
 
 
+
+  /** LaplaceSLkernel is the kernel for the single layer potential of 
+      the Laplace equation $ \Delta u = 0 \,.$  */
   template <int DIM> class LaplaceSLKernel;
 
+  /** LaplaceSLkernel in 3D reads 
+      $$ G(x-y) = \frac{1}{4\,\pi \, | x-y| }, \quad x, y \in \mathbb R^3, \; x\not=y\,. $$ */
   template<>
   class LaplaceSLKernel<3> 
   {
@@ -143,8 +157,14 @@ namespace ngbem
   };
 
 
+  /** LaplaceDLkernel is the kernel for the double layer potential of 
+      the Laplace equation $ \Delta u = 0 \,.$  */
   template <int DIM> class LaplaceDLKernel;
 
+  /** LaplaceDLkernel in 3D reads 
+      $$ \frac{\partial }{ \partial n_y} G(x-y) = \frac{1}{4\,\pi} \, 
+          \frac{ \langle n(y), x-y\rangle }{ | x-y|^3 }, 
+          \quad x, y \in \mathbb R^3, \; x\not=y\,. $$ */
   template<>
   class LaplaceDLKernel<3> 
   {
@@ -164,8 +184,13 @@ namespace ngbem
 
 
 
+  /** HelmholtzSLkernel is the kernel for the double layer potential of the 
+      Helmholtz equation $ -\Delta u - \kappa^2 u = 0, \; \kappa>0\,. $ */
   template <int DIM> class HelmholtzSLKernel;
 
+  /** HelmholtzSLkernel in 3D reads 
+      $$ G(x-y) = \frac{1 }{4\,\pi} \,\frac{e^{i\,\kappa \, |x-y| }{|x-y|} \, 
+          \quad x, y \in \mathbb R^3, \; x\not=y\,. $$ */
   template<>
   class HelmholtzSLKernel<3> 
   {
@@ -174,6 +199,7 @@ namespace ngbem
     typedef Complex value_type;
     static string Name() { return "HelmholtzSL"; }
     
+    /** Construction of the kernel specifies the wavenumber $\kappa$. */
     HelmholtzSLKernel (double _kappa) : kappa(_kappa) { }
 
     template <typename T>
@@ -187,8 +213,14 @@ namespace ngbem
   };
 
 
+  /** HelmholtzSLkernel is the kernel for the double layer potential of 
+      the Helmholtz equation $ -\Delta u - \kappa^2 u = 0, \; \kappa>0\,.$ */
   template <int DIM> class HelmholtzDLKernel;
 
+  /** HelmholtzSLkernel in 3D reads
+      $$ \frac{\partial }{ \partial n_y} G(x-y) = \frac{1}{4\,\pi} \, \frac{e^{i\,\kappa\,|x-y|}}{|x-y|^3} \, 
+          \left( 1 - i\,\kappa\, | x-y| \right), 
+          \quad x, y \in \mathbb R^3, \; x\not=y\,. $$ */
   template<>
   class HelmholtzDLKernel<3> 
   {
@@ -213,8 +245,14 @@ namespace ngbem
 
 
 
+  /** CombinedFieldKernel is a kernel for the combined field integral equation 
+      is considered for the Helmholtz equation. */
   template <int DIM> class CombinedFieldKernel;
 
+  /** CombinedFildKernel in 3D reads
+      $$ G(x-y) = \frac{1}{4\,\pi} \, \frac{e^{i\,\kappa\,|x-y|}}{|x-y|^3} \, 
+          \left( \langle n_y, x-y\rangle - i\,\kappa\, | x-y| - i\,\kappa\,|x-y|^2 \right), 
+          \quad x, y \in \mathbb R^3, \; x\not=y\,. $$ */
   template<>
   class CombinedFieldKernel<3> 
   {
