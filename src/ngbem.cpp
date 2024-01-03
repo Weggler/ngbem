@@ -942,8 +942,8 @@ namespace ngbem
     
     */
 
-    size_t p = 300;
-    int rank = p;
+    size_t p = min(xi.Size(), yj.Size());
+    //int rank = p;
     auto GetRow = [&](int i, SliceVector<value_type> row)
     {
       RegionTimer reg(tkernel);
@@ -962,45 +962,103 @@ namespace ngbem
     Matrix<value_type> Umax(xi.Size(), p);
     Matrix<value_type> Vmax(p, yj.Size());
 
-    // for quasi random sequence of pivot indices
-    size_t primes[] = { 71, 73, 79, 83, 89, 97 };
-    size_t prime;
-    for (auto tp : primes)
-      {
-        if (xi.Size()%tp != 0)
-          {
-            prime = tp;
-            break;
-          }
-      }
-    // ACA compression 
+    size_t ik = 0, jk = 0, ikm1 = -1, jkm1 = -1, rank = p;
+    
+    // // for quasi random sequence of pivot indices
+    // size_t primes[] = { 71, 73, 79, 83, 89, 97 };
+    // size_t prime;
+    // for (auto tp : primes)
+    //   {
+    //     if (xi.Size()%tp != 0)
+    //       {
+    //         prime = tp;
+    //         break;
+    //       }
+    //   }
+    // // ACA compression 
+    // for (size_t k = 0; k < p; k++)
+    //   {
+    //     // int ik = k;  // what else ?
+    //     size_t ik = (k*prime)%xi.Size(); 
+        
+    //     GetRow(ik, Vmax.Row(k));
+    //     Vmax.Row(k) -= Trans(Vmax.Rows(0,k)) * Umax.Row(ik).Range(0,k);
+         
+    //     double err = L2Norm(Vmax.Row(k));
+    //     // cout << "Norm vk = " << err << endl;
+    //     if (err < param.eps)
+    //       {
+    //         rank = k;
+    //         break;
+    //       }
+        
+    //     int jmax = 0;
+    //     for (int j = 0; j < Vmax.Width(); j++)
+    //       if (fabs (Vmax(k,j)) > fabs(Vmax(k,jmax)))
+    //         jmax = j;
+    //     Vmax.Row(k) *= 1.0 / Vmax(k,jmax);
+
+    //     GetCol(jmax, Umax.Col(k));
+    //     Umax.Col(k) -= Umax.Cols(0,k) * Vmax.Col(jmax).Range(0,k);
+    //   }
+    
+    // Scale eps appropriately (see Bebendorf, Hierarchical Matrices  p. 126 & 135
+    double eps = 2. / 3. * param.eps / sqrt(xi.Size() * yj.Size());
+    // The Frobenius norm squared of the approximant U * V^H
+    double norm2 = 0.;
+
     for (size_t k = 0; k < p; k++)
       {
-        // int ik = k;  // what else ?
-        size_t ik = (k*prime)%xi.Size(); 
-        
-        GetRow(ik, Vmax.Row(k));
+	// Get the ik-th row
+	GetRow(ik, Vmax.Row(k));
         Vmax.Row(k) -= Trans(Vmax.Rows(0,k)) * Umax.Row(ik).Range(0,k);
-         
-        double err = L2Norm(Vmax.Row(k));
-        // cout << "Norm vk = " << err << endl;
-        if (err < param.eps)
-          {
-            rank = k;
-            break;
-          }
-        
-        int jmax = 0;
-        for (int j = 0; j < Vmax.Width(); j++)
-          if (fabs (Vmax(k,j)) > fabs(Vmax(k,jmax)))
-            jmax = j;
-        Vmax.Row(k) *= 1.0 / Vmax(k,jmax);
 
-        GetCol(jmax, Umax.Col(k));
-        Umax.Col(k) -= Umax.Cols(0,k) * Vmax.Col(jmax).Range(0,k);
+	// Find the new column pivot position jk in the new row
+	double vkj = 0.;
+        for (int j = 0; j < Vmax.Width(); j++)
+          if (fabs (Vmax(k, j)) > vkj && j != jkm1)
+	    {
+	      vkj = fabs (Vmax(k, j));
+	      jk = j;
+	    }
+
+	// Scale with inverse of the pivot entry at (ik, jk)
+        Vmax.Row(k) *= 1.0 / Vmax(k, jk);
+
+	// Get the jk-th column
+	GetCol(jk, Umax.Col(k));
+        Umax.Col(k) -= Umax.Cols(0,k) * Vmax.Col(jk).Range(0,k);
+	
+	// Find the new row pivot position ik in the new column
+	double uik = 0.;
+	for (int i = 0; i < Umax.Height(); i++)
+          if (fabs (Umax(i, k)) > uik && i != ikm1)
+	    {
+	      uik = fabs (Umax(i, k));
+	      ik = i;
+	    }
+
+	// Update the Frobenius norm
+	double norm_k = L2Norm(Vmax.Row(k)) * L2Norm(Umax.Col(k));
+	norm2 += norm_k * norm_k;
+	for (int l = 0; l < k; l++)
+	  norm2 += 2. * std::real(InnerProduct(Vmax.Row(k), Vmax.Row(l)) *
+				  InnerProduct(Umax.Col(k), Umax.Col(l)));
+
+	// New pivots become old pivots
+	ikm1 = ik;
+	jkm1 = jk;
+
+	// Stop if the new update is relatively small, see Bebendorf pp. 141-142
+	if (norm_k < eps * sqrt(norm2))
+	  {
+	    rank = k + 1;
+	    break;
+	  }
       }
+
     // *testout << "rank = " << rank << endl;
-    int k = rank;
+    size_t k = rank;
     tACA.Stop();
     
     auto U = Umax.Cols(0,k);

@@ -12,7 +12,7 @@ namespace ngbem
 {
   using namespace ngcomp;
 
-
+  // Two clusters of unit cubes that are admissible with respect to \eta
   Matrix<> CreateMatrix(int nx, int ny, double eta)
   {
     Array<Vec<3>> ax(nx), ay(ny);
@@ -24,8 +24,12 @@ namespace ngbem
     for (auto & yi : ay)
       for (double & val : yi)
         val = double (rand()) / RAND_MAX;
+
+    // The clusters are admissible if min (diam X, diam Y) < eta * dist(X, Y)
+    // We have min (...) <= sqrt(3), so dist(X, Y) >= sqrt(3) / eta
+    // So the offset has to 1 + sqrt(3) / eta
     for (auto & yi : ay)
-      yi(0) += eta;
+      yi(0) += 1. + sqrt(3) / eta;
     
     
     // cout << "ax = " << ax << endl;
@@ -151,31 +155,52 @@ namespace ngbem
   template <typename MATRIX, typename TU, typename TV>
   int CalcACA (const MATRIX & mat, FlatMatrix<TU> U, FlatMatrix<TV> V, double eps)
   {
+    int ik = 0, jk = 0, ikm1 = -1, jkm1 = -1;
+    double norm2 = 0.;
+
+    // Scale eps appropriately (see Bebendorf, Hierarchical Matrices  p. 126 & 135
+    eps = 2. / 3. * eps / sqrt(mat.Width() * mat.Height());
     for (int k = 0; k < U.Width(); k++)
       {
-        int ik = k;  // what else ?
-        
+	// Get the ik-th row
         V.Row(k) = mat.Row(ik);
-        // for (int l = 0; l < k; l++)
-        // V.Row(k) -= U(ik,l) * V.Row(l);
-
         V.Row(k) -= Trans(V.Rows(0,k)) * U.Row(ik).Range(0,k);
-         
-        double err = L2Norm(V.Row(k));
-        // cout << "Norm vk = " << err << endl;
-        if (err < eps) return k;
-        
-        int jmax = 0;
+
+	// Find the new column pivot position jk in the new row
+	double vkj = 0.;
         for (int j = 0; j < V.Width(); j++)
-          if (fabs (V(k,j)) > fabs(V(k,jmax)))
-            jmax = j;
-        V.Row(k) *= 1.0 / V(k,jmax);
-        U.Col(k) = mat.Col(jmax);
+          if (fabs (V(k, j)) > vkj && j != jkm1)
+	    {
+	      vkj = fabs (V(k, j));
+	      jk = j;
+	    }
 
-        // for (int l = 0; l < k; l++)
-        // U.Col(k) -= V(l,jmax) * U.Col(l);
+	// Scale with inverse of pivot (ik, jk)
+        V.Row(k) *= 1.0 / V(k, jk);
 
-        U.Col(k) -= U.Cols(0,k) * V.Col(jmax).Range(0,k);
+	// Get the jk-th column
+        U.Col(k) = mat.Col(jk);
+        U.Col(k) -= U.Cols(0,k) * V.Col(jk).Range(0,k);
+	
+	// Find the new row pivot position ik in the new column
+	double uik = 0.;
+	for (int i = 0; i < U.Height(); i++)
+          if (fabs (U(i, k)) > uik && i != ikm1)
+	    {
+	      uik = fabs (U(i, k));
+	      ik = i;
+	    }
+
+	double norm_k = L2Norm(V.Row(k)) * L2Norm(U.Col(k));
+	norm2 += norm_k * norm_k;
+	for (int l = 0; l < k; l++)
+	  norm2 += 2. * std::real(InnerProduct(V.Row(k), V.Row(l)) * InnerProduct(U.Col(k), U.Col(l)));
+
+	// New pivots become old pivots
+	ikm1 = ik;
+	jkm1 = jk;
+
+	if (norm_k < eps * sqrt(norm2)) return k + 1;
       }
     
     return U.Width();
