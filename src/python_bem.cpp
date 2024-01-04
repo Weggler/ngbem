@@ -25,6 +25,12 @@ PYBIND11_MODULE(libbem, m)
   m.def("SingleLayerPotentialOperator", [](shared_ptr<FESpace> space, int intorder, int leafsize, double eta, double eps,
                                            string method, bool testhmatrix) -> shared_ptr<IntegralOperator<>>
   {
+    if(!string("dense").compare(method))
+    {
+      cout << "dense matrix is generated" << endl;
+      leafsize = space->GetNDof();
+    }
+
     BEMParameters param({intorder, leafsize, eta, eps, method, testhmatrix});
     return make_unique<GenericIntegralOperator<LaplaceSLKernel<3>>>(space, space, LaplaceSLKernel<3>(), param);
     
