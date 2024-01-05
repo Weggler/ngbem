@@ -248,7 +248,7 @@ namespace ngbem
     
     LocalHeap lh(100000000);
     this->CalcHMatrix(*hmatrix, lh, param);
-
+	
     if (param.testhmatrix)
       {
         Matrix<value_type> dense(test_space->GetNDof(), trial_space->GetNDof());
@@ -266,8 +266,8 @@ namespace ngbem
         VFlatVector<value_type> x_base(x);
         VFlatVector<value_type> y_base(y);
         y_base -= (*hmatrix) * x_base;
-  
-        cout << "error " << L2Norm (y) << endl;
+
+	cout << "error " << L2Norm (y) << endl;
       }
   }
 
@@ -962,7 +962,7 @@ namespace ngbem
     Matrix<value_type> Umax(xi.Size(), p);
     Matrix<value_type> Vmax(p, yj.Size());
 
-    size_t ik = 0, jk = 0, ikm1 = -1, jkm1 = -1, rank = p;
+    size_t ik = 0, jk = 0, ikm1 = 0, jkm1 = yj.Size() + 1, rank = p;
     
     // // for quasi random sequence of pivot indices
     // size_t primes[] = { 71, 73, 79, 83, 89, 97 };
@@ -1007,8 +1007,7 @@ namespace ngbem
     // The Frobenius norm squared of the approximant U * V^H
     double norm2 = 0.;
 
-    for (size_t k = 0; k < p; k++)
-      {
+    for (size_t k = 0; k < p; k++) {
 	// Get the ik-th row
 	GetRow(ik, Vmax.Row(k));
         Vmax.Row(k) -= Trans(Vmax.Rows(0,k)) * Umax.Row(ik).Range(0,k);
@@ -1016,12 +1015,17 @@ namespace ngbem
 	// Find the new column pivot position jk in the new row
 	double vkj = 0.;
         for (int j = 0; j < Vmax.Width(); j++)
-          if (fabs (Vmax(k, j)) > vkj && j != jkm1)
-	    {
+          if (fabs (Vmax(k, j)) > vkj && j != jkm1) {
 	      vkj = fabs (Vmax(k, j));
 	      jk = j;
 	    }
 
+	// If the pivot element is close to zero, exit
+	if (vkj == 0.) {
+	  rank = k;
+	  break;
+	}
+	
 	// Scale with inverse of the pivot entry at (ik, jk)
         Vmax.Row(k) *= 1.0 / Vmax(k, jk);
 
@@ -1032,8 +1036,7 @@ namespace ngbem
 	// Find the new row pivot position ik in the new column
 	double uik = 0.;
 	for (int i = 0; i < Umax.Height(); i++)
-          if (fabs (Umax(i, k)) > uik && i != ikm1)
-	    {
+          if (fabs (Umax(i, k)) > uik && i != ikm1) {
 	      uik = fabs (Umax(i, k));
 	      ik = i;
 	    }
@@ -1050,8 +1053,7 @@ namespace ngbem
 	jkm1 = jk;
 
 	// Stop if the new update is relatively small, see Bebendorf pp. 141-142
-	if (norm_k < eps * sqrt(norm2))
-	  {
+	if (norm_k < eps * sqrt(norm2)) {
 	    rank = k + 1;
 	    break;
 	  }

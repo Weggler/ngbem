@@ -428,7 +428,7 @@ namespace ngbem
     Array<DofId> mapbnd2glob, mapglob2bnd;
     BitArray bnddofs(space->GetNDof());
     bnddofs.Clear();
-    for (int i = 0; i < mesh->GetNE(BND); i++)
+    for (int i = 0; i < mesh->GetNSE(); i++)
       {
         Array<DofId> dnums;
         space->GetDofNrs(ElementId(BND, i), dnums);
