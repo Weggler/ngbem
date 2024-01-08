@@ -167,9 +167,6 @@ const thebe_selector_output = ".output, .cell_output"
         </ul>
         <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="demos/DtN_direct.html">Use ngbem as HOBEM solver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="markdown.html">Markdown Files</a></li>
-<li class="toctree-l1"><a class="reference internal" href="notebooks.html">Content with notebooks</a></li>
-<li class="toctree-l1"><a class="reference internal" href="markdown-notebooks.html">Notebooks with MyST Markdown</a></li>
 </ul>
 
     </div>
@@ -367,17 +364,32 @@ document.write(`
                   
   <section class="tex2jax_ignore mathjax_ignore" id="welcome-to-ng-bem">
 <h1>Welcome to NG-BEM<a class="headerlink" href="#welcome-to-ng-bem" title="Permalink to this heading">#</a></h1>
-<p>This is a small sample book to give you a feel for how book content is
-structured.
-It shows off a few of the major file types, as well as some sample content.
-It does not go in-depth into any particular topic - check out <a class="reference external" href="https://jupyterbook.org">the Jupyter Book documentation</a> for more information.</p>
-<p>Check out the content pages bundled with this sample book to see more.</p>
+<p>NG-BEM implements boundary integral operators on top of NGSolve.</p>
+<p>Currently it supports single-layer and double-layer operators for the</p>
+<ul class="simple">
+<li><p>Laplace equation</p></li>
+<li><p>Helmholtz equation</p></li>
+<li><p>Maxwell equation</p></li>
+</ul>
+<p>It uses matrix compression based on the ACA algorithm.</p>
+<p>Installation:</p>
+<ul>
+<li><p>Install a recent NGSolve (later than Jan. 5, 2024)</p></li>
+<li><p>Install ngbem from github:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>git clone https://github.com/Weggler/ngbem.git
+cd ngbem
+mkdir build
+cd build
+cmake ..
+make -j4 install
+</pre></div>
+</div>
+</li>
+</ul>
+<p>Try notebooks from the demos folder.</p>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="demos/DtN_direct.html">Use ngbem as HOBEM solver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="markdown.html">Markdown Files</a></li>
-<li class="toctree-l1"><a class="reference internal" href="notebooks.html">Content with notebooks</a></li>
-<li class="toctree-l1"><a class="reference internal" href="markdown-notebooks.html">Notebooks with MyST Markdown</a></li>
 </ul>
 </div>
 </section>
@@ -437,7 +449,7 @@ It does not go in-depth into any particular topic - check out <a class="referenc
   <div class="footer-item">
     
 <p class="component-author">
-By J. Sch\"oberl, D. Seibel, L. Weggler
+By J. Schöberl, D. Seibel, L. Weggler
 </p>
 
   </div>
