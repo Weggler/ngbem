@@ -8,7 +8,8 @@ Currently it supports single-layer and double-layer operators for the
 * Helmholtz equation
 * Maxwell equation
 
-It uses matrix compression based on the ACA algorithm.
+NG-BEM supports high order function spaces on curved surface meshes.
+It uses numerical integration following [Sauter-Schwab: Boundary Element Methods, 2009], and matrix compression based on the ACA algorithm [Bebendorf: Hierarchical Matrices: A Means to Efficiently Solve Elliptic Boundary Value Problems, 2008]
 
 
 
