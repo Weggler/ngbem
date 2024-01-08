@@ -5,7 +5,4 @@ format: jb-book
 root: intro
 chapters:
 - file: demos/DtN_direct
-- file: markdown
-- file: notebooks
-- file: markdown-notebooks
 

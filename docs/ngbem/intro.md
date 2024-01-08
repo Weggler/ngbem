@@ -1,11 +1,31 @@
 # Welcome to NG-BEM
 
-This is a small sample book to give you a feel for how book content is
-structured.
-It shows off a few of the major file types, as well as some sample content.
-It does not go in-depth into any particular topic - check out [the Jupyter Book documentation](https://jupyterbook.org) for more information.
+NG-BEM implements boundary integral operators on top of NGSolve.
 
-Check out the content pages bundled with this sample book to see more.
+Currently it supports single-layer and double-layer operators for the
+
+* Laplace equation
+* Helmholtz equation
+* Maxwell equation
+
+It uses matrix compression based on the ACA algorithm.
+
+
+
+Installation:
+
+* Install a recent NGSolve (later than Jan. 5, 2024)
+
+* Install ngbem from github:
+
+      git clone https://github.com/Weggler/ngbem.git
+      cd ngbem
+      mkdir build
+      cd build
+      cmake ..
+      make -j4 install
+
+Try notebooks from the demos folder.
 
 ```{tableofcontents}
 ```
