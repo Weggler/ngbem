@@ -1,6 +1,6 @@
 ngbem: Add-on to NGSolve implementing boundary element methods 
 
-Online documentation is [available here](https://weggler.github.io/ngbem/intro.html)
+Online documentation: https://weggler.github.io/ngbem/intro.html
 
 ngbem is an add-on library to Netgen/NGSolve, a general purpose, high performance finite element library for the numerical solution of partial differential equations. 
 
