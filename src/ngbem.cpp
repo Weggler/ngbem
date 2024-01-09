@@ -455,6 +455,8 @@ namespace ngbem
                     SIMD_MappedIntegrationRule<2,3> miry(simd_iry, trafoj, lh);
 
 
+                    
+                    /*
                     FlatMatrix<SIMD<double>> mshapesi(feli.GetNDof()*test_evaluator->Dim(), mirx.Size(), lh);
                     FlatMatrix<SIMD<value_type>> mshapesi_kern(feli.GetNDof()*test_evaluator->Dim(), mirx.Size(), lh);                    
                     FlatMatrix<SIMD<double>> mshapesj(felj.GetNDof()*trial_evaluator->Dim(), miry.Size(), lh);
@@ -469,7 +471,7 @@ namespace ngbem
                         Vec<3,SIMD<double>> nx = mirx[k2].GetNV();
                         Vec<3,SIMD<double>> ny = miry[k2].GetNV();
                     
-                        SIMD<value_type> kernel_ = kernel.Evaluate(x, y, nx, ny);                        
+                        SIMD<value_type> kernel_ = kernel.Evaluate(x, y, nx, ny)(0); 
                         auto fac = mirx[k2].GetMeasure()*miry[k2].GetMeasure()*simd_irx[k2].Weight(); 
                         mshapesi_kern.Col(k2) = fac*kernel_ * mshapesi.Col(k2);
                       }
@@ -477,6 +479,35 @@ namespace ngbem
                     AddABt (mshapesi_kern.Reshape(feli.GetNDof(), test_evaluator->Dim()*mirx.Size()),
                             mshapesj.Reshape(felj.GetNDof(), trial_evaluator->Dim()*miry.Size()),
                             elmat);
+                    */
+
+                    
+                    FlatMatrix<SIMD<double>> mshapesi(feli.GetNDof()*test_evaluator->Dim(), mirx.Size(), lh);
+                    FlatMatrix<SIMD<value_type>> mshapesi_kern(feli.GetNDof()*1, mirx.Size(), lh);
+                    FlatMatrix<SIMD<double>> mshapesj(felj.GetNDof()*trial_evaluator->Dim(), miry.Size(), lh);
+
+                    test_evaluator->CalcMatrix(feli, mirx, mshapesi);
+                    trial_evaluator->CalcMatrix(felj, miry, mshapesj);
+
+
+                    for (auto term : kernel.terms)
+                      {
+                        for (int k2 = 0; k2 < mirx.Size(); k2++)
+                          {
+                            Vec<3,SIMD<double>> x = mirx[k2].Point();
+                            Vec<3,SIMD<double>> y = miry[k2].Point();
+                            Vec<3,SIMD<double>> nx = mirx[k2].GetNV();
+                            Vec<3,SIMD<double>> ny = miry[k2].GetNV();
+                            
+                            SIMD<value_type> kernel_ = kernel.Evaluate(x, y, nx, ny)(term.kernel_comp); 
+                            auto fac = mirx[k2].GetMeasure()*miry[k2].GetMeasure()*simd_irx[k2].Weight(); 
+                            mshapesi_kern.Col(k2) = fac*kernel_ * mshapesi.Col(k2).Slice(term.test_comp, test_evaluator->Dim());
+                          }
+                        
+                        AddABt (mshapesi_kern, 
+                                mshapesj.RowSlice(term.trial_comp, trial_evaluator->Dim()).AddSize(felj.GetNDof(), miry.Size()),
+                                elmat);
+                      }
                   }
 
 
@@ -598,7 +629,7 @@ namespace ngbem
                         Vec<3,SIMD<double>> nx = mirx[k2].GetNV();
                         Vec<3,SIMD<double>> ny = miry[k2].GetNV();
                     
-                        SIMD<value_type> kernel_ = kernel.Evaluate(x, y, nx, ny);                        
+                        SIMD<value_type> kernel_ = kernel.Evaluate(x, y, nx, ny)(0); 
                         auto fac = mirx[k2].GetMeasure()*miry[k2].GetMeasure()*simd_irx[k2].Weight(); 
                         mshapesi_kern.Col(k2) = fac*kernel_ * mshapesi.Col(k2);
                       }
@@ -722,7 +753,7 @@ namespace ngbem
                         Vec<3,SIMD<double>> nx = mirx[k2].GetNV();
                         Vec<3,SIMD<double>> ny = miry[k2].GetNV();
                     
-                        SIMD<value_type> kernel_ = kernel.Evaluate(x, y, nx, ny);
+                        SIMD<value_type> kernel_ = kernel.Evaluate(x, y, nx, ny)(0);
                         auto fac = mirx[k2].GetMeasure()*miry[k2].GetMeasure()*simd_irx[k2].Weight(); 
                         mshapesi_kern.Col(k2) = fac*kernel_ * mshapesi.Col(k2);
                       }
@@ -762,7 +793,7 @@ namespace ngbem
 
                         Vec<3> nx = miry[iy].GetNV();
                         Vec<3> ny = miry[iy].GetNV();
-                        value_type kernel_ = kernel.Evaluate(x, y, nx, ny);
+                        value_type kernel_ = kernel.Evaluate(x, y, nx, ny)(0);
                         
 			double fac = mirx[ix].GetWeight()*miry[iy].GetWeight();
 			kernel_ixiy(ix, iy) = fac*kernel_;
@@ -944,19 +975,19 @@ namespace ngbem
 
     size_t p = min(xi.Size(), yj.Size());
     //int rank = p;
-    auto GetRow = [&](int i, SliceVector<value_type> row)
+    auto GetRow = [&](int i, SliceVector<value_type> row, int comp = 0)
     {
       RegionTimer reg(tkernel);
       tkernel.AddFlops (yj.Size());
       for (int j = 0; j < yj.Size(); j++)
-        row(j) = kernel.Evaluate(xi[i], yj[j], nxi[i], nyj[j]);
+        row(j) = kernel.Evaluate(xi[i], yj[j], nxi[i], nyj[j])(comp);
     };
-    auto GetCol = [&](int j, SliceVector<value_type> col)
+    auto GetCol = [&](int j, SliceVector<value_type> col, int comp = 0)
     {
       RegionTimer reg(tkernel);
       tkernel.AddFlops (xi.Size());
       for (int i = 0; i < xi.Size(); i++)
-        col(i) = kernel.Evaluate(xi[i], yj[j], nxi[i], nyj[j]);
+        col(i) = kernel.Evaluate(xi[i], yj[j], nxi[i], nyj[j])(comp);
     };
 
     Matrix<value_type> Umax(xi.Size(), p);
@@ -1140,8 +1171,11 @@ namespace ngbem
   
   template class GenericIntegralOperator<LaplaceSLKernel<3>>;
   template class GenericIntegralOperator<LaplaceDLKernel<3>>;
+  template class GenericIntegralOperator<LaplaceHSKernel<3>>;
   
   template class GenericIntegralOperator<HelmholtzSLKernel<3>>;
-  template class GenericIntegralOperator<HelmholtzDLKernel<3>>;    
+  template class GenericIntegralOperator<HelmholtzDLKernel<3>>;
+  template class GenericIntegralOperator<HelmholtzHSKernel<3>>;
+  
   template class GenericIntegralOperator<CombinedFieldKernel<3>>;    
 }

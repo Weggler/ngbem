@@ -51,10 +51,10 @@ PYBIND11_MODULE(libbem, m)
                                     string method, bool testhmatrix) -> shared_ptr<IntegralOperator<>>
   {
     BEMParameters param({intorder, leafsize, eta, eps, method, testhmatrix});
-    return make_unique<GenericIntegralOperator<LaplaceSLKernel<3>>>(space, space,
+    return make_unique<GenericIntegralOperator<LaplaceHSKernel<3>>>(space, space,
                                                                     make_shared<T_DifferentialOperator<DiffOpBoundaryRot>>(),
                                                                     make_shared<T_DifferentialOperator<DiffOpBoundaryRot>>(), 
-                                                                    LaplaceSLKernel<3>(), param);
+                                                                    LaplaceHSKernel<3>(), param);
     
   }, py::arg("space"), py::arg("intorder")=3, py::arg("leafsize")=40, py::arg("eta")=2., py::arg("eps")=1e-6,
         py::arg("method")="svd", py::arg("testhmatrix")=false);
@@ -100,10 +100,10 @@ PYBIND11_MODULE(libbem, m)
                                                   string method, bool testhmatrix) -> shared_ptr<IntegralOperator<Complex>>
   {
     BEMParameters param({intorder, leafsize, eta, eps, method, testhmatrix});
-    return make_unique<GenericIntegralOperator<HelmholtzSLKernel<3>>>(space, space,
-                                                                    make_shared<T_DifferentialOperator<DiffOpRotatedTrace>>(),
-                                                                    make_shared<T_DifferentialOperator<DiffOpRotatedTrace>>(), 
-                                                                    HelmholtzSLKernel<3>(kappa), param);
+    return make_unique<GenericIntegralOperator<HelmholtzHSKernel<3>>>(space, space,
+                                                                      make_shared<T_DifferentialOperator<DiffOpRotatedTrace>>(),
+                                                                      make_shared<T_DifferentialOperator<DiffOpRotatedTrace>>(), 
+                                                                      HelmholtzHSKernel<3>(kappa), param);
     
   }, py::arg("space"), py::arg("kappa"), py::arg("intorder")=3, py::arg("leafsize")=40, py::arg("eta")=2., py::arg("eps")=1e-6,
         py::arg("method")="svd", py::arg("testhmatrix")=false);
