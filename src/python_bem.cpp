@@ -124,6 +124,19 @@ PYBIND11_MODULE(libbem, m)
         py::arg("method")="svd", py::arg("testhmatrix")=false);
   
   
+  m.def("MaxwellDoubleLayerPotentialOperator", [](shared_ptr<FESpace> space, double kappa, 
+                                                  int intorder, int leafsize, double eta, double eps,
+                                                  string method, bool testhmatrix) -> shared_ptr<IntegralOperator<Complex>>
+  {
+    BEMParameters param({intorder, leafsize, eta, eps, method, testhmatrix});
+    return make_unique<GenericIntegralOperator<MaxwellDLKernel<3>>>(space, space,
+                                                                    make_shared<T_DifferentialOperator<DiffOpRotatedTrace>>(),
+                                                                    make_shared<T_DifferentialOperator<DiffOpRotatedTrace>>(), 
+                                                                    MaxwellDLKernel<3>(kappa), param);
+    
+  }, py::arg("space"), py::arg("kappa"), py::arg("intorder")=3, py::arg("leafsize")=40, py::arg("eta")=2., py::arg("eps")=1e-6,
+        py::arg("method")="svd", py::arg("testhmatrix")=false);
+  
 
   
   

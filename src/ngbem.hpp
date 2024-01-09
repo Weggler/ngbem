@@ -352,6 +352,43 @@ namespace ngbem
   };
 
   
+
+  
+
+  template <int D> class MaxwellDLKernel;
+
+  template<>
+  class MaxwellDLKernel<3> 
+  {
+    double kappa;
+  public:
+    typedef Complex value_type;
+    static string Name() { return "MaxwellDL"; }
+    
+    MaxwellDLKernel (double _kappa) : kappa(_kappa) { }
+    
+    template <typename T>    
+    auto Evaluate (Vec<3,T> x, Vec<3,T> y, Vec<3,T> nx, Vec<3,T> ny) const
+    {
+      T norm = L2Norm(x-y);
+      T nxy = InnerProduct(ny, (x-y));
+      auto kern = exp(Complex(0,kappa)*norm) / (4 * M_PI * norm*norm*norm)
+        * (Complex(1,0)*T(1.) - Complex(0,kappa)*norm) * (x-y);
+      return kern;
+    }
+
+    Array<KernelTerm> terms =
+      {
+        KernelTerm{ 1.0, 0, 1, 2},
+        KernelTerm{-1.0, 0, 2, 1},
+        KernelTerm{ 1.0, 1, 2, 0},
+        KernelTerm{-1.0, 1, 0, 2},
+        KernelTerm{ 1.0, 2, 0, 1},
+        KernelTerm{-1.0, 2, 1, 0},
+      };    
+  };
+
+
   
 }
 
