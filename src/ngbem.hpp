@@ -355,6 +355,41 @@ namespace ngbem
 
   
 
+  template <int D> class MaxwellSLKernel;
+
+  template<>
+  class MaxwellSLKernel<3> 
+  {
+    double kappa;
+  public:
+    typedef Complex value_type;
+    static string Name() { return "MaxwellSL"; }
+
+    MaxwellSLKernel (const MaxwellSLKernel&) = default;
+    MaxwellSLKernel (MaxwellSLKernel&&) = default;
+    MaxwellSLKernel (double _kappa) : kappa(_kappa)
+    {
+      for (size_t i = 0; i < 3; i++)
+        terms += KernelTerm { 1.0, 0, i, i };
+      terms += KernelTerm { -1.0/(kappa*kappa), 0, 3, 3 };      
+    }
+    
+    template <typename T>    
+    auto Evaluate (Vec<3,T> x, Vec<3,T> y, Vec<3,T> nx, Vec<3,T> ny) const
+    {
+      T norm = L2Norm(x-y);
+      auto kern = exp(Complex(0,kappa)*norm) / (4 * M_PI * norm);
+      return Vec<1,decltype(kern)> (kern);
+    }
+
+    Array<KernelTerm> terms;
+  };
+
+
+
+
+  
+
   template <int D> class MaxwellDLKernel;
 
   template<>

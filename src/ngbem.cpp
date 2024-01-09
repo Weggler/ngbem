@@ -805,6 +805,8 @@ namespace ngbem
 
                     for (auto term : kernel.terms)
                       {
+                        *testout << "remote panel, term.fac = " << term.fac << ", kernelcomp = " << term.kernel_comp
+                                 << ", trial/test = " << term.trial_comp << term.test_comp << endl;
                         for (int k2 = 0; k2 < mirx.Size(); k2++)
                           {
                             Vec<3,SIMD<double>> x = mirx[k2].Point();
@@ -903,7 +905,7 @@ namespace ngbem
                             value_type kernel_ = kernel.Evaluate(x, y, nx, ny)(term.kernel_comp);
                             
                             double fac = mirx[ix].GetWeight()*miry[iy].GetWeight();
-                            kernel_ixiy(ix, iy) = fac*kernel_;
+                            kernel_ixiy(ix, iy) = term.fac*fac*kernel_;
                           }
                       }
 
@@ -927,6 +929,8 @@ namespace ngbem
 	    default:
 	      throw Exception ("not possible");
 	    }
+
+          *testout << "norm 2lmat = " << L2Norm(elmat) << endl;
 	  for (int ii = 0; ii < dnumsi.Size(); ii++) // test
 	    for (int jj = 0; jj < dnumsj.Size(); jj++) // trial
 	      if(trialdofsinv[dnumsj[jj]] != -1 && testdofsinv[dnumsi[ii]] != -1)
@@ -995,9 +999,10 @@ namespace ngbem
 	j--;
       }
 
+    /*
     Matrix<value_type> matrix(testdofs.Size(), trialdofs.Size());
     matrix = value_type(0.0);
-
+    */
 
     // new code
     Array<Vec<3>> xi, yj, nxi, nyj;  // i..test, j... trial
@@ -1226,6 +1231,8 @@ namespace ngbem
                                      (double*)shapesi.Data());
         
         test_evaluator -> CalcMatrix(feli, mirx, shapesi);
+
+        /*
         Matrix<value_type> tmp1 = dshapesi * U.Rows(cnt, cnt+irtrig.Size());        
         auto tmp = tmp1.Reshape(feli.GetNDof(), dim*U.Width());
                                 
@@ -1233,6 +1240,19 @@ namespace ngbem
         for (int ii = 0; ii < dnumsi.Size(); ii++) // test
           if (testdofsinv[dnumsi[ii]] != -1)
             U2.Row(testdofsinv[dnumsi[ii]]) += tmp.Row(ii);
+        */
+
+        for (auto term : kernel.terms)
+          {
+            auto U2cols = U2.Cols(term.test_comp*k, (term.test_comp+1)*k);
+            Matrix<value_type> tmp = dshapesi.RowSlice(term.test_comp, dim).AddSize(feli.GetNDof(), simd_irtrig.GetNIP())
+              * U.Rows(cnt, cnt+irtrig.Size());        
+            for (int ii = 0; ii < dnumsi.Size(); ii++) // test
+              if (testdofsinv[dnumsi[ii]] != -1)
+                U2cols.Row(testdofsinv[dnumsi[ii]]) += term.fac * tmp.Row(ii);
+          }
+        cnt += irtrig.Size();
+        
       }
 
     cnt = 0;
@@ -1255,6 +1275,7 @@ namespace ngbem
                                      (double*)shapesj.Data());
         
         trial_evaluator -> CalcMatrix(felj, miry, shapesj);
+        /*
         Matrix<value_type> tmp1 = dshapesj * Trans(V).Rows(cnt, cnt+irtrig.Size());        
         auto tmp = tmp1.Reshape(felj.GetNDof(), dim*V.Height());
         
@@ -1262,6 +1283,19 @@ namespace ngbem
         for (int jj = 0; jj < dnumsj.Size(); jj++) // trial
           if(trialdofsinv[dnumsj[jj]] != -1)
             V2.Col(trialdofsinv[dnumsj[jj]]) += tmp.Row(jj);
+        */
+
+        for (auto term : kernel.terms)
+          {
+            auto V2rows = V2.Rows(term.trial_comp*k, (term.trial_comp+1)*k);
+            Matrix<value_type> tmp = dshapesj.RowSlice(term.trial_comp, dim).AddSize(felj.GetNDof(), simd_irtrig.GetNIP())
+              * Trans(V).Rows(cnt, cnt+irtrig.Size());        
+            for (int jj = 0; jj < dnumsj.Size(); jj++) // trial
+              if (trialdofsinv[dnumsj[jj]] != -1)
+                V2rows.Col(trialdofsinv[dnumsj[jj]]) += tmp.Row(jj);
+          }
+        cnt += irtrig.Size();
+        
       }
 
     return make_unique<LowRankMatrix<value_type>> (std::move(U2), std::move(V2));
@@ -1278,5 +1312,6 @@ namespace ngbem
   
   template class GenericIntegralOperator<CombinedFieldKernel<3>>;
 
-  template class GenericIntegralOperator<MaxwellDLKernel<3>>;  
+  template class GenericIntegralOperator<MaxwellSLKernel<3>>;
+  template class GenericIntegralOperator<MaxwellDLKernel<3>>;    
 }
