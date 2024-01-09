@@ -301,9 +301,7 @@ namespace ngbem
     auto Evaluate (Vec<3,T> x, Vec<3,T> y, Vec<3,T> nx, Vec<3,T> ny) const
     {
       T norm = L2Norm(x-y);
-      T nxy = InnerProduct(ny, (x-y));
-      auto kern = exp(Complex(0,kappa)*norm) / (4 * M_PI * norm*norm*norm)
-        * nxy * (Complex(1,0)*T(1.) - Complex(0,kappa)*norm);
+      auto kern = exp(Complex(0,kappa)*norm) / (4 * M_PI * norm);
       // return kern;
       return Vec<1,decltype(kern)> (kern);
     }

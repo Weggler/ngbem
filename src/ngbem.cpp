@@ -501,7 +501,7 @@ namespace ngbem
                             
                             SIMD<value_type> kernel_ = kernel.Evaluate(x, y, nx, ny)(term.kernel_comp); 
                             auto fac = mirx[k2].GetMeasure()*miry[k2].GetMeasure()*simd_irx[k2].Weight(); 
-                            mshapesi_kern.Col(k2) = fac*kernel_ * mshapesi.Col(k2).Slice(term.test_comp, test_evaluator->Dim());
+                            mshapesi_kern.Col(k2) = term.fac*fac*kernel_ * mshapesi.Col(k2).Slice(term.test_comp, test_evaluator->Dim());
                           }
                         
                         AddABt (mshapesi_kern, 
