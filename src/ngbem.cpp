@@ -288,6 +288,29 @@ namespace ngbem
     
     LocalHeap lh(100000000);
     this->CalcHMatrix(*hmatrix, lh, param);
+
+    if (param.testhmatrix)
+      {
+        Matrix<value_type> dense(test_space->GetNDof(), trial_space->GetNDof());
+        CalcBlockMatrix(dense, mapbnd2glob, mapbnd2glob2, lh);            
+        cout << "dense: " << dense.Height() << " x " << dense.Width() << endl;
+        
+        // compute all its blocks
+        HeapReset hr(lh);    
+        
+        // Test with vector
+        Vector<value_type> x(trial_space->GetNDof()), y(test_space->GetNDof());
+        x = 1.;
+        y = dense * x;
+        
+        VFlatVector<value_type> x_base(x);
+        VFlatVector<value_type> y_base(y);
+        y_base -= (*hmatrix) * x_base;
+
+	cout << "error " << L2Norm (y) << endl;
+      }
+
+
   }
 
   
