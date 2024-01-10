@@ -455,6 +455,8 @@ namespace ngbem
                     SIMD_MappedIntegrationRule<2,3> miry(simd_iry, trafoj, lh);
 
 
+                    
+                    /*
                     FlatMatrix<SIMD<double>> mshapesi(feli.GetNDof()*test_evaluator->Dim(), mirx.Size(), lh);
                     FlatMatrix<SIMD<value_type>> mshapesi_kern(feli.GetNDof()*test_evaluator->Dim(), mirx.Size(), lh);                    
                     FlatMatrix<SIMD<double>> mshapesj(felj.GetNDof()*trial_evaluator->Dim(), miry.Size(), lh);
@@ -469,7 +471,7 @@ namespace ngbem
                         Vec<3,SIMD<double>> nx = mirx[k2].GetNV();
                         Vec<3,SIMD<double>> ny = miry[k2].GetNV();
                     
-                        SIMD<value_type> kernel_ = kernel.Evaluate(x, y, nx, ny);                        
+                        SIMD<value_type> kernel_ = kernel.Evaluate(x, y, nx, ny)(0); 
                         auto fac = mirx[k2].GetMeasure()*miry[k2].GetMeasure()*simd_irx[k2].Weight(); 
                         mshapesi_kern.Col(k2) = fac*kernel_ * mshapesi.Col(k2);
                       }
@@ -477,6 +479,35 @@ namespace ngbem
                     AddABt (mshapesi_kern.Reshape(feli.GetNDof(), test_evaluator->Dim()*mirx.Size()),
                             mshapesj.Reshape(felj.GetNDof(), trial_evaluator->Dim()*miry.Size()),
                             elmat);
+                    */
+
+                    
+                    FlatMatrix<SIMD<double>> mshapesi(feli.GetNDof()*test_evaluator->Dim(), mirx.Size(), lh);
+                    FlatMatrix<SIMD<value_type>> mshapesi_kern(feli.GetNDof()*1, mirx.Size(), lh);
+                    FlatMatrix<SIMD<double>> mshapesj(felj.GetNDof()*trial_evaluator->Dim(), miry.Size(), lh);
+
+                    test_evaluator->CalcMatrix(feli, mirx, mshapesi);
+                    trial_evaluator->CalcMatrix(felj, miry, mshapesj);
+
+
+                    for (auto term : kernel.terms)
+                      {
+                        for (int k2 = 0; k2 < mirx.Size(); k2++)
+                          {
+                            Vec<3,SIMD<double>> x = mirx[k2].Point();
+                            Vec<3,SIMD<double>> y = miry[k2].Point();
+                            Vec<3,SIMD<double>> nx = mirx[k2].GetNV();
+                            Vec<3,SIMD<double>> ny = miry[k2].GetNV();
+                            
+                            SIMD<value_type> kernel_ = kernel.Evaluate(x, y, nx, ny)(term.kernel_comp); 
+                            auto fac = mirx[k2].GetMeasure()*miry[k2].GetMeasure()*simd_irx[k2].Weight(); 
+                            mshapesi_kern.Col(k2) = term.fac*fac*kernel_ * mshapesi.Col(k2).Slice(term.test_comp, test_evaluator->Dim());
+                          }
+                        
+                        AddABt (mshapesi_kern, 
+                                mshapesj.RowSlice(term.trial_comp, trial_evaluator->Dim()).AddSize(felj.GetNDof(), miry.Size()),
+                                elmat);
+                      }
                   }
 
 
@@ -583,7 +614,7 @@ namespace ngbem
                     SIMD_MappedIntegrationRule<2,3> mirx(simd_irx, trafoi, lh);
                     SIMD_MappedIntegrationRule<2,3> miry(simd_iry, trafoj, lh);
 
-
+                    /*
                     FlatMatrix<SIMD<double>> mshapesi(feli.GetNDof()*test_evaluator->Dim(), mirx.Size(), lh);
                     FlatMatrix<SIMD<value_type>> mshapesi_kern(feli.GetNDof()*test_evaluator->Dim(), mirx.Size(), lh);                    
                     FlatMatrix<SIMD<double>> mshapesj(felj.GetNDof()*trial_evaluator->Dim(), miry.Size(), lh);
@@ -598,7 +629,7 @@ namespace ngbem
                         Vec<3,SIMD<double>> nx = mirx[k2].GetNV();
                         Vec<3,SIMD<double>> ny = miry[k2].GetNV();
                     
-                        SIMD<value_type> kernel_ = kernel.Evaluate(x, y, nx, ny);                        
+                        SIMD<value_type> kernel_ = kernel.Evaluate(x, y, nx, ny)(0); 
                         auto fac = mirx[k2].GetMeasure()*miry[k2].GetMeasure()*simd_irx[k2].Weight(); 
                         mshapesi_kern.Col(k2) = fac*kernel_ * mshapesi.Col(k2);
                       }
@@ -606,6 +637,36 @@ namespace ngbem
                     AddABt (mshapesi_kern.Reshape(feli.GetNDof(), test_evaluator->Dim()*mirx.Size()),
                             mshapesj.Reshape(felj.GetNDof(), trial_evaluator->Dim()*miry.Size()),
                             elmat);
+                    */
+
+
+                    FlatMatrix<SIMD<double>> mshapesi(feli.GetNDof()*test_evaluator->Dim(), mirx.Size(), lh);
+                    FlatMatrix<SIMD<value_type>> mshapesi_kern(feli.GetNDof()*1, mirx.Size(), lh);
+                    FlatMatrix<SIMD<double>> mshapesj(felj.GetNDof()*trial_evaluator->Dim(), miry.Size(), lh);
+
+                    test_evaluator->CalcMatrix(feli, mirx, mshapesi);
+                    trial_evaluator->CalcMatrix(felj, miry, mshapesj);
+
+
+                    for (auto term : kernel.terms)
+                      {
+                        for (int k2 = 0; k2 < mirx.Size(); k2++)
+                          {
+                            Vec<3,SIMD<double>> x = mirx[k2].Point();
+                            Vec<3,SIMD<double>> y = miry[k2].Point();
+                            Vec<3,SIMD<double>> nx = mirx[k2].GetNV();
+                            Vec<3,SIMD<double>> ny = miry[k2].GetNV();
+                            
+                            SIMD<value_type> kernel_ = kernel.Evaluate(x, y, nx, ny)(term.kernel_comp); 
+                            auto fac = mirx[k2].GetMeasure()*miry[k2].GetMeasure()*simd_irx[k2].Weight(); 
+                            mshapesi_kern.Col(k2) = term.fac*fac*kernel_ * mshapesi.Col(k2).Slice(term.test_comp, test_evaluator->Dim());
+                          }
+                        
+                        AddABt (mshapesi_kern, 
+                                mshapesj.RowSlice(term.trial_comp, trial_evaluator->Dim()).AddSize(felj.GetNDof(), miry.Size()),
+                                elmat);
+                      }
+                    
                   }
 
 
@@ -708,6 +769,7 @@ namespace ngbem
                     SIMD_MappedIntegrationRule<2,3> mirx(simd_irx, trafoi, lh);
                     SIMD_MappedIntegrationRule<2,3> miry(simd_iry, trafoj, lh);
 
+                    /*
                     FlatMatrix<SIMD<double>> mshapesi(feli.GetNDof()*test_evaluator->Dim(), mirx.Size(), lh);
                     FlatMatrix<SIMD<value_type>> mshapesi_kern(feli.GetNDof()*test_evaluator->Dim(), mirx.Size(), lh);                    
                     FlatMatrix<SIMD<double>> mshapesj(felj.GetNDof()*trial_evaluator->Dim(), miry.Size(), lh);
@@ -722,7 +784,7 @@ namespace ngbem
                         Vec<3,SIMD<double>> nx = mirx[k2].GetNV();
                         Vec<3,SIMD<double>> ny = miry[k2].GetNV();
                     
-                        SIMD<value_type> kernel_ = kernel.Evaluate(x, y, nx, ny);
+                        SIMD<value_type> kernel_ = kernel.Evaluate(x, y, nx, ny)(0);
                         auto fac = mirx[k2].GetMeasure()*miry[k2].GetMeasure()*simd_irx[k2].Weight(); 
                         mshapesi_kern.Col(k2) = fac*kernel_ * mshapesi.Col(k2);
                       }
@@ -730,6 +792,38 @@ namespace ngbem
                     AddABt (mshapesi_kern.Reshape(feli.GetNDof(), test_evaluator->Dim()*mirx.Size()),
                             mshapesj.Reshape(felj.GetNDof(), trial_evaluator->Dim()*miry.Size()),
                             elmat);
+                    */
+
+                      
+                    FlatMatrix<SIMD<double>> mshapesi(feli.GetNDof()*test_evaluator->Dim(), mirx.Size(), lh);
+                    FlatMatrix<SIMD<value_type>> mshapesi_kern(feli.GetNDof()*1, mirx.Size(), lh);
+                    FlatMatrix<SIMD<double>> mshapesj(felj.GetNDof()*trial_evaluator->Dim(), miry.Size(), lh);
+
+                    test_evaluator->CalcMatrix(feli, mirx, mshapesi);
+                    trial_evaluator->CalcMatrix(felj, miry, mshapesj);
+
+
+                    for (auto term : kernel.terms)
+                      {
+                        *testout << "remote panel, term.fac = " << term.fac << ", kernelcomp = " << term.kernel_comp
+                                 << ", trial/test = " << term.trial_comp << term.test_comp << endl;
+                        for (int k2 = 0; k2 < mirx.Size(); k2++)
+                          {
+                            Vec<3,SIMD<double>> x = mirx[k2].Point();
+                            Vec<3,SIMD<double>> y = miry[k2].Point();
+                            Vec<3,SIMD<double>> nx = mirx[k2].GetNV();
+                            Vec<3,SIMD<double>> ny = miry[k2].GetNV();
+                            
+                            SIMD<value_type> kernel_ = kernel.Evaluate(x, y, nx, ny)(term.kernel_comp); 
+                            auto fac = mirx[k2].GetMeasure()*miry[k2].GetMeasure()*simd_irx[k2].Weight(); 
+                            mshapesi_kern.Col(k2) = term.fac*fac*kernel_ * mshapesi.Col(k2).Slice(term.test_comp, test_evaluator->Dim());
+                          }
+                        
+                        AddABt (mshapesi_kern, 
+                                mshapesj.RowSlice(term.trial_comp, trial_evaluator->Dim()).AddSize(felj.GetNDof(), miry.Size()),
+                                elmat);
+                      }
+                    
                   }
 
 		break;
@@ -752,6 +846,7 @@ namespace ngbem
 		trial_evaluator-> CalcMatrix(felj, miry, Trans(shapesj), lh);
 
 
+                /*
 		FlatMatrix<value_type> kernel_ixiy(irtrig.Size(), irtrig.Size(), lh);
 		for (int ix = 0; ix < irtrig.Size(); ix++)
 		  {
@@ -762,7 +857,7 @@ namespace ngbem
 
                         Vec<3> nx = miry[iy].GetNV();
                         Vec<3> ny = miry[iy].GetNV();
-                        value_type kernel_ = kernel.Evaluate(x, y, nx, ny);
+                        value_type kernel_ = kernel.Evaluate(x, y, nx, ny)(0);
                         
 			double fac = mirx[ix].GetWeight()*miry[iy].GetWeight();
 			kernel_ixiy(ix, iy) = fac*kernel_;
@@ -792,11 +887,50 @@ namespace ngbem
                         elmat += shapesi1 * kernel_shapesj;
                       }
                   }
+                */
+
+                for (auto term : kernel.terms)
+                  {
+                    HeapReset hr(lh);
+                    FlatMatrix<value_type> kernel_ixiy(irtrig.Size(), irtrig.Size(), lh);
+                    for (int ix = 0; ix < irtrig.Size(); ix++)
+                      {
+                        for (int iy = 0; iy < irtrig.Size(); iy++)
+                          {
+                            Vec<3> x = mirx[ix].GetPoint();
+                            Vec<3> y = miry[iy].GetPoint();
+                            
+                            Vec<3> nx = miry[iy].GetNV();
+                            Vec<3> ny = miry[iy].GetNV();
+                            value_type kernel_ = kernel.Evaluate(x, y, nx, ny)(term.kernel_comp);
+                            
+                            double fac = mirx[ix].GetWeight()*miry[iy].GetWeight();
+                            kernel_ixiy(ix, iy) = term.fac*fac*kernel_;
+                          }
+                      }
+
+                    
+                    FlatMatrix<value_type> kernel_shapesj(irtrig.Size(), felj.GetNDof(), lh);
+                    FlatMatrix<> shapesi1(feli.GetNDof(), irtrig.Size(), lh);
+                    FlatMatrix<> shapesj1(felj.GetNDof(), irtrig.Size(), lh);
+                    
+                    for (int j = 0; j < irtrig.Size(); j++)
+                      {
+                        shapesi1.Col(j) = shapesi.Col(test_evaluator->Dim()*j+term.test_comp);
+                        shapesj1.Col(j) = shapesj.Col(trial_evaluator->Dim()*j+term.trial_comp);
+                      }
+                    kernel_shapesj = kernel_ixiy * Trans(shapesj1);
+                    elmat += shapesi1 * kernel_shapesj;
+                  }
+
+                
 		break;
 	      }
 	    default:
 	      throw Exception ("not possible");
 	    }
+
+          *testout << "norm 2lmat = " << L2Norm(elmat) << endl;
 	  for (int ii = 0; ii < dnumsi.Size(); ii++) // test
 	    for (int jj = 0; jj < dnumsj.Size(); jj++) // trial
 	      if(trialdofsinv[dnumsj[jj]] != -1 && testdofsinv[dnumsi[ii]] != -1)
@@ -865,9 +999,10 @@ namespace ngbem
 	j--;
       }
 
+    /*
     Matrix<value_type> matrix(testdofs.Size(), trialdofs.Size());
     matrix = value_type(0.0);
-
+    */
 
     // new code
     Array<Vec<3>> xi, yj, nxi, nyj;  // i..test, j... trial
@@ -944,136 +1079,161 @@ namespace ngbem
 
     size_t p = min(xi.Size(), yj.Size());
     //int rank = p;
-    auto GetRow = [&](int i, SliceVector<value_type> row)
+    auto GetRow = [&](int i, SliceVector<value_type> row, int comp)
     {
       RegionTimer reg(tkernel);
       tkernel.AddFlops (yj.Size());
       for (int j = 0; j < yj.Size(); j++)
-        row(j) = kernel.Evaluate(xi[i], yj[j], nxi[i], nyj[j]);
+        row(j) = kernel.Evaluate(xi[i], yj[j], nxi[i], nyj[j])(comp);
     };
-    auto GetCol = [&](int j, SliceVector<value_type> col)
+    auto GetCol = [&](int j, SliceVector<value_type> col, int comp)
     {
       RegionTimer reg(tkernel);
       tkernel.AddFlops (xi.Size());
       for (int i = 0; i < xi.Size(); i++)
-        col(i) = kernel.Evaluate(xi[i], yj[j], nxi[i], nyj[j]);
+        col(i) = kernel.Evaluate(xi[i], yj[j], nxi[i], nyj[j])(comp);
     };
 
-    Matrix<value_type> Umax(xi.Size(), p);
-    Matrix<value_type> Vmax(p, yj.Size());
 
-    size_t ik = 0, jk = 0, ikm1 = 0, jkm1 = yj.Size() + 1, rank = p;
+    Array<Matrix<value_type>> Us;
+    Array<Matrix<value_type>> Vs;
+
+    size_t num_kernel_comps = 0;
+    for (auto term : kernel.terms)
+      num_kernel_comps = std::max(num_kernel_comps, term.kernel_comp+1);
     
-    // // for quasi random sequence of pivot indices
-    // size_t primes[] = { 71, 73, 79, 83, 89, 97 };
-    // size_t prime;
-    // for (auto tp : primes)
-    //   {
-    //     if (xi.Size()%tp != 0)
-    //       {
-    //         prime = tp;
-    //         break;
-    //       }
-    //   }
-    // // ACA compression 
-    // for (size_t k = 0; k < p; k++)
-    //   {
-    //     // int ik = k;  // what else ?
-    //     size_t ik = (k*prime)%xi.Size(); 
-        
-    //     GetRow(ik, Vmax.Row(k));
-    //     Vmax.Row(k) -= Trans(Vmax.Rows(0,k)) * Umax.Row(ik).Range(0,k);
-         
-    //     double err = L2Norm(Vmax.Row(k));
-    //     // cout << "Norm vk = " << err << endl;
-    //     if (err < param.eps)
-    //       {
-    //         rank = k;
-    //         break;
-    //       }
-        
-    //     int jmax = 0;
-    //     for (int j = 0; j < Vmax.Width(); j++)
-    //       if (fabs (Vmax(k,j)) > fabs(Vmax(k,jmax)))
-    //         jmax = j;
-    //     Vmax.Row(k) *= 1.0 / Vmax(k,jmax);
 
-    //     GetCol(jmax, Umax.Col(k));
-    //     Umax.Col(k) -= Umax.Cols(0,k) * Vmax.Col(jmax).Range(0,k);
-    //   }
+    for (size_t comp = 0; comp < num_kernel_comps; comp++)
+      {
+        Matrix<value_type> Umax(xi.Size(), p);
+        Matrix<value_type> Vmax(p, yj.Size());
     
-    // Scale eps appropriately (see Bebendorf, Hierarchical Matrices  p. 126 & 135
-    double eps = 2. / 3. * param.eps / sqrt(xi.Size() * yj.Size());
-    // The Frobenius norm squared of the approximant U * V^H
-    double norm2 = 0.;
+        size_t ik = 0, jk = 0, ikm1 = 0, jkm1 = yj.Size() + 1, rank = p;
+        
+        // // for quasi random sequence of pivot indices
+        // size_t primes[] = { 71, 73, 79, 83, 89, 97 };
+        // size_t prime;
+        // for (auto tp : primes)
+        //   {
+        //     if (xi.Size()%tp != 0)
+        //       {
+        //         prime = tp;
+        //         break;
+        //       }
+        //   }
+        // // ACA compression 
+        // for (size_t k = 0; k < p; k++)
+        //   {
+        //     // int ik = k;  // what else ?
+        //     size_t ik = (k*prime)%xi.Size(); 
+        
+        //     GetRow(ik, Vmax.Row(k));
+        //     Vmax.Row(k) -= Trans(Vmax.Rows(0,k)) * Umax.Row(ik).Range(0,k);
+        
+        //     double err = L2Norm(Vmax.Row(k));
+        //     // cout << "Norm vk = " << err << endl;
+        //     if (err < param.eps)
+        //       {
+        //         rank = k;
+        //         break;
+        //       }
+        
+        //     int jmax = 0;
+        //     for (int j = 0; j < Vmax.Width(); j++)
+        //       if (fabs (Vmax(k,j)) > fabs(Vmax(k,jmax)))
+        //         jmax = j;
+        //     Vmax.Row(k) *= 1.0 / Vmax(k,jmax);
+        
+        //     GetCol(jmax, Umax.Col(k));
+        //     Umax.Col(k) -= Umax.Cols(0,k) * Vmax.Col(jmax).Range(0,k);
+        //   }
 
-    for (size_t k = 0; k < p; k++) {
-	// Get the ik-th row
-	GetRow(ik, Vmax.Row(k));
-        Vmax.Row(k) -= Trans(Vmax.Rows(0,k)) * Umax.Row(ik).Range(0,k);
+        
+        // Scale eps appropriately (see Bebendorf, Hierarchical Matrices  p. 126 & 135
+        double eps = 2. / 3. * param.eps / sqrt(xi.Size() * yj.Size());
+        // The Frobenius norm squared of the approximant U * V^H
+        double norm2 = 0.;
+        
+        for (size_t k = 0; k < p; k++) {
+          // Get the ik-th row
+          GetRow(ik, Vmax.Row(k), comp);
+          Vmax.Row(k) -= Trans(Vmax.Rows(0,k)) * Umax.Row(ik).Range(0,k);
 
-	// Find the new column pivot position jk in the new row
-	double vkj = 0.;
-        for (int j = 0; j < Vmax.Width(); j++)
-          if (fabs (Vmax(k, j)) > vkj && j != jkm1) {
+          // Find the new column pivot position jk in the new row
+          double vkj = 0.;
+          for (int j = 0; j < Vmax.Width(); j++)
+            if (fabs (Vmax(k, j)) > vkj && j != jkm1) {
 	      vkj = fabs (Vmax(k, j));
 	      jk = j;
 	    }
-
-	// If the pivot element is close to zero, exit
-	if (vkj == 0.) {
-	  rank = k;
-	  break;
-	}
-	
-	// Scale with inverse of the pivot entry at (ik, jk)
-        Vmax.Row(k) *= 1.0 / Vmax(k, jk);
-
-	// Get the jk-th column
-	GetCol(jk, Umax.Col(k));
-        Umax.Col(k) -= Umax.Cols(0,k) * Vmax.Col(jk).Range(0,k);
-	
-	// Find the new row pivot position ik in the new column
-	double uik = 0.;
-	for (int i = 0; i < Umax.Height(); i++)
-          if (fabs (Umax(i, k)) > uik && i != ikm1) {
+          
+          // If the pivot element is close to zero, exit
+          if (vkj == 0.) {
+            rank = k;
+            break;
+          }
+          
+          // Scale with inverse of the pivot entry at (ik, jk)
+          Vmax.Row(k) *= 1.0 / Vmax(k, jk);
+          
+          // Get the jk-th column
+          GetCol(jk, Umax.Col(k), comp);
+          Umax.Col(k) -= Umax.Cols(0,k) * Vmax.Col(jk).Range(0,k);
+          
+          // Find the new row pivot position ik in the new column
+          double uik = 0.;
+          for (int i = 0; i < Umax.Height(); i++)
+            if (fabs (Umax(i, k)) > uik && i != ikm1) {
 	      uik = fabs (Umax(i, k));
 	      ik = i;
 	    }
-
-	// Update the Frobenius norm
-	double norm_k = L2Norm(Vmax.Row(k)) * L2Norm(Umax.Col(k));
-	norm2 += norm_k * norm_k;
-	for (int l = 0; l < k; l++)
-	  norm2 += 2. * std::real(InnerProduct(Vmax.Row(k), Vmax.Row(l)) *
-				  InnerProduct(Umax.Col(k), Umax.Col(l)));
-
-	// New pivots become old pivots
-	ikm1 = ik;
-	jkm1 = jk;
-
-	// Stop if the new update is relatively small, see Bebendorf pp. 141-142
-	if (norm_k < eps * sqrt(norm2)) {
+          
+          // Update the Frobenius norm
+          double norm_k = L2Norm(Vmax.Row(k)) * L2Norm(Umax.Col(k));
+          norm2 += norm_k * norm_k;
+          for (int l = 0; l < k; l++)
+            norm2 += 2. * std::real(InnerProduct(Vmax.Row(k), Vmax.Row(l)) *
+                                    InnerProduct(Umax.Col(k), Umax.Col(l)));
+          
+          // New pivots become old pivots
+          ikm1 = ik;
+          jkm1 = jk;
+          
+          // Stop if the new update is relatively small, see Bebendorf pp. 141-142
+          if (norm_k < eps * sqrt(norm2)) {
 	    rank = k + 1;
 	    break;
 	  }
+        }
+
+        Us += Matrix<value_type> (Umax.Cols(0,rank));
+        Vs += Matrix<value_type> (Vmax.Rows(0,rank));
+
+        for (int i = 0; i < Us.Last().Height(); i++)
+          Us.Last().Row(i) *= wxi[i];
+        for (int j = 0; j < Vs.Last().Width(); j++)
+          Vs.Last().Col(j) *= wyj[j];
       }
 
+    Array<IntRange> ranges;
+    size_t total_rank = 0;
+    for (auto term : kernel.terms)
+      {
+        ranges += IntRange(total_rank, total_rank+Us[term.kernel_comp].Width());
+        total_rank += Us[term.kernel_comp].Width();
+      }
+    
     // *testout << "rank = " << rank << endl;
-    size_t k = rank;
+    // size_t k = rank;
     tACA.Stop();
     
-    auto U = Umax.Cols(0,k);
-    auto V = Vmax.Rows(0,k);
+    // auto U = Umax.Cols(0,k);
+    // auto V = Vmax.Rows(0,k);
     // cout << "k = " << k << ", err = " << L2Norm(help-U*V) << endl;
 
-    for (int i = 0; i < U.Height(); i++)
-      U.Row(i) *= wxi[i];
-    for (int j = 0; j < V.Width(); j++)
-      V.Col(j) *= wyj[j];
 
-    Matrix<value_type> U2(testdofs.Size(), k*test_evaluator->Dim());
-    Matrix<value_type> V2(k*test_evaluator->Dim(), trialdofs.Size());
+    Matrix<value_type> U2(testdofs.Size(), total_rank); 
+    Matrix<value_type> V2(total_rank, trialdofs.Size());
     U2 = value_type(0.0);
     V2 = value_type(0.0);
     
@@ -1096,6 +1256,8 @@ namespace ngbem
                                      (double*)shapesi.Data());
         
         test_evaluator -> CalcMatrix(feli, mirx, shapesi);
+
+        /*
         Matrix<value_type> tmp1 = dshapesi * U.Rows(cnt, cnt+irtrig.Size());        
         auto tmp = tmp1.Reshape(feli.GetNDof(), dim*U.Width());
                                 
@@ -1103,6 +1265,21 @@ namespace ngbem
         for (int ii = 0; ii < dnumsi.Size(); ii++) // test
           if (testdofsinv[dnumsi[ii]] != -1)
             U2.Row(testdofsinv[dnumsi[ii]]) += tmp.Row(ii);
+        */
+
+        // for (auto term : kernel.terms)
+        for (int t = 0; t < kernel.terms.Size(); t++)
+          {
+            auto term = kernel.terms[t];
+            auto U2cols = U2.Cols(ranges[t]); // term.test_comp*k, (term.test_comp+1)*k);
+            Matrix<value_type> tmp = dshapesi.RowSlice(term.test_comp, dim).AddSize(feli.GetNDof(), simd_irtrig.GetNIP())
+              * Us[term.kernel_comp].Rows(cnt, cnt+irtrig.Size());        
+            for (int ii = 0; ii < dnumsi.Size(); ii++) // test
+              if (testdofsinv[dnumsi[ii]] != -1)
+                U2cols.Row(testdofsinv[dnumsi[ii]]) += term.fac * tmp.Row(ii);
+          }
+        cnt += irtrig.Size();
+        
       }
 
     cnt = 0;
@@ -1125,6 +1302,7 @@ namespace ngbem
                                      (double*)shapesj.Data());
         
         trial_evaluator -> CalcMatrix(felj, miry, shapesj);
+        /*
         Matrix<value_type> tmp1 = dshapesj * Trans(V).Rows(cnt, cnt+irtrig.Size());        
         auto tmp = tmp1.Reshape(felj.GetNDof(), dim*V.Height());
         
@@ -1132,6 +1310,20 @@ namespace ngbem
         for (int jj = 0; jj < dnumsj.Size(); jj++) // trial
           if(trialdofsinv[dnumsj[jj]] != -1)
             V2.Col(trialdofsinv[dnumsj[jj]]) += tmp.Row(jj);
+        */
+
+        for (int t = 0; t < kernel.terms.Size(); t++)
+          {
+            auto term = kernel.terms[t];
+            auto V2rows = V2.Rows(ranges[t]); // term.trial_comp*k, (term.trial_comp+1)*k);
+            Matrix<value_type> tmp = dshapesj.RowSlice(term.trial_comp, dim).AddSize(felj.GetNDof(), simd_irtrig.GetNIP())
+              * Trans(Vs[term.kernel_comp]).Rows(cnt, cnt+irtrig.Size());        
+            for (int jj = 0; jj < dnumsj.Size(); jj++) // trial
+              if (trialdofsinv[dnumsj[jj]] != -1)
+                V2rows.Col(trialdofsinv[dnumsj[jj]]) += tmp.Row(jj);
+          }
+        cnt += irtrig.Size();
+        
       }
 
     return make_unique<LowRankMatrix<value_type>> (std::move(U2), std::move(V2));
@@ -1140,8 +1332,14 @@ namespace ngbem
   
   template class GenericIntegralOperator<LaplaceSLKernel<3>>;
   template class GenericIntegralOperator<LaplaceDLKernel<3>>;
+  template class GenericIntegralOperator<LaplaceHSKernel<3>>;
   
   template class GenericIntegralOperator<HelmholtzSLKernel<3>>;
-  template class GenericIntegralOperator<HelmholtzDLKernel<3>>;    
-  template class GenericIntegralOperator<CombinedFieldKernel<3>>;    
+  template class GenericIntegralOperator<HelmholtzDLKernel<3>>;
+  template class GenericIntegralOperator<HelmholtzHSKernel<3>>;
+  
+  template class GenericIntegralOperator<CombinedFieldKernel<3>>;
+
+  template class GenericIntegralOperator<MaxwellSLKernel<3>>;
+  template class GenericIntegralOperator<MaxwellDLKernel<3>>;    
 }
