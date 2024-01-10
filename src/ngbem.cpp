@@ -9,6 +9,8 @@
 namespace ngbem
 {
 
+
+  
   template <typename T>  
   IntegralOperator<T> ::
   IntegralOperator(shared_ptr<FESpace> _trial_space, shared_ptr<FESpace> _test_space,
@@ -698,7 +700,10 @@ namespace ngbem
     
     static Timer tall("ngbem FarFieldBlock " + KERNEL::Name());
     static Timer tACA("ngbem FarFieldBlock - ACA " + KERNEL::Name());
-    static Timer tkernel("ngbem FarFieldBlock - kernel " + KERNEL::Name());      
+    static Timer tkernel("ngbem FarFieldBlock - kernel " + KERNEL::Name());
+    static Timer tnorm("ngbem FarFieldBlock - norm " + KERNEL::Name());
+    static Timer tmatvec1("ngbem FarFieldBlock - matvec1 " + KERNEL::Name());              
+    static Timer tmatvec2("ngbem FarFieldBlock - matvec2 " + KERNEL::Name());              
     RegionTimer reg(tall);
 
     IntegrationRule irtrig(ET_TRIG, param.intorder);
@@ -742,10 +747,7 @@ namespace ngbem
 	j--;
       }
 
-    /*
-    Matrix<value_type> matrix(testdofs.Size(), trialdofs.Size());
-    matrix = value_type(0.0);
-    */
+
 
     // new code
     Array<Vec<3>> xi, yj, nxi, nyj;  // i..test, j... trial
@@ -848,8 +850,8 @@ namespace ngbem
 
     for (size_t comp = 0; comp < num_kernel_comps; comp++)
       {
-        Matrix<value_type> Umax(xi.Size(), p);
-        Matrix<value_type> Vmax(p, yj.Size());
+        Matrix<value_type> Umax(xi.Size(), 20);
+        Matrix<value_type> Vmax(20, yj.Size());
     
         size_t ik = 0, jk = 0, ikm1 = 0, jkm1 = yj.Size() + 1, rank = p;
         
@@ -899,9 +901,18 @@ namespace ngbem
         
         for (size_t k = 0; k < p; k++) {
           // Get the ik-th row
+          if (Umax.Width() == k)
+            {
+              Umax.ChangeSize(Umax.Height(), Umax.Width()+20);
+              Vmax.ChangeSize(Vmax.Height()+20, Vmax.Width());
+            }
+          
           GetRow(ik, Vmax.Row(k), comp);
+          tmatvec1.Start();          
           Vmax.Row(k) -= Trans(Vmax.Rows(0,k)) * Umax.Row(ik).Range(0,k);
-
+          tmatvec1.Stop();
+          tmatvec1.AddFlops (k * Vmax.Width());
+           
           // Find the new column pivot position jk in the new row
           double vkj = 0.;
           for (int j = 0; j < Vmax.Width(); j++)
@@ -921,7 +932,10 @@ namespace ngbem
           
           // Get the jk-th column
           GetCol(jk, Umax.Col(k), comp);
+          tmatvec2.Start();
           Umax.Col(k) -= Umax.Cols(0,k) * Vmax.Col(jk).Range(0,k);
+          tmatvec2.Stop();
+          tmatvec2.AddFlops (k * Umax.Height());          
           
           // Find the new row pivot position ik in the new column
           double uik = 0.;
@@ -930,14 +944,29 @@ namespace ngbem
 	      uik = fabs (Umax(i, k));
 	      ik = i;
 	    }
-          
+
+          tnorm.Start();
+
           // Update the Frobenius norm
           double norm_k = L2Norm(Vmax.Row(k)) * L2Norm(Umax.Col(k));
           norm2 += norm_k * norm_k;
+          /*
+            // how it was:
           for (int l = 0; l < k; l++)
             norm2 += 2. * std::real(InnerProduct(Vmax.Row(k), Vmax.Row(l)) *
                                     InnerProduct(Umax.Col(k), Umax.Col(l)));
-          
+          */
+
+          /*
+          // the correct complex inner product:
+          for (int l = 0; l < k; l++)
+            norm2 += 2. * std::real(InnerProduct(Vmax.Row(k), Conj(Vmax.Row(l))) *
+                                    InnerProduct(Umax.Col(k), Conj(Umax.Col(l))));
+          */
+          tnorm.Stop();
+          //  *testout << "k = " << k << "norm2 = " << norm2 << endl;
+          // *testout << "norm2 = " << norm2 << " =?= " << L2Norm2(Vmax.Rows(k+1))*L2Norm2(Umax.Cols(k+1)) << endl;
+           
           // New pivots become old pivots
           ikm1 = ik;
           jkm1 = jk;
