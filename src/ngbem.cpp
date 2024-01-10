@@ -389,6 +389,57 @@ namespace ngbem
     Vec<3> x,y,nx,ny;
     constexpr int KERNEL_COMPS = decltype(kernel.Evaluate (x,y,nx,ny))::SIZE;
 
+
+    
+    // common code for same panel, common edge, common vertex
+    auto Integrate4D = [&] (const IntegrationRule & irx,
+                            const IntegrationRule & iry,
+                            const FiniteElement & feli,
+                            const FiniteElement & felj,
+                            const ElementTransformation & trafoi,
+                            const ElementTransformation & trafoj,
+                            FlatMatrix<value_type> elmat,
+                            LocalHeap & lh)
+    {
+      HeapReset hr(lh);
+      SIMD_IntegrationRule simd_irx(irx);
+      SIMD_IntegrationRule simd_iry(iry);
+
+      SIMD_MappedIntegrationRule<2,3> mirx(simd_irx, trafoi, lh);
+      SIMD_MappedIntegrationRule<2,3> miry(simd_iry, trafoj, lh);
+
+      FlatMatrix<SIMD<double>> mshapesi(feli.GetNDof()*test_evaluator->Dim(), mirx.Size(), lh);
+      FlatMatrix<SIMD<value_type>> mshapesi_kern(feli.GetNDof(), mirx.Size(), lh);
+      FlatMatrix<SIMD<double>> mshapesj(felj.GetNDof()*trial_evaluator->Dim(), miry.Size(), lh);
+      
+      test_evaluator->CalcMatrix(feli, mirx, mshapesi);
+      trial_evaluator->CalcMatrix(felj, miry, mshapesj);
+                    
+      FlatVector<Vec<KERNEL_COMPS, SIMD<value_type>>> kernel_values(mirx.Size(), lh);
+      for (int k2 = 0; k2 < mirx.Size(); k2++)
+        {
+          Vec<3,SIMD<double>> x = mirx[k2].Point();
+          Vec<3,SIMD<double>> y = miry[k2].Point();
+          Vec<3,SIMD<double>> nx = mirx[k2].GetNV();
+          Vec<3,SIMD<double>> ny = miry[k2].GetNV();
+          kernel_values(k2) = mirx[k2].GetMeasure()*miry[k2].GetMeasure()*simd_irx[k2].Weight() *
+            kernel.Evaluate(x, y, nx, ny);
+        }                        
+      for (auto term : kernel.terms)
+        {
+          auto mshapesi_comp = mshapesi.RowSlice(term.test_comp, test_evaluator->Dim());
+          for (int k2 = 0; k2 < mirx.Size(); k2++)
+            {
+              SIMD<value_type> kernel_ = kernel_values(k2)(term.kernel_comp); 
+              mshapesi_kern.Col(k2) = term.fac*kernel_ * mshapesi_comp.Col(k2);
+            }
+          
+          AddABt (mshapesi_kern, 
+                  mshapesj.RowSlice(term.trial_comp, trial_evaluator->Dim()).AddSize(felj.GetNDof(), miry.Size()),
+                  elmat);
+        }
+    };
+
       
     RegionTimer regloops(tloops);    
     for (int i = 0; i < patchi.Size(); i++) // test
@@ -429,32 +480,6 @@ namespace ngbem
 	      {
                 RegionTimer reg(t_identic);    
                       
-		elmat = 0.0;
-                /*
-		for (int k = 0; k < identic_panel_weight.Size(); k++)
-		  {
-		    IntegrationPoint xhat (identic_panel_x[k]);
-		    IntegrationPoint yhat (identic_panel_y[k]);
-                
-		    MappedIntegrationPoint<2,3> mipx(xhat, trafoi);
-		    MappedIntegrationPoint<2,3> mipy(yhat, trafoj);
-                        
-		    Vec<3> x = mipx.Point();
-		    Vec<3> y = mipy.Point();
-		    Vec<3> nx = mipx.GetNV();
-		    Vec<3> ny = mipy.GetNV();                    
-
-                    value_type kernel_ = kernel.Evaluate(x, y, nx, ny)(0,0);
-                        
-		    test_evaluator->CalcMatrix(feli, mipx, Trans(shapei), lh);
-		    trial_evaluator->CalcMatrix(felj, mipy, Trans(shapej), lh);
-                        
-		    double fac = mipx.GetMeasure()*mipy.GetMeasure()*identic_panel_weight[k];
-		    elmat += fac*kernel_* shapei * Trans(shapej);
-		  }
-                */
-
-                // vectorized version:
                 constexpr int BS = 128;
                 for (int k = 0; k < identic_panel_weight.Size(); k+=BS)
                   {
@@ -475,94 +500,8 @@ namespace ngbem
                         iry[k2] = IntegrationPoint(yk(0), yk(1), 0, 0);
                       }
 
-                    SIMD_IntegrationRule simd_irx(irx);
-                    SIMD_IntegrationRule simd_iry(iry);
-                    
-                    SIMD_MappedIntegrationRule<2,3> mirx(simd_irx, trafoi, lh);
-                    SIMD_MappedIntegrationRule<2,3> miry(simd_iry, trafoj, lh);
-
-
-                    
-                    /*
-                    FlatMatrix<SIMD<double>> mshapesi(feli.GetNDof()*test_evaluator->Dim(), mirx.Size(), lh);
-                    FlatMatrix<SIMD<value_type>> mshapesi_kern(feli.GetNDof()*test_evaluator->Dim(), mirx.Size(), lh);                    
-                    FlatMatrix<SIMD<double>> mshapesj(felj.GetNDof()*trial_evaluator->Dim(), miry.Size(), lh);
-
-                    test_evaluator->CalcMatrix(feli, mirx, mshapesi);
-                    trial_evaluator->CalcMatrix(felj, miry, mshapesj);
-
-                    for (int k2 = 0; k2 < mirx.Size(); k2++)
-                      {
-                        Vec<3,SIMD<double>> x = mirx[k2].Point();
-                        Vec<3,SIMD<double>> y = miry[k2].Point();
-                        Vec<3,SIMD<double>> nx = mirx[k2].GetNV();
-                        Vec<3,SIMD<double>> ny = miry[k2].GetNV();
-                    
-                        SIMD<value_type> kernel_ = kernel.Evaluate(x, y, nx, ny)(0); 
-                        auto fac = mirx[k2].GetMeasure()*miry[k2].GetMeasure()*simd_irx[k2].Weight(); 
-                        mshapesi_kern.Col(k2) = fac*kernel_ * mshapesi.Col(k2);
-                      }
-
-                    AddABt (mshapesi_kern.Reshape(feli.GetNDof(), test_evaluator->Dim()*mirx.Size()),
-                            mshapesj.Reshape(felj.GetNDof(), trial_evaluator->Dim()*miry.Size()),
-                            elmat);
-                    */
-
-                    
-                    FlatMatrix<SIMD<double>> mshapesi(feli.GetNDof()*test_evaluator->Dim(), mirx.Size(), lh);
-                    FlatMatrix<SIMD<value_type>> mshapesi_kern(feli.GetNDof()*1, mirx.Size(), lh);
-                    FlatMatrix<SIMD<double>> mshapesj(felj.GetNDof()*trial_evaluator->Dim(), miry.Size(), lh);
-
-                    test_evaluator->CalcMatrix(feli, mirx, mshapesi);
-                    trial_evaluator->CalcMatrix(felj, miry, mshapesj);
-
-                    
-
-                    /*
-                    for (auto term : kernel.terms)
-                      {
-                        for (int k2 = 0; k2 < mirx.Size(); k2++)
-                          {
-                            Vec<3,SIMD<double>> x = mirx[k2].Point();
-                            Vec<3,SIMD<double>> y = miry[k2].Point();
-                            Vec<3,SIMD<double>> nx = mirx[k2].GetNV();
-                            Vec<3,SIMD<double>> ny = miry[k2].GetNV();
-                            
-                            SIMD<value_type> kernel_ = kernel.Evaluate(x, y, nx, ny)(term.kernel_comp); 
-                            auto fac = mirx[k2].GetMeasure()*miry[k2].GetMeasure()*simd_irx[k2].Weight(); 
-                            mshapesi_kern.Col(k2) = term.fac*fac*kernel_ * mshapesi.Col(k2).Slice(term.test_comp, test_evaluator->Dim());
-                          }
-                        
-                        AddABt (mshapesi_kern, 
-                                mshapesj.RowSlice(term.trial_comp, trial_evaluator->Dim()).AddSize(felj.GetNDof(), miry.Size()),
-                                elmat);
-                      }
-                    */
-                    FlatVector<Vec<KERNEL_COMPS, SIMD<value_type>>> kernel_values(mirx.Size(), lh);
-                    for (int k2 = 0; k2 < mirx.Size(); k2++)
-                      {
-                        Vec<3,SIMD<double>> x = mirx[k2].Point();
-                        Vec<3,SIMD<double>> y = miry[k2].Point();
-                        Vec<3,SIMD<double>> nx = mirx[k2].GetNV();
-                        Vec<3,SIMD<double>> ny = miry[k2].GetNV();
-                        kernel_values(k2) = kernel.Evaluate(x, y, nx, ny);
-                      }                        
-                    for (auto term : kernel.terms)
-                      {
-                        for (int k2 = 0; k2 < mirx.Size(); k2++)
-                          {
-                            SIMD<value_type> kernel_ = kernel_values(k2)(term.kernel_comp); 
-                            auto fac = mirx[k2].GetMeasure()*miry[k2].GetMeasure()*simd_irx[k2].Weight(); 
-                            mshapesi_kern.Col(k2) = term.fac*fac*kernel_ * mshapesi.Col(k2).Slice(term.test_comp, test_evaluator->Dim());
-                          }
-                        
-                        AddABt (mshapesi_kern, 
-                                mshapesj.RowSlice(term.trial_comp, trial_evaluator->Dim()).AddSize(felj.GetNDof(), miry.Size()),
-                                elmat);
-                      }
-                    
+                    Integrate4D (irx, iry, feli, felj, trafoi, trafoj, elmat, lh);
                   }
-
 
                 
 		break;
@@ -590,48 +529,6 @@ namespace ngbem
 		int vpermy[3] = { edges[cey][1], edges[cey][0], -1 }; // common edge gets first
 		vpermy[2] = 3-vpermy[0]-vpermy[1];
                 
-		elmat = 0.0;
-                /*
-		for (int k = 0; k < common_edge_weight.Size(); k++)
-		  {
-
-		    Vec<2> xk = common_edge_x[k]; // int point in [(0,0), (1,0), (0,1)] 
-		    Vec<2> yk = common_edge_y[k]; // int point in [(0,0), (1,0), (0,1)] 
-
-		    Vec<3> lamx (1-xk(0)-xk(1), xk(0), xk(1) ); 
-		    Vec<3> lamy (1-yk(0)-yk(1), yk(0), yk(1) );
-
-              
-		    // consider permuation 
-		    Vec<3> plamx, plamy;
-		    for (int i = 0; i < 3; i++)
-		      {
-			plamx(vpermx[i]) = lamx(i);
-			plamy(vpermy[i]) = lamy(i);
-		      }
-
-		    IntegrationPoint xhat(plamx(0), plamx(1), 0, 0); // int point in [(0,1),(1,0),(0,0)]
-		    IntegrationPoint yhat(plamy(0), plamy(1), 0, 0);
-                        
-		    MappedIntegrationPoint<2,3> mipx(xhat, trafoi);
-		    MappedIntegrationPoint<2,3> mipy(yhat, trafoj);
-                        
-		    Vec<3> x = mipx.Point();
-		    Vec<3> y = mipy.Point();
-		    Vec<3> nx = mipx.GetNV();
-		    Vec<3> ny = mipy.GetNV();
-                    
-		    value_type kernel_ = kernel.Evaluate(x,y,nx,ny)(0,0);
-                        
-		    test_evaluator->CalcMatrix(feli, mipx, Trans(shapei), lh);
-		    trial_evaluator->CalcMatrix(felj, mipy, Trans(shapej), lh);
-                        
-		    double fac = mipx.GetMeasure()*mipy.GetMeasure() * common_edge_weight[k];
-		    elmat += fac*kernel_* shapei * Trans(shapej);
-		  }
-                */
-
-                // vectorized version:
                 constexpr int BS = 128;
                 for (int k = 0; k < common_edge_weight.Size(); k+=BS)
                   {
@@ -661,68 +558,8 @@ namespace ngbem
                         iry[k2] = IntegrationPoint(plamy(0), plamy(1), 0, 0);
                       }
 
-                    SIMD_IntegrationRule simd_irx(irx);
-                    SIMD_IntegrationRule simd_iry(iry);
-                    
-                    SIMD_MappedIntegrationRule<2,3> mirx(simd_irx, trafoi, lh);
-                    SIMD_MappedIntegrationRule<2,3> miry(simd_iry, trafoj, lh);
-
-                    /*
-                    FlatMatrix<SIMD<double>> mshapesi(feli.GetNDof()*test_evaluator->Dim(), mirx.Size(), lh);
-                    FlatMatrix<SIMD<value_type>> mshapesi_kern(feli.GetNDof()*test_evaluator->Dim(), mirx.Size(), lh);                    
-                    FlatMatrix<SIMD<double>> mshapesj(felj.GetNDof()*trial_evaluator->Dim(), miry.Size(), lh);
-
-                    test_evaluator->CalcMatrix(feli, mirx, mshapesi);
-                    trial_evaluator->CalcMatrix(felj, miry, mshapesj);
-
-                    for (int k2 = 0; k2 < mirx.Size(); k2++)
-                      {
-                        Vec<3,SIMD<double>> x = mirx[k2].Point();
-                        Vec<3,SIMD<double>> y = miry[k2].Point();
-                        Vec<3,SIMD<double>> nx = mirx[k2].GetNV();
-                        Vec<3,SIMD<double>> ny = miry[k2].GetNV();
-                    
-                        SIMD<value_type> kernel_ = kernel.Evaluate(x, y, nx, ny)(0); 
-                        auto fac = mirx[k2].GetMeasure()*miry[k2].GetMeasure()*simd_irx[k2].Weight(); 
-                        mshapesi_kern.Col(k2) = fac*kernel_ * mshapesi.Col(k2);
-                      }
-
-                    AddABt (mshapesi_kern.Reshape(feli.GetNDof(), test_evaluator->Dim()*mirx.Size()),
-                            mshapesj.Reshape(felj.GetNDof(), trial_evaluator->Dim()*miry.Size()),
-                            elmat);
-                    */
-
-
-                    FlatMatrix<SIMD<double>> mshapesi(feli.GetNDof()*test_evaluator->Dim(), mirx.Size(), lh);
-                    FlatMatrix<SIMD<value_type>> mshapesi_kern(feli.GetNDof()*1, mirx.Size(), lh);
-                    FlatMatrix<SIMD<double>> mshapesj(felj.GetNDof()*trial_evaluator->Dim(), miry.Size(), lh);
-
-                    test_evaluator->CalcMatrix(feli, mirx, mshapesi);
-                    trial_evaluator->CalcMatrix(felj, miry, mshapesj);
-
-
-                    for (auto term : kernel.terms)
-                      {
-                        for (int k2 = 0; k2 < mirx.Size(); k2++)
-                          {
-                            Vec<3,SIMD<double>> x = mirx[k2].Point();
-                            Vec<3,SIMD<double>> y = miry[k2].Point();
-                            Vec<3,SIMD<double>> nx = mirx[k2].GetNV();
-                            Vec<3,SIMD<double>> ny = miry[k2].GetNV();
-                            
-                            SIMD<value_type> kernel_ = kernel.Evaluate(x, y, nx, ny)(term.kernel_comp); 
-                            auto fac = mirx[k2].GetMeasure()*miry[k2].GetMeasure()*simd_irx[k2].Weight(); 
-                            mshapesi_kern.Col(k2) = term.fac*fac*kernel_ * mshapesi.Col(k2).Slice(term.test_comp, test_evaluator->Dim());
-                          }
-                        
-                        AddABt (mshapesi_kern, 
-                                mshapesj.RowSlice(term.trial_comp, trial_evaluator->Dim()).AddSize(felj.GetNDof(), miry.Size()),
-                                elmat);
-                      }
-                    
+                    Integrate4D (irx, iry, feli, felj, trafoi, trafoj, elmat, lh);
                   }
-
-
                 
 		break;
 	      }
@@ -747,44 +584,6 @@ namespace ngbem
 		vpermx[2] = 3-vpermx[0]-vpermx[1];
 		int vpermy[3] = { cvy, (cvy+1)%3, (cvy+2)%3 };
 		vpermy[2] = 3-vpermy[0]-vpermy[1];
-                  
-		elmat = 0.0;
-                /*
-		for (int k = 0; k < common_vertex_weight.Size(); k++)
-		  {
-		    Vec<2> xk = common_vertex_x[k];
-		    Vec<2> yk = common_vertex_y[k];
-          
-		    Vec<3> lamx (1-xk(0)-xk(1), xk(0), xk(1) );
-		    Vec<3> lamy (1-yk(0)-yk(1), yk(0), yk(1) );
-          
-		    Vec<3> plamx, plamy;
-		    for (int i = 0; i < 3; i++)
-		      {
-			plamx(vpermx[i]) = lamx(i);
-			plamy(vpermy[i]) = lamy(i);
-		      }
-                    
-		    IntegrationPoint xhat(plamx(0), plamx(1), 0, 0);
-		    IntegrationPoint yhat(plamy(0), plamy(1), 0, 0);
-                  
-		    MappedIntegrationPoint<2,3> mipx(xhat, trafoi);
-		    MappedIntegrationPoint<2,3> mipy(yhat, trafoj);
-                  
-		    Vec<3> x = mipx.Point();
-		    Vec<3> y = mipy.Point();
-		    Vec<3> nx = mipx.GetNV();
-		    Vec<3> ny = mipy.GetNV();
-                    
-		    value_type kernel_ = kernel.Evaluate(x, y, nx, ny)(0,0);
-          
-		    test_evaluator->CalcMatrix(feli, mipx, Trans(shapei), lh);
-		    trial_evaluator->CalcMatrix(felj, mipy, Trans(shapej), lh);
-                  
-		    double fac = mipx.GetMeasure()*mipy.GetMeasure()*common_vertex_weight[k];
-		    elmat += fac*kernel_* shapei * Trans(shapej);
-		  }
-                */
 
                 // vectorized version:
                 constexpr int BS = 128;
@@ -816,65 +615,7 @@ namespace ngbem
                         iry[k2] = IntegrationPoint(plamy(0), plamy(1), 0, 0);
                       }
 
-                    SIMD_IntegrationRule simd_irx(irx);
-                    SIMD_IntegrationRule simd_iry(iry);
-
-                    SIMD_MappedIntegrationRule<2,3> mirx(simd_irx, trafoi, lh);
-                    SIMD_MappedIntegrationRule<2,3> miry(simd_iry, trafoj, lh);
-
-                    /*
-                    FlatMatrix<SIMD<double>> mshapesi(feli.GetNDof()*test_evaluator->Dim(), mirx.Size(), lh);
-                    FlatMatrix<SIMD<value_type>> mshapesi_kern(feli.GetNDof()*test_evaluator->Dim(), mirx.Size(), lh);                    
-                    FlatMatrix<SIMD<double>> mshapesj(felj.GetNDof()*trial_evaluator->Dim(), miry.Size(), lh);
-
-                    test_evaluator->CalcMatrix(feli, mirx, mshapesi);
-                    trial_evaluator->CalcMatrix(felj, miry, mshapesj);
-
-                    for (int k2 = 0; k2 < mirx.Size(); k2++)
-                      {
-                        Vec<3,SIMD<double>> x = mirx[k2].Point();
-                        Vec<3,SIMD<double>> y = miry[k2].Point();
-                        Vec<3,SIMD<double>> nx = mirx[k2].GetNV();
-                        Vec<3,SIMD<double>> ny = miry[k2].GetNV();
-                    
-                        SIMD<value_type> kernel_ = kernel.Evaluate(x, y, nx, ny)(0);
-                        auto fac = mirx[k2].GetMeasure()*miry[k2].GetMeasure()*simd_irx[k2].Weight(); 
-                        mshapesi_kern.Col(k2) = fac*kernel_ * mshapesi.Col(k2);
-                      }
-
-                    AddABt (mshapesi_kern.Reshape(feli.GetNDof(), test_evaluator->Dim()*mirx.Size()),
-                            mshapesj.Reshape(felj.GetNDof(), trial_evaluator->Dim()*miry.Size()),
-                            elmat);
-                    */
-
-                      
-                    FlatMatrix<SIMD<double>> mshapesi(feli.GetNDof()*test_evaluator->Dim(), mirx.Size(), lh);
-                    FlatMatrix<SIMD<value_type>> mshapesi_kern(feli.GetNDof()*1, mirx.Size(), lh);
-                    FlatMatrix<SIMD<double>> mshapesj(felj.GetNDof()*trial_evaluator->Dim(), miry.Size(), lh);
-
-                    test_evaluator->CalcMatrix(feli, mirx, mshapesi);
-                    trial_evaluator->CalcMatrix(felj, miry, mshapesj);
-
-
-                    for (auto term : kernel.terms)
-                      {
-                        for (int k2 = 0; k2 < mirx.Size(); k2++)
-                          {
-                            Vec<3,SIMD<double>> x = mirx[k2].Point();
-                            Vec<3,SIMD<double>> y = miry[k2].Point();
-                            Vec<3,SIMD<double>> nx = mirx[k2].GetNV();
-                            Vec<3,SIMD<double>> ny = miry[k2].GetNV();
-                            
-                            SIMD<value_type> kernel_ = kernel.Evaluate(x, y, nx, ny)(term.kernel_comp); 
-                            auto fac = mirx[k2].GetMeasure()*miry[k2].GetMeasure()*simd_irx[k2].Weight(); 
-                            mshapesi_kern.Col(k2) = term.fac*fac*kernel_ * mshapesi.Col(k2).Slice(term.test_comp, test_evaluator->Dim());
-                          }
-                        
-                        AddABt (mshapesi_kern, 
-                                mshapesj.RowSlice(term.trial_comp, trial_evaluator->Dim()).AddSize(felj.GetNDof(), miry.Size()),
-                                elmat);
-                      }
-                    
+                    Integrate4D (irx, iry, feli, felj, trafoi, trafoj, elmat, lh);
                   }
 
 		break;
@@ -883,8 +624,6 @@ namespace ngbem
 	    case 0: //disjoint panels
 	      {
                 RegionTimer r(t_disjoint);    
-                  
-		elmat = 0.0;
                   
 		// shapes+geom out of loop, matrix multiplication
 		MappedIntegrationRule<2,3> mirx(irtrig, trafoi, lh);
@@ -895,50 +634,6 @@ namespace ngbem
                 
 		test_evaluator -> CalcMatrix(feli, mirx, Trans(shapesi), lh);
 		trial_evaluator-> CalcMatrix(felj, miry, Trans(shapesj), lh);
-
-
-                /*
-		FlatMatrix<value_type> kernel_ixiy(irtrig.Size(), irtrig.Size(), lh);
-		for (int ix = 0; ix < irtrig.Size(); ix++)
-		  {
-		    for (int iy = 0; iy < irtrig.Size(); iy++)
-		      {
-			Vec<3> x = mirx[ix].GetPoint();
-			Vec<3> y = miry[iy].GetPoint();
-
-                        Vec<3> nx = miry[iy].GetNV();
-                        Vec<3> ny = miry[iy].GetNV();
-                        value_type kernel_ = kernel.Evaluate(x, y, nx, ny)(0);
-                        
-			double fac = mirx[ix].GetWeight()*miry[iy].GetWeight();
-			kernel_ixiy(ix, iy) = fac*kernel_;
-		      }
-		  }
-
-
-		FlatMatrix<value_type> kernel_shapesj(irtrig.Size(), felj.GetNDof(), lh);
-                if (test_evaluator->Dim()==1)
-                  {
-                    kernel_shapesj = kernel_ixiy * Trans(shapesj);
-                    elmat += shapesi * kernel_shapesj;
-                  }
-                else
-                  {
-                    FlatMatrix<> shapesi1(feli.GetNDof(), irtrig.Size(), lh);
-                    FlatMatrix<> shapesj1(felj.GetNDof(), irtrig.Size(), lh);
-
-                    for (int k = 0; k < test_evaluator->Dim(); k++)
-                      {
-                        for (int j = 0; j < irtrig.Size(); j++)
-                          {
-                            shapesi1.Col(j) = shapesi.Col(test_evaluator->Dim()*j+k);
-                            shapesj1.Col(j) = shapesj.Col(test_evaluator->Dim()*j+k);
-                          }
-                        kernel_shapesj = kernel_ixiy * Trans(shapesj1);
-                        elmat += shapesi1 * kernel_shapesj;
-                      }
-                  }
-                */
 
                 for (auto term : kernel.terms)
                   {
@@ -973,8 +668,6 @@ namespace ngbem
                     kernel_shapesj = kernel_ixiy * Trans(shapesj1);
                     elmat += shapesi1 * kernel_shapesj;
                   }
-
-                
 		break;
 	      }
 	    default:
