@@ -386,6 +386,10 @@ namespace ngbem
 	j--;
       }
 
+    Vec<3> x,y,nx,ny;
+    constexpr int KERNEL_COMPS = decltype(kernel.Evaluate (x,y,nx,ny))::SIZE;
+
+      
     RegionTimer regloops(tloops);    
     for (int i = 0; i < patchi.Size(); i++) // test
       for (int j = 0; j < patchj.Size(); j++) // trial
@@ -512,7 +516,9 @@ namespace ngbem
                     test_evaluator->CalcMatrix(feli, mirx, mshapesi);
                     trial_evaluator->CalcMatrix(felj, miry, mshapesj);
 
+                    
 
+                    /*
                     for (auto term : kernel.terms)
                       {
                         for (int k2 = 0; k2 < mirx.Size(); k2++)
@@ -531,6 +537,30 @@ namespace ngbem
                                 mshapesj.RowSlice(term.trial_comp, trial_evaluator->Dim()).AddSize(felj.GetNDof(), miry.Size()),
                                 elmat);
                       }
+                    */
+                    FlatVector<Vec<KERNEL_COMPS, SIMD<value_type>>> kernel_values(mirx.Size(), lh);
+                    for (int k2 = 0; k2 < mirx.Size(); k2++)
+                      {
+                        Vec<3,SIMD<double>> x = mirx[k2].Point();
+                        Vec<3,SIMD<double>> y = miry[k2].Point();
+                        Vec<3,SIMD<double>> nx = mirx[k2].GetNV();
+                        Vec<3,SIMD<double>> ny = miry[k2].GetNV();
+                        kernel_values(k2) = kernel.Evaluate(x, y, nx, ny);
+                      }                        
+                    for (auto term : kernel.terms)
+                      {
+                        for (int k2 = 0; k2 < mirx.Size(); k2++)
+                          {
+                            SIMD<value_type> kernel_ = kernel_values(k2)(term.kernel_comp); 
+                            auto fac = mirx[k2].GetMeasure()*miry[k2].GetMeasure()*simd_irx[k2].Weight(); 
+                            mshapesi_kern.Col(k2) = term.fac*fac*kernel_ * mshapesi.Col(k2).Slice(term.test_comp, test_evaluator->Dim());
+                          }
+                        
+                        AddABt (mshapesi_kern, 
+                                mshapesj.RowSlice(term.trial_comp, trial_evaluator->Dim()).AddSize(felj.GetNDof(), miry.Size()),
+                                elmat);
+                      }
+                    
                   }
 
 
@@ -828,8 +858,6 @@ namespace ngbem
 
                     for (auto term : kernel.terms)
                       {
-                        *testout << "remote panel, term.fac = " << term.fac << ", kernelcomp = " << term.kernel_comp
-                                 << ", trial/test = " << term.trial_comp << term.test_comp << endl;
                         for (int k2 = 0; k2 < mirx.Size(); k2++)
                           {
                             Vec<3,SIMD<double>> x = mirx[k2].Point();
@@ -953,7 +981,6 @@ namespace ngbem
 	      throw Exception ("not possible");
 	    }
 
-          *testout << "norm 2lmat = " << L2Norm(elmat) << endl;
 	  for (int ii = 0; ii < dnumsi.Size(); ii++) // test
 	    for (int jj = 0; jj < dnumsj.Size(); jj++) // trial
 	      if(trialdofsinv[dnumsj[jj]] != -1 && testdofsinv[dnumsi[ii]] != -1)
