@@ -252,13 +252,13 @@ namespace ngbem
   };
 
 
-  /** HelmholtzSLkernel is the kernel for the double layer potential of 
+  /** HelmholtzDLkernel is the kernel for the double layer potential of 
       the Helmholtz equation $ -\Delta u - \kappa^2 u = 0, \; \kappa>0\,.$ */
   template <int DIM> class HelmholtzDLKernel;
 
-  /** HelmholtzSLkernel in 3D reads
+  /** HelmholtzDLkernel in 3D reads
       $$ \frac{\partial }{ \partial n_y} G(x-y) = \frac{1}{4\,\pi} \, \frac{e^{i\,\kappa\,|x-y|}}{|x-y|^3} \, 
-          \left( 1 - i\,\kappa\, | x-y| \right), 
+          \langle n(y), x-y\rangle \cdot \left( 1 - i\,\kappa\, | x-y| \right), 
           \quad x, y \in \mathbb R^3, \; x\not=y\,. $$ */
   template<>
   class HelmholtzDLKernel<3> 
@@ -392,6 +392,11 @@ namespace ngbem
 
   template <int D> class MaxwellDLKernel;
 
+  /** MaxwellDLkernel for 3D in matrix representation reads
+      $$  \left( \begin{array}{ccc} 0 & -\frac{\partial G_\kappa(x-y)}{\partial x_3} & \frac{\partial G_\kappa(x-y)}{\partial x_2} \\ \frac{\partial G_\kappa(x-y)}{\partial x_3} & 0 & -\frac{\partial G_\kappa(x-y)}{\partial x_1} \\ -\frac{\partial G_\kappa(x-y)}{\partial x_2} & \frac{\partial G_\kappa(x-y)}{\partial x_1} & 0 \end{array}\right)\,,$$ with 
+   $$ G_\kappa(x-y) = \frac{1}{4\,\pi} \, \frac{e^{i\,\kappa\,|x-y|}}{|x-y|^3} \, 
+          \langle n(y), x-y\rangle \cdot \left( 1 - i\,\kappa\, | x-y| \right), 
+          \quad x, y \in \mathbb R^3, \; x\not=y\,. $$ */
   template<>
   class MaxwellDLKernel<3> 
   {
@@ -406,15 +411,14 @@ namespace ngbem
     auto Evaluate (Vec<3,T> x, Vec<3,T> y, Vec<3,T> nx, Vec<3,T> ny) const
     {
       T norm = L2Norm(x-y);
-      T nxy = InnerProduct(ny, (x-y));
       auto kern = exp(Complex(0,kappa)*norm) / (4 * M_PI * norm*norm*norm)
-        * (Complex(1,0)*T(1.) - Complex(0,kappa)*norm) * (x-y);
+        * (Complex(0,kappa)*norm - Complex(1,0)*T(1.)) * (x-y);
       return kern;
     }
 
     Array<KernelTerm> terms =
       {
-        KernelTerm{ 1.0, 0, 1, 2},
+        KernelTerm{ 1.0, 0, 1, 2},  // factor, comp, trial, test
         KernelTerm{-1.0, 0, 2, 1},
         KernelTerm{ 1.0, 1, 2, 0},
         KernelTerm{-1.0, 1, 0, 2},
