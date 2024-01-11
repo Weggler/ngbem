@@ -260,16 +260,34 @@ namespace ngbem
         // compute all its blocks
         HeapReset hr(lh);    
         
-        // Test with vector
+        // Estimate spectral norm error
         Vector<value_type> x(trial_space->GetNDof()), y(test_space->GetNDof());
-        x = 1.;
-        y = dense * x;
-        
-        VFlatVector<value_type> x_base(x);
-        VFlatVector<value_type> y_base(y);
-        y_base -= (*hmatrix) * x_base;
+	VFlatVector<value_type> x_base(x), y_base(y);
+	x = 1.;
 
-	cout << "error " << L2Norm (y) << endl;
+	for (int i = 0; i < 30; i++) {
+	  x *= 1. / L2Norm(x);
+	  y = dense * x;	  
+	  y_base -= (*hmatrix) * x_base;
+	  y = Conj(y);
+	  x = Trans(dense) * y;
+	  hmatrix->MultTransAdd(-1., y_base, x_base);
+	  x = Conj(x);
+	}
+
+	// Get compression rate
+	auto & matList = hmatrix->GetMatList();
+	size_t nf_c = 0.;
+	for (int i = 0; i < matList.Size(); i++) {
+	  BEMBlock<value_type> & block = matList[i];
+	  if (block.IsNearField()) {
+	    nf_c += block.GetTrialDofs().Size() * block.GetTestDofs().Size();
+	  } else {
+	    nf_c += block.GetMat()->NZE();
+	  }
+	}
+										  	    
+	cout << "compression rate " << nf_c / ((double) test_space->GetNDof() * trial_space->GetNDof()) << "  2-norm error " << sqrt(L2Norm(x)) << endl;
       }
   }
 
@@ -300,19 +318,35 @@ namespace ngbem
         // compute all its blocks
         HeapReset hr(lh);    
         
-        // Test with vector
+        // Estimate spectral norm error
         Vector<value_type> x(trial_space->GetNDof()), y(test_space->GetNDof());
-        x = 1.;
-        y = dense * x;
-        
-        VFlatVector<value_type> x_base(x);
-        VFlatVector<value_type> y_base(y);
-        y_base -= (*hmatrix) * x_base;
+	VFlatVector<value_type> x_base(x), y_base(y);
+	x = 1.;
 
-	cout << "error " << L2Norm (y) << endl;
+	for (int i = 0; i < 30; i++) {
+	  x *= 1. / L2Norm(x);
+	  y = dense * x;	  
+	  y_base -= (*hmatrix) * x_base;
+	  y = Conj(y);
+	  x = Trans(dense) * y;
+	  hmatrix->MultTransAdd(-1., y_base, x_base);
+	  x = Conj(x);
+	}
+
+	// Get compression rate
+	auto & matList = hmatrix->GetMatList();
+	size_t nf_c = 0.;
+	for (int i = 0; i < matList.Size(); i++) {
+	  BEMBlock<value_type> & block = matList[i];
+	  if (block.IsNearField()) {
+	    nf_c += block.GetTrialDofs().Size() * block.GetTestDofs().Size();
+	  } else {
+	    nf_c += block.GetMat()->NZE();
+	  }
+	}
+										  	    
+	cout << "compression rate " << nf_c / ((double) test_space->GetNDof() * trial_space->GetNDof()) << "  2-norm error " << sqrt(L2Norm(x)) << endl;
       }
-
-
   }
 
   
@@ -895,9 +929,10 @@ namespace ngbem
 
         
         // Scale eps appropriately (see Bebendorf, Hierarchical Matrices  p. 126 & 135
-        double eps = 2. / 3. * param.eps / sqrt(xi.Size() * yj.Size());
+        //double eps = 2. / 3. * param.eps / sqrt(xi.Size() * yj.Size());
+	double eps = param.eps;
         // The Frobenius norm squared of the approximant U * V^H
-        double norm2 = 0.;
+        double norm2 = 0., norm2_V = 0., norm2_U = 0.;
         
         for (size_t k = 0; k < p; k++) {
           // Get the ik-th row
@@ -928,12 +963,13 @@ namespace ngbem
           }
           
           // Scale with inverse of the pivot entry at (ik, jk)
-          Vmax.Row(k) *= 1.0 / Vmax(k, jk);
+          Vmax.Row(k) *= sqrt(vkj) / Vmax(k, jk);
           
           // Get the jk-th column
           GetCol(jk, Umax.Col(k), comp);
           tmatvec2.Start();
           Umax.Col(k) -= Umax.Cols(0,k) * Vmax.Col(jk).Range(0,k);
+	  Umax.Col(k) *= 1. / sqrt(vkj);
           tmatvec2.Stop();
           tmatvec2.AddFlops (k * Umax.Height());          
           
@@ -950,18 +986,22 @@ namespace ngbem
           // Update the Frobenius norm
           double norm_k = L2Norm(Vmax.Row(k)) * L2Norm(Umax.Col(k));
           norm2 += norm_k * norm_k;
-          /*
-            // how it was:
-          for (int l = 0; l < k; l++)
-            norm2 += 2. * std::real(InnerProduct(Vmax.Row(k), Vmax.Row(l)) *
-                                    InnerProduct(Umax.Col(k), Umax.Col(l)));
-          */
+          
+	  // how it was:
+          // for (int l = 0; l < k; l++)
+          //   norm2 += 2. * std::real(InnerProduct(Vmax.Row(k), Vmax.Row(l)) *
+          //                           InnerProduct(Umax.Col(k), Umax.Col(l)));
 
           // the correct complex inner product:
           for (int l = 0; l < k; l++)
-            norm2 += 2. * std::real(InnerProduct(Vmax.Row(k), Conj(Vmax.Row(l))) *
+            norm2 += 2. * std::real(Conj(InnerProduct(Vmax.Row(k), Conj(Vmax.Row(l)))) *
                                     InnerProduct(Umax.Col(k), Conj(Umax.Col(l))));
 
+	  // // Estimate the spectral norm instead of Frobenius norm (likely overestimating)
+	  // double norm_Vk = L2Norm(Vmax.Row(k)), norm_Uk = L2Norm(Umax.Col(k));	  
+	  // norm2_V += norm_Vk * norm_Vk;
+	  // norm2_U += norm_Uk * norm_Uk;
+	  
           tnorm.Stop();
           //  *testout << "k = " << k << "norm2 = " << norm2 << endl;
           // *testout << "norm2 = " << norm2 << " =?= " << L2Norm2(Vmax.Rows(k+1))*L2Norm2(Umax.Cols(k+1)) << endl;
@@ -969,7 +1009,12 @@ namespace ngbem
           // New pivots become old pivots
           ikm1 = ik;
           jkm1 = jk;
-          
+
+	  // Stop if the updates are separately relatively small
+	  // if (norm_Vk < eps * sqrt(norm2_V) && norm_Uk < eps * sqrt(norm2_U)) {
+	  //   rank = k + 1;
+	  //   break;
+	  // }
           // Stop if the new update is relatively small, see Bebendorf pp. 141-142
           if (norm_k < eps * sqrt(norm2)) {
 	    rank = k + 1;

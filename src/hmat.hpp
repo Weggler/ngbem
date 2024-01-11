@@ -142,11 +142,12 @@ namespace ngbem
     virtual void MultAdd (Complex s, const BaseVector & x, BaseVector & y) const override;
     virtual void MultTransAdd (Complex s, const BaseVector & x, BaseVector & y) const override;
 
-    bool IsComplex() const override { return false; }
+    bool IsComplex() const override { return std::is_same<T,Complex>(); }
 
     virtual int VHeight() const override { return A.Height(); }
     virtual int VWidth() const override { return Bt.Width(); }
     virtual int VRank() const { return rank; }
+    virtual size_t NZE () const override {return A.Height() * A.Width() + Bt.Height() * Bt.Width(); }
 
     virtual AutoVector CreateRowVector () const override;
     virtual AutoVector CreateColVector () const override;

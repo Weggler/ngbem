@@ -490,18 +490,27 @@ namespace ngbem
   template <typename T>    
   void BEMBlock<T> :: MultTransAdd (T s, const BaseVector & x, BaseVector & y) const
   {
-    // Get only vector entries related to the index sets
-    throw Exception("todo: allocate vectors in BEMBlock::MultTransAdd");
-    FlatVector<T> xp, yp;
-    x.GetIndirect(trialdofs, xp);
-    y.GetIndirect(testdofs, yp);
+    // // Get only vector entries related to the index sets
+    // throw Exception("todo: allocate vectors in BEMBlock::MultTransAdd");
+    // FlatVector<T> xp, yp;
+    // x.GetIndirect(trialdofs, xp);
+    // y.GetIndirect(testdofs, yp);
     
-    // We something like BaseVectorFromVector
-    S_BaseVectorPtr<T> xp_base(trialdofs.Size(), x.EntrySize(), xp.Data());
-    S_BaseVectorPtr<T> yp_base(testdofs.Size(), y.EntrySize(), yp.Data());
-    matrix->MultTransAdd(s, xp_base, yp_base);
+    // // We something like BaseVectorFromVector
+    // S_BaseVectorPtr<T> xp_base(trialdofs.Size(), x.EntrySize(), xp.Data());
+    // S_BaseVectorPtr<T> yp_base(testdofs.Size(), y.EntrySize(), yp.Data());
+    // matrix->MultTransAdd(s, xp_base, yp_base);
 
-    y.SetIndirect(testdofs, yp);
+    // y.SetIndirect(testdofs, yp);
+    // Get only vector entries related to the index sets
+    
+    VVector<T> xp(testdofs.Size()), yp(trialdofs.Size());
+    x.GetIndirect(testdofs, xp.FV());
+
+    yp = 0.;
+    matrix->MultTransAdd(s, xp, yp);
+    
+    y.AddIndirect(trialdofs, yp.FV(), /* useatomic= */ true); 
   }
 
   template <typename T>
@@ -632,8 +641,10 @@ namespace ngbem
   template <typename T>  
   void HMatrix<T> :: MultTransAdd (T s, const BaseVector & x, BaseVector & y) const
   {
-    for (int i = 0; i < matList.Size(); i++)
+    ParallelFor (matList.Size(), [&](size_t i)
+   { 
       matList[i].MultTransAdd(s, x, y);
+    }, TasksPerThread(4));
   }
 
   

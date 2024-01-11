@@ -301,9 +301,11 @@ namespace ngbem
     auto Evaluate (Vec<3,T> x, Vec<3,T> y, Vec<3,T> nx, Vec<3,T> ny) const
     {
       T norm = L2Norm(x-y);
+      T nxny = InnerProduct(nx, ny);
       auto kern = exp(Complex(0,kappa)*norm) / (4 * M_PI * norm);
+      auto kernnxny = -kappa * kappa * kern * nxny;
       // return kern;
-      return Vec<1,decltype(kern)> (kern);
+      return Vec<2,decltype(kern)> ({kern, kernnxny});
     }
     
     Array<KernelTerm> terms =
@@ -311,6 +313,7 @@ namespace ngbem
         KernelTerm{1.0, 0, 0, 0},
         KernelTerm{1.0, 0, 1, 1},
         KernelTerm{1.0, 0, 2, 2},
+	KernelTerm{1.0, 1, 3, 3},
       };
   };
 

@@ -106,6 +106,63 @@ namespace ngbem
     }
   };
 
+  // rotated + scalar
+  class DiffOpHelmholtz : public DiffOp<DiffOpHelmholtz>
+  {
+  public:
+    enum { DIM = 1 };
+    enum { DIM_SPACE = 3 };
+    enum { DIM_ELEMENT = 2 };
+    enum { DIM_DMAT = 4 };
+    enum { DIFFORDER = 1 };
+
+    static string Name() { return "Helmholtz"; }
+
+    static const ScalarFiniteElement<2> & Cast (const FiniteElement & fel) 
+    { return static_cast<const ScalarFiniteElement<2>&> (fel); }
+
+    ///
+    // mat is 4 x ndof
+    template <typename AFEL, typename MIP, typename MAT>
+    static void GenerateMatrix (const AFEL & fel, const MIP & mip,
+				MAT & mat, LocalHeap & lh)
+    {
+      // mat.AddSize(4, fel.GetNDof()) = 0.0;
+      auto matvec = mat.Rows(0,3);
+      Cast(fel).CalcMappedDShape (mip, Trans(matvec));
+      for (int i = 0; i < fel.GetNDof(); i++)
+        {
+          Vec<3> grad = matvec.Col(i);
+          matvec.Col(i) = Cross(mip.GetNV(), grad);
+        }
+      // *testout << "mat1 = " << mat << endl;
+      // mat.AddSize(4, fel.GetNDof()) = 0.0;
+      Cast(fel).CalcShape(mip.IP(), mat.Row(3));
+      // *testout << "scalar mat = " << endl << mat << mat;
+      // *testout << "mat2 = " << mat << endl;      
+    }
+
+    /// mat is (ndof*4) x mip.Size()
+    static void GenerateMatrixSIMDIR (const FiniteElement & fel,
+                                      const SIMD_BaseMappedIntegrationRule & mir,
+                                      BareSliceMatrix<SIMD<double>> mat)
+    {
+      Cast(fel).CalcMappedDShape (mir, mat.Rows(0, 3*fel.GetNDof()));
+
+      for (int j = 0; j < mir.Size(); j++)
+        {
+          Vec<3,SIMD<double>> nv = static_cast<const SIMD<ngfem::MappedIntegrationPoint<3,3>>&>(mir[j]).GetNV();
+	  for (int i = fel.GetNDof()-1; i >= 0; i--)
+            {
+	      Vec<3,SIMD<double>> grad = mat.Col(j).Range(3*i, 3*i+3);
+              mat.Col(j).Range(4*i,4*i+3) = Cross(nv, grad);
+            }
+        }
+      // *testout << "simd mat1 = " << endl << mat.AddSize(4*fel.GetNDof(), mir.Size()) << endl;            
+      // mat.AddSize(4*fel.GetNDof(), mir.Size()) = SIMD<double>(0.0);
+      Cast(fel).CalcShape (mir.IR(), mat.RowSlice(3,4));
+    }
+  };
 
 
 
