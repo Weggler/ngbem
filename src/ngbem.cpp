@@ -957,12 +957,11 @@ namespace ngbem
                                     InnerProduct(Umax.Col(k), Umax.Col(l)));
           */
 
-          /*
           // the correct complex inner product:
           for (int l = 0; l < k; l++)
             norm2 += 2. * std::real(InnerProduct(Vmax.Row(k), Conj(Vmax.Row(l))) *
                                     InnerProduct(Umax.Col(k), Conj(Umax.Col(l))));
-          */
+
           tnorm.Stop();
           //  *testout << "k = " << k << "norm2 = " << norm2 << endl;
           // *testout << "norm2 = " << norm2 << " =?= " << L2Norm2(Vmax.Rows(k+1))*L2Norm2(Umax.Cols(k+1)) << endl;
