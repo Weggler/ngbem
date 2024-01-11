@@ -37,8 +37,10 @@ nbclient.exceptions.CellTimeoutError: A cell timed out while it was being execut
 The message was: Cell execution timed out.
 Here is a preview of the cell contents:
 -------------------
-['pre = BilinearForm(u*v*ds, diagonal=True).Assemble().mat.Inverse()', 'with TaskManager(): # pajetrace=1000*1000*1000):', '    V=SingleLayerPotentialOperator(fesL2, intorder=12, leafsize=40, eta=3., eps=1e-11, ', '                                    method="svd", testhmatrix=False)', '']
-...
-['    ', '    rhs = ( (Id.mat+K.mat)*u0.vec).Evaluate()', '    CG(mat = V.mat, pre=pre, rhs = rhs, sol=u1.vec, tol=1e-8, maxsteps=200, initialize=False, printrates=True)', '', 'Draw (u1, mesh, draw_vol=False, order=3);']
+j = GridFunction(fesHCurl) # note: we actually solve for coefficients for FE space H(div_Gamma)
+pre = BilinearForm(uHCurl.Trace()*vHCurl.Trace()*ds).Assemble().mat.Inverse(freedofs=fesHCurl.FreeDofs()) # to be changed
+with TaskManager(): # pajetrace=1000*1000*1000):
+    V = MaxwellSingleLayerPotentialOperator(fesHCurl, kappa, intorder=12, leafsize=40, eta=3., eps=1e-4, method="svd", testhmatrix=False)
+    CG(mat = V.mat, pre=pre, rhs = rhs.vec, sol=j.vec, tol=1e-8, maxsteps=500, initialize=False, printrates=False)
 -------------------
 
