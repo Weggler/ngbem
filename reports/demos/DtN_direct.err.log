@@ -1,44 +1,43 @@
 Traceback (most recent call last):
-  File "/home/lw/.local/lib/python3.11/site-packages/nbclient/client.py", line 778, in _async_poll_for_reply
-    msg = await ensure_async(self.kc.shell_channel.get_msg(timeout=new_timeout))
-          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/lw/.local/lib/python3.11/site-packages/jupyter_core/utils/__init__.py", line 189, in ensure_async
-    result = await obj
-             ^^^^^^^^^
-  File "/home/lw/.local/lib/python3.11/site-packages/jupyter_client/channels.py", line 315, in get_msg
-    raise Empty
-_queue.Empty
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "/home/lw/.local/lib/python3.11/site-packages/jupyter_cache/executors/utils.py", line 58, in single_nb_execution
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/jupyter_cache/executors/utils.py", line 58, in single_nb_execution
     executenb(
-  File "/home/lw/.local/lib/python3.11/site-packages/nbclient/client.py", line 1305, in execute
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/nbclient/client.py", line 1305, in execute
     return NotebookClient(nb=nb, resources=resources, km=km, **kwargs).execute()
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/lw/.local/lib/python3.11/site-packages/jupyter_core/utils/__init__.py", line 173, in wrapped
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/jupyter_core/utils/__init__.py", line 173, in wrapped
     return loop.run_until_complete(inner)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/lib/python3.11/asyncio/base_events.py", line 653, in run_until_complete
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/base_events.py", line 684, in run_until_complete
     return future.result()
            ^^^^^^^^^^^^^^^
-  File "/home/lw/.local/lib/python3.11/site-packages/nbclient/client.py", line 705, in async_execute
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/nbclient/client.py", line 705, in async_execute
     await self.async_execute_cell(
-  File "/home/lw/.local/lib/python3.11/site-packages/nbclient/client.py", line 1001, in async_execute_cell
-    exec_reply = await self.task_poll_for_reply
-                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/lw/.local/lib/python3.11/site-packages/nbclient/client.py", line 802, in _async_poll_for_reply
-    error_on_timeout_execute_reply = await self._async_handle_timeout(timeout, cell)
-                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/lw/.local/lib/python3.11/site-packages/nbclient/client.py", line 852, in _async_handle_timeout
-    raise CellTimeoutError.error_from_timeout_and_cell(
-nbclient.exceptions.CellTimeoutError: A cell timed out while it was being executed, after 30 seconds.
-The message was: Cell execution timed out.
-Here is a preview of the cell contents:
--------------------
-['pre = BilinearForm(u*v*ds, diagonal=True).Assemble().mat.Inverse()', 'with TaskManager(): # pajetrace=1000*1000*1000):', '    V=SingleLayerPotentialOperator(fesL2, intorder=12, leafsize=40, eta=3., eps=1e-11, ', '                                    method="svd", testhmatrix=False)', '']
-...
-['    ', '    rhs = ( (Id.mat+K.mat)*u0.vec).Evaluate()', '    CG(mat = V.mat, pre=pre, rhs = rhs, sol=u1.vec, tol=1e-8, maxsteps=200, initialize=False, printrates=True)', '', 'Draw (u1, mesh, draw_vol=False, order=3);']
--------------------
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/nbclient/client.py", line 1058, in async_execute_cell
+    await self._check_raise_for_error(cell, cell_index, exec_reply)
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/nbclient/client.py", line 914, in _check_raise_for_error
+    raise CellExecutionError.from_cell_and_msg(cell, exec_reply_content)
+nbclient.exceptions.CellExecutionError: An error occurred while executing the following cell:
+------------------
+import sys
+sys.path.append('../build')
+
+from netgen.occ import *
+from ngsolve import *
+from ngsolve.webgui import Draw
+from libbem import *
+from ngsolve import Projector, Preconditioner
+from ngsolve.krylovspace import CG
+------------------
+
+
+[0;31m---------------------------------------------------------------------------[0m
+[0;31mModuleNotFoundError[0m                       Traceback (most recent call last)
+Cell [0;32mIn[1], line 7[0m
+[1;32m      5[0m [38;5;28;01mfrom[39;00m [38;5;21;01mngsolve[39;00m [38;5;28;01mimport[39;00m [38;5;241m*[39m
+[1;32m      6[0m [38;5;28;01mfrom[39;00m [38;5;21;01mngsolve[39;00m[38;5;21;01m.[39;00m[38;5;21;01mwebgui[39;00m [38;5;28;01mimport[39;00m Draw
+[0;32m----> 7[0m [38;5;28;01mfrom[39;00m [38;5;21;01mlibbem[39;00m [38;5;28;01mimport[39;00m [38;5;241m*[39m
+[1;32m      8[0m [38;5;28;01mfrom[39;00m [38;5;21;01mngsolve[39;00m [38;5;28;01mimport[39;00m Projector, Preconditioner
+[1;32m      9[0m [38;5;28;01mfrom[39;00m [38;5;21;01mngsolve[39;00m[38;5;21;01m.[39;00m[38;5;21;01mkrylovspace[39;00m [38;5;28;01mimport[39;00m CG
+
+[0;31mModuleNotFoundError[0m: No module named 'libbem'
 
