@@ -234,7 +234,7 @@ namespace ngbem
   
   
 
-
+  /*
   template <typename KERNEL>
   GenericIntegralOperator<KERNEL> ::
   GenericIntegralOperator(shared_ptr<FESpace> _trial_space, shared_ptr<FESpace> _test_space,
@@ -272,6 +272,7 @@ namespace ngbem
 	cout << "error " << L2Norm (y) << endl;
       }
   }
+  */
 
 
   template <typename KERNEL>

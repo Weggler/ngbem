@@ -114,14 +114,19 @@ namespace ngbem
     
   public:
     GenericIntegralOperator(shared_ptr<FESpace> _trial_space, shared_ptr<FESpace> _test_space,
-                            KERNEL _kernel,
-                            struct BEMParameters param);
-
-    GenericIntegralOperator(shared_ptr<FESpace> _trial_space, shared_ptr<FESpace> _test_space,
                             shared_ptr<DifferentialOperator> _trial_evaluator, 
                             shared_ptr<DifferentialOperator> _test_evaluator, 
                             KERNEL _kernel,
-                            struct BEMParameters param);
+                            struct BEMParameters _param);
+
+    GenericIntegralOperator(shared_ptr<FESpace> _trial_space, shared_ptr<FESpace> _test_space,
+                            KERNEL _kernel,
+                            struct BEMParameters _param)
+      : GenericIntegralOperator (_trial_space, _test_space,
+                                 _trial_space -> GetEvaluator(BND),
+                                 _test_space -> GetEvaluator(BND),
+                                 _kernel, _param) { } 
+
 
     void CalcBlockMatrix(FlatMatrix<value_type> matrix, FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, 
 			 LocalHeap &lh) const override;
