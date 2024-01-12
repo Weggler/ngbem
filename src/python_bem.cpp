@@ -145,8 +145,12 @@ PYBIND11_MODULE(libbem, m)
                                                   string method, bool testhmatrix) -> shared_ptr<IntegralOperator<Complex>>
   {
     BEMParameters param({intorder, leafsize, eta, eps, method, testhmatrix});
+    //return make_unique<GenericIntegralOperator<MaxwellDLKernel<3>>>(space, space,
+    //                                                                make_shared<T_DifferentialOperator<DiffOpRotatedTrace>>(),
+    //                                                                make_shared<T_DifferentialOperator<DiffOpRotatedTrace>>(), 
+    //                                                                MaxwellDLKernel<3>(kappa), param);
     return make_unique<GenericIntegralOperator<MaxwellDLKernel<3>>>(space, space,
-                                                                    make_shared<T_DifferentialOperator<DiffOpRotatedTrace>>(),
+                                                                    space->GetEvaluator(BND),
                                                                     make_shared<T_DifferentialOperator<DiffOpRotatedTrace>>(), 
                                                                     MaxwellDLKernel<3>(kappa), param);
     
