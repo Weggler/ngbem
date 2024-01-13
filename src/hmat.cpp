@@ -610,17 +610,6 @@ namespace ngbem
     HMatrix_help(*row_ct, *col_ct, 0, 0, eta, matList);
   }
 
-  template <typename T>  
-  size_t HMatrix<T> ::NZE() const
-  {
-    size_t sum = 0;
-    for (auto & block : matList)
-      sum += block.GetMat()->NZE();
-    return sum;
-  }
-
-
-  
   template <typename T>
   void HMatrix<T> ::Mult (const BaseVector & x, BaseVector & y) const
   {

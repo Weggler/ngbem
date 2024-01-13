@@ -147,7 +147,7 @@ namespace ngbem
     virtual int VHeight() const override { return A.Height(); }
     virtual int VWidth() const override { return Bt.Width(); }
     virtual int VRank() const { return rank; }
-    virtual size_t NZE() const override { return rank * (A.Height()+Bt.Width()); }
+
     virtual AutoVector CreateRowVector () const override;
     virtual AutoVector CreateColVector () const override;
   };
@@ -183,7 +183,6 @@ namespace ngbem
     Array<BEMBlock<T>> & GetMatList() { return matList; }
 
     /** Matrix-vector-multiply-add: \f$y = y + s A x \f$. */
-    size_t NZE() const override;
     virtual void Mult (const BaseVector & x, BaseVector & y) const override;    
     virtual void MultAdd (T s, const BaseVector & x, BaseVector & y) const override;
     virtual void MultTransAdd (T s, const BaseVector & x, BaseVector & y) const override;
