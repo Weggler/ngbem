@@ -77,6 +77,8 @@ namespace ngbem
     virtual unique_ptr<LowRankMatrix<T>>
     CalcFarFieldBlock(FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs,
                       LocalHeap &lh) const;
+
+    virtual shared_ptr<CoefficientFunction> GetPotential(shared_ptr<GridFunction> gf) const = 0;
   };
 
 
@@ -134,9 +136,40 @@ namespace ngbem
     unique_ptr<LowRankMatrix<value_type>>
     CalcFarFieldBlock(FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs,
                       LocalHeap &lh) const override;
+
+    virtual shared_ptr<CoefficientFunction> GetPotential(shared_ptr<GridFunction> gf) const override;
   };
 
 
+
+  template  <typename KERNEL>
+  class PotentialCF : public CoefficientFunctionNoDerivative
+  {
+    shared_ptr<GridFunction> gf;
+    shared_ptr<DifferentialOperator> evaluator;
+    KERNEL kernel;
+    BEMParameters param;
+  public:
+    PotentialCF (shared_ptr<GridFunction> _gf,
+                 shared_ptr<DifferentialOperator> _evaluator,
+                 KERNEL _kernel, BEMParameters _param);
+
+    double Evaluate (const BaseMappedIntegrationPoint & ip) const
+    { throw Exception("eval not implemented"); }
+
+    virtual void Evaluate(const BaseMappedIntegrationPoint & ip,
+			  FlatVector<> result) const
+    { T_Evaluate(ip, result); }
+    virtual void Evaluate(const BaseMappedIntegrationPoint & ip,
+			  FlatVector<Complex> result) const
+    { T_Evaluate(ip, result); }
+
+  private:
+    template <typename T>
+    void T_Evaluate(const BaseMappedIntegrationPoint & ip,
+                    FlatVector<T> result) const;
+  };
+  
 
   struct KernelTerm
   {

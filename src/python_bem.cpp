@@ -15,9 +15,11 @@ PYBIND11_MODULE(libbem, m)
 
   py::class_<IntegralOperator<double>, shared_ptr<IntegralOperator<double>>> (m, "IntegralOperator")
     .def_property_readonly("mat", &IntegralOperator<double>::GetMatrix)
+    .def("GetPotential", &IntegralOperator<double>::GetPotential)
     ;
   py::class_<IntegralOperator<Complex>, shared_ptr<IntegralOperator<Complex>>> (m, "IntegralOperatorC")
     .def_property_readonly("mat", &IntegralOperator<Complex>::GetMatrix)
+    .def("GetPotential", &IntegralOperator<Complex>::GetPotential)    
     ;
 
 

@@ -1102,6 +1102,72 @@ namespace ngbem
   }
 
   
+  template <typename KERNEL>
+  shared_ptr<CoefficientFunction> GenericIntegralOperator<KERNEL> ::
+  GetPotential(shared_ptr<GridFunction> gf) const
+  {
+    return  make_shared<PotentialCF<KERNEL>> (gf, trial_evaluator,
+                                              kernel, param);
+  }
+
+
+  template <typename KERNEL>
+  PotentialCF<KERNEL> ::
+  PotentialCF (shared_ptr<GridFunction> _gf, shared_ptr<DifferentialOperator> _evaluator,
+               KERNEL _kernel, BEMParameters _param)
+    : CoefficientFunctionNoDerivative (_evaluator->Dim(), std::is_same<typename KERNEL::value_type,Complex>()),
+      gf(_gf), evaluator(_evaluator), kernel(_kernel), param(_param)
+  {
+    ;
+  }
+  
+  template <typename KERNEL> template <typename T>
+  void PotentialCF<KERNEL> :: T_Evaluate(const BaseMappedIntegrationPoint & mip,
+                                         FlatVector<T> result) const
+  {
+    LocalHeapMem<100000> lh("Potential::Eval");
+    auto space = this->gf->GetFESpace();
+    auto mesh = space->GetMeshAccess();
+    
+    result = T(0.0);
+    auto & mip23 = dynamic_cast<const MappedIntegrationPoint<2,3>&>(mip);
+    if constexpr (std::is_same<typename KERNEL::value_type,T>())
+      for (size_t i = 0; i < mesh->GetNSE(); i++)
+        {
+          HeapReset hr(lh);
+          ElementId ei(BND, i);
+          
+          const FiniteElement &fel = space->GetFE(ei, lh);
+          const ElementTransformation &trafo = mesh->GetTrafo(ei, lh);
+          
+          Array<DofId> dnums(fel.GetNDof(), lh);
+          space->GetDofNrs(ei, dnums);
+          FlatVector<T> elvec(fel.GetNDof(), lh);
+          gf->GetElementVector(dnums, elvec);
+          
+          IntegrationRule ir(fel.ElementType(), param.intorder);
+          MappedIntegrationRule<2,3> mir(ir, trafo, lh);
+          FlatMatrix<T> vals(ir.Size(), evaluator->Dim(), lh);
+          
+          evaluator->Apply (fel, mir, elvec, vals, lh);
+          
+          for (int j = 0; j < ir.Size(); j++)
+            {
+              Vec<3> x = mir[j].GetPoint();
+              Vec<3> y = mip23.GetPoint();
+              
+              Vec<3> nx = mir[j].GetNV();
+              Vec<3> ny = mip23.GetNV();
+              
+              for (auto term : kernel.terms)
+                {
+                  auto kernel_ = kernel.Evaluate(x, y, nx, ny)(term.kernel_comp);
+                  result(term.test_comp) += mir[j].GetWeight()*kernel_ * vals(j, term.trial_comp);
+                }
+            }
+        }
+  }
+  
   template class GenericIntegralOperator<LaplaceSLKernel<3>>;
   template class GenericIntegralOperator<LaplaceDLKernel<3>>;
   template class GenericIntegralOperator<LaplaceHSKernel<3>>;
