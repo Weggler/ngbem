@@ -154,20 +154,41 @@ namespace ngbem
                  shared_ptr<DifferentialOperator> _evaluator,
                  KERNEL _kernel, BEMParameters _param);
 
-    double Evaluate (const BaseMappedIntegrationPoint & ip) const
+    double Evaluate (const BaseMappedIntegrationPoint & ip) const override
     { throw Exception("eval not implemented"); }
 
     virtual void Evaluate(const BaseMappedIntegrationPoint & ip,
-			  FlatVector<> result) const
+			  FlatVector<> result) const override
     { T_Evaluate(ip, result); }
     virtual void Evaluate(const BaseMappedIntegrationPoint & ip,
-			  FlatVector<Complex> result) const
+			  FlatVector<Complex> result) const override
     { T_Evaluate(ip, result); }
 
+    virtual void Evaluate(const BaseMappedIntegrationRule & ir,
+			  BareSliceMatrix<> result) const override
+    { T_Evaluate(ir, result); }
+    virtual void Evaluate(const BaseMappedIntegrationRule & ir,
+			  BareSliceMatrix<Complex> result) const override
+    { T_Evaluate(ir, result); }
+
+    virtual void Evaluate (const SIMD_BaseMappedIntegrationRule & ir,
+                           BareSliceMatrix<SIMD<double>> result) const override
+    { T_Evaluate(ir, result); }
+    
+    virtual void Evaluate (const SIMD_BaseMappedIntegrationRule & ir,
+                           BareSliceMatrix<SIMD<Complex>> result) const override
+    { T_Evaluate(ir, result); }
+    
   private:
     template <typename T>
     void T_Evaluate(const BaseMappedIntegrationPoint & ip,
                     FlatVector<T> result) const;
+    template <typename T>
+    void T_Evaluate(const BaseMappedIntegrationRule & ir,
+                    BareSliceMatrix<T> result) const;
+    template <typename T>
+    void T_Evaluate(const SIMD_BaseMappedIntegrationRule & ir,
+                    BareSliceMatrix<SIMD<T>> result) const;
   };
   
 
