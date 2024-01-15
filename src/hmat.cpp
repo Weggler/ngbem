@@ -490,6 +490,15 @@ namespace ngbem
   template <typename T>    
   void BEMBlock<T> :: MultTransAdd (T s, const BaseVector & x, BaseVector & y) const
   {
+    VVector<T> xp(testdofs.Size()), yp(trialdofs.Size());
+    x.GetIndirect(testdofs, xp.FV());
+    
+    matrix->MultTrans(xp, yp);
+    yp.FV() *= s;
+    
+    y.AddIndirect(trialdofs, yp.FV(), /* useatomic= */ true); 
+
+    /*
     // Get only vector entries related to the index sets
     throw Exception("todo: allocate vectors in BEMBlock::MultTransAdd");
     FlatVector<T> xp, yp;
@@ -502,6 +511,7 @@ namespace ngbem
     matrix->MultTransAdd(s, xp_base, yp_base);
 
     y.SetIndirect(testdofs, yp);
+    */
   }
 
   template <typename T>
@@ -616,6 +626,14 @@ namespace ngbem
     y = 0.0;
     MultAdd (T(1.0), x, y);
   }
+
+  template <typename T>
+  void HMatrix<T> ::MultTrans (const BaseVector & x, BaseVector & y) const
+  {
+    y = 0.0;
+    MultTransAdd (T(1.0), x, y);
+  }
+  
   
   template <typename T>  
   void HMatrix<T> :: MultAdd (T s, const BaseVector & x, BaseVector & y) const
