@@ -1138,6 +1138,7 @@ namespace ngbem
         {
           HeapReset hr(lh);
           ElementId ei(BND, i);
+          if (!space->DefinedOn(ei)) continue;
           
           const FiniteElement &fel = space->GetFE(ei, lh);
           const ElementTransformation &trafo = mesh->GetTrafo(ei, lh);
@@ -1193,10 +1194,11 @@ namespace ngbem
             {
               HeapReset hr(lh);
               ElementId ei(BND, i);
+              if (!space->DefinedOn(ei)) continue;
               
               const FiniteElement &fel = space->GetFE(ei, lh);
               const ElementTransformation &trafo = mesh->GetTrafo(ei, lh);
-              
+
               Array<DofId> dnums(fel.GetNDof(), lh);
               space->GetDofNrs(ei, dnums);
               FlatVector<T> elvec(fel.GetNDof(), lh);
