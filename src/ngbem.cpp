@@ -683,7 +683,7 @@ namespace ngbem
                             Vec<3> x = mirx[ix].GetPoint();
                             Vec<3> y = miry[iy].GetPoint();
                             
-                            Vec<3> nx = miry[iy].GetNV();
+                            Vec<3> nx = mirx[ix].GetNV();
                             Vec<3> ny = miry[iy].GetNV();
                             value_type kernel_ = kernel.Evaluate(x, y, nx, ny)(term.kernel_comp);
                             
@@ -820,11 +820,8 @@ namespace ngbem
         if (mesh == mesh2)
           for (auto v : mesh->GetElement(ej).Vertices())
             if (test_vertices.Test(v))
-              throw Exception("far field block must not have common vertices");              
-        
-        FiniteElement &felj = trial_space->GetFE(ej, lh);
+              throw Exception("far field block must not have common vertices");                     
         ElementTransformation &trafoj = mesh->GetTrafo(ej, lh);
-
         MappedIntegrationRule<2,3> miry(irtrig, trafoj, lh);
             
         for (int iy = 0; iy < irtrig.Size(); iy++)
