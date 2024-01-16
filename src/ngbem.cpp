@@ -1008,8 +1008,8 @@ namespace ngbem
           ikm1 = ik;
           jkm1 = jk;
 
-	  // Stop if the updates are separately relatively small
-	  // if (norm_Vk < eps * sqrt(norm2_V) && norm_Uk < eps * sqrt(norm2_U)) {
+	  // // Stop if the updates are separately relatively small
+	  // if (norm_Vk < sqrt(eps) * sqrt(norm2_V) && norm_Uk < sqrt(eps) * sqrt(norm2_U)) {
 	  //   rank = k + 1;
 	  //   break;
 	  // }
