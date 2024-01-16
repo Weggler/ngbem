@@ -146,8 +146,9 @@ namespace ngbem
 
     virtual int VHeight() const override { return A.Height(); }
     virtual int VWidth() const override { return Bt.Width(); }
-    virtual int VRank() const { return rank; }
-
+    virtual size_t NZE() const override { return rank*(A.Height()+Bt.Width()); }
+    int VRank() const { return rank; }
+    
     virtual AutoVector CreateRowVector () const override;
     virtual AutoVector CreateColVector () const override;
   };
@@ -191,7 +192,7 @@ namespace ngbem
 
     virtual int VHeight() const override { return height_vol_dof; }
     virtual int VWidth() const override { return width_vol_dof; }
-    
+    virtual size_t NZE() const override;
     virtual AutoVector CreateRowVector () const override;
     virtual AutoVector CreateColVector () const override;
 

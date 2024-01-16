@@ -621,6 +621,15 @@ namespace ngbem
   }
 
   template <typename T>
+  size_t HMatrix<T> :: NZE() const
+  {
+    size_t nze = 0;
+    for (auto & mat : matList)
+      nze += mat.GetMat()->NZE();
+    return nze;
+  }
+  
+  template <typename T>
   void HMatrix<T> ::Mult (const BaseVector & x, BaseVector & y) const
   {
     y = 0.0;
