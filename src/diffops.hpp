@@ -212,7 +212,7 @@ namespace ngbem
       Cast(fel).CalcMappedShape (mir, mat.Rows(0, 3*fel.GetNDof()));
       for (int j = 0; j < mir.Size(); j++)
         {
-          Vec<3,SIMD<double>> nv = static_cast<const SIMD<ngfem::MappedIntegrationPoint<3,3>>&>(mir[j]).GetNV();
+          Vec<3,SIMD<double>> nv = static_cast<const SIMD<ngfem::MappedIntegrationPoint<2,3>>&>(mir[j]).GetNV();
           for (int i = fel.GetNDof()-1; i >= 0; i--)
             {
               Vec<3,SIMD<double>> shape = mat.Col(j).Range(3*i, 3*i+3);
@@ -237,9 +237,22 @@ namespace ngbem
         mat.Col(i).Slice(3,4).Range(fel.GetNDof()) *= 1.0 / mir[i].GetJacobiDet();
       // *testout << "simd mat2 = " << endl << mat.AddSize(4*fel.GetNDof(), mir.Size()) << endl;      
     }
+
+    using DiffOp<DiffOpMaxwell>::ApplySIMDIR;
+    static void ApplySIMDIR (const FiniteElement & fel, const SIMD_BaseMappedIntegrationRule & mir,
+                             BareSliceVector<Complex> x, BareSliceMatrix<SIMD<Complex>> y)
+    {
+      Cast(fel).Evaluate (mir, x, y.Rows(3));
+      for (int j = 0; j < mir.Size(); j++)
+        {
+          Vec<3,SIMD<double>> nv = static_cast<const SIMD<ngfem::MappedIntegrationPoint<2,3>>&>(mir[j]).GetNV();
+          Vec<3,SIMD<Complex>> shape = y.Col(j).Range(0,3);
+          y.Col(j).Range(0,3) = Cross(nv, shape);
+        }
+      y.Row(3).Range(mir.Size()) = SIMD<Complex>(0.0);
+      // TODO: curl part
+    }
   };
-
-
   
 }
 

@@ -77,6 +77,8 @@ namespace ngbem
     virtual unique_ptr<LowRankMatrix<T>>
     CalcFarFieldBlock(FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs,
                       LocalHeap &lh) const;
+
+    virtual shared_ptr<CoefficientFunction> GetPotential(shared_ptr<GridFunction> gf) const = 0;
   };
 
 
@@ -114,14 +116,19 @@ namespace ngbem
     
   public:
     GenericIntegralOperator(shared_ptr<FESpace> _trial_space, shared_ptr<FESpace> _test_space,
-                            KERNEL _kernel,
-                            struct BEMParameters param);
-
-    GenericIntegralOperator(shared_ptr<FESpace> _trial_space, shared_ptr<FESpace> _test_space,
                             shared_ptr<DifferentialOperator> _trial_evaluator, 
                             shared_ptr<DifferentialOperator> _test_evaluator, 
                             KERNEL _kernel,
-                            struct BEMParameters param);
+                            struct BEMParameters _param);
+
+    GenericIntegralOperator(shared_ptr<FESpace> _trial_space, shared_ptr<FESpace> _test_space,
+                            KERNEL _kernel,
+                            struct BEMParameters _param)
+      : GenericIntegralOperator (_trial_space, _test_space,
+                                 _trial_space -> GetEvaluator(BND),
+                                 _test_space -> GetEvaluator(BND),
+                                 _kernel, _param) { } 
+
 
     void CalcBlockMatrix(FlatMatrix<value_type> matrix, FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, 
 			 LocalHeap &lh) const override;
@@ -129,9 +136,61 @@ namespace ngbem
     unique_ptr<LowRankMatrix<value_type>>
     CalcFarFieldBlock(FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs,
                       LocalHeap &lh) const override;
+
+    virtual shared_ptr<CoefficientFunction> GetPotential(shared_ptr<GridFunction> gf) const override;
   };
 
 
+
+  template  <typename KERNEL>
+  class PotentialCF : public CoefficientFunctionNoDerivative
+  {
+    shared_ptr<GridFunction> gf;
+    shared_ptr<DifferentialOperator> evaluator;
+    KERNEL kernel;
+    BEMParameters param;
+  public:
+    PotentialCF (shared_ptr<GridFunction> _gf,
+                 shared_ptr<DifferentialOperator> _evaluator,
+                 KERNEL _kernel, BEMParameters _param);
+
+    double Evaluate (const BaseMappedIntegrationPoint & ip) const override
+    { throw Exception("eval not implemented"); }
+
+    virtual void Evaluate(const BaseMappedIntegrationPoint & ip,
+			  FlatVector<> result) const override
+    { T_Evaluate(ip, result); }
+    virtual void Evaluate(const BaseMappedIntegrationPoint & ip,
+			  FlatVector<Complex> result) const override
+    { T_Evaluate(ip, result); }
+
+    virtual void Evaluate(const BaseMappedIntegrationRule & ir,
+			  BareSliceMatrix<> result) const override
+    { T_Evaluate(ir, result); }
+    virtual void Evaluate(const BaseMappedIntegrationRule & ir,
+			  BareSliceMatrix<Complex> result) const override
+    { T_Evaluate(ir, result); }
+
+    virtual void Evaluate (const SIMD_BaseMappedIntegrationRule & ir,
+                           BareSliceMatrix<SIMD<double>> result) const override
+    { T_Evaluate(ir, result); }
+    
+    virtual void Evaluate (const SIMD_BaseMappedIntegrationRule & ir,
+                           BareSliceMatrix<SIMD<Complex>> result) const override
+    { T_Evaluate(ir, result); }
+    
+  private:
+    template <typename T>
+    void T_Evaluate(const BaseMappedIntegrationPoint & ip,
+                    FlatVector<T> result) const;
+    template <typename T>
+    void T_Evaluate(const BaseMappedIntegrationRule & ir,
+                    BareSliceMatrix<T> result) const;
+    template <typename T>
+    void T_Evaluate(const SIMD_BaseMappedIntegrationRule & ir,
+                    BareSliceMatrix<SIMD<T>> result) const;
+  };
+  
 
   struct KernelTerm
   {
@@ -252,13 +311,13 @@ namespace ngbem
   };
 
 
-  /** HelmholtzSLkernel is the kernel for the double layer potential of 
+  /** HelmholtzDLkernel is the kernel for the double layer potential of 
       the Helmholtz equation $ -\Delta u - \kappa^2 u = 0, \; \kappa>0\,.$ */
   template <int DIM> class HelmholtzDLKernel;
 
-  /** HelmholtzSLkernel in 3D reads
+  /** HelmholtzDLkernel in 3D reads
       $$ \frac{\partial }{ \partial n_y} G(x-y) = \frac{1}{4\,\pi} \, \frac{e^{i\,\kappa\,|x-y|}}{|x-y|^3} \, 
-          \left( 1 - i\,\kappa\, | x-y| \right), 
+          \langle n(y), x-y\rangle \cdot \left( 1 - i\,\kappa\, | x-y| \right), 
           \quad x, y \in \mathbb R^3, \; x\not=y\,. $$ */
   template<>
   class HelmholtzDLKernel<3> 
@@ -326,9 +385,9 @@ namespace ngbem
       is considered for the Helmholtz equation. */
   template <int DIM> class CombinedFieldKernel;
 
-  /** CombinedFildKernel in 3D reads
+  /** CombinedFieldKernel in 3D reads
       $$ G(x-y) = \frac{1}{4\,\pi} \, \frac{e^{i\,\kappa\,|x-y|}}{|x-y|^3} \, 
-          \left( \langle n_y, x-y\rangle - i\,\kappa\, | x-y| - i\,\kappa\,|x-y|^2 \right), 
+          \left( \langle n_y, x-y\rangle (1- i\,\kappa\, | x-y|) - i\,\kappa\,|x-y|^2 \right), 
           \quad x, y \in \mathbb R^3, \; x\not=y\,. $$ */
   template<>
   class CombinedFieldKernel<3> 
@@ -395,6 +454,11 @@ namespace ngbem
 
   template <int D> class MaxwellDLKernel;
 
+  /** MaxwellDLkernel for 3D in matrix representation reads
+      $$  \left( \begin{array}{ccc} 0 & -\frac{\partial G_\kappa(x-y)}{\partial x_3} & \frac{\partial G_\kappa(x-y)}{\partial x_2} \\ \frac{\partial G_\kappa(x-y)}{\partial x_3} & 0 & -\frac{\partial G_\kappa(x-y)}{\partial x_1} \\ -\frac{\partial G_\kappa(x-y)}{\partial x_2} & \frac{\partial G_\kappa(x-y)}{\partial x_1} & 0 \end{array}\right)\,,$$ with 
+   $$ G_\kappa(x-y) = \frac{1}{4\,\pi} \, \frac{e^{i\,\kappa\,|x-y|}}{|x-y|^3} \, 
+          \langle n(y), x-y\rangle \cdot \left( 1 - i\,\kappa\, | x-y| \right), 
+          \quad x, y \in \mathbb R^3, \; x\not=y\,. $$ */
   template<>
   class MaxwellDLKernel<3> 
   {
@@ -409,15 +473,14 @@ namespace ngbem
     auto Evaluate (Vec<3,T> x, Vec<3,T> y, Vec<3,T> nx, Vec<3,T> ny) const
     {
       T norm = L2Norm(x-y);
-      T nxy = InnerProduct(ny, (x-y));
       auto kern = exp(Complex(0,kappa)*norm) / (4 * M_PI * norm*norm*norm)
-        * (Complex(1,0)*T(1.) - Complex(0,kappa)*norm) * (x-y);
+        * (Complex(0,kappa)*norm - Complex(1,0)*T(1.)) * (x-y);
       return kern;
     }
 
     Array<KernelTerm> terms =
       {
-        KernelTerm{ 1.0, 0, 1, 2},
+        KernelTerm{ 1.0, 0, 1, 2},  // factor, comp, trial, test
         KernelTerm{-1.0, 0, 2, 1},
         KernelTerm{ 1.0, 1, 2, 0},
         KernelTerm{-1.0, 1, 0, 2},

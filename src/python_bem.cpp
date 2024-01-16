@@ -15,9 +15,11 @@ PYBIND11_MODULE(libbem, m)
 
   py::class_<IntegralOperator<double>, shared_ptr<IntegralOperator<double>>> (m, "IntegralOperator")
     .def_property_readonly("mat", &IntegralOperator<double>::GetMatrix)
+    .def("GetPotential", &IntegralOperator<double>::GetPotential)
     ;
   py::class_<IntegralOperator<Complex>, shared_ptr<IntegralOperator<Complex>>> (m, "IntegralOperatorC")
     .def_property_readonly("mat", &IntegralOperator<Complex>::GetMatrix)
+    .def("GetPotential", &IntegralOperator<Complex>::GetPotential)    
     ;
 
 
@@ -155,8 +157,12 @@ PYBIND11_MODULE(libbem, m)
                                                   string method, bool testhmatrix) -> shared_ptr<IntegralOperator<Complex>>
   {
     BEMParameters param({intorder, leafsize, eta, eps, method, testhmatrix});
+    //return make_unique<GenericIntegralOperator<MaxwellDLKernel<3>>>(space, space,
+    //                                                                make_shared<T_DifferentialOperator<DiffOpRotatedTrace>>(),
+    //                                                                make_shared<T_DifferentialOperator<DiffOpRotatedTrace>>(), 
+    //                                                                MaxwellDLKernel<3>(kappa), param);
     return make_unique<GenericIntegralOperator<MaxwellDLKernel<3>>>(space, space,
-                                                                    make_shared<T_DifferentialOperator<DiffOpRotatedTrace>>(),
+                                                                    space->GetEvaluator(BND),
                                                                     make_shared<T_DifferentialOperator<DiffOpRotatedTrace>>(), 
                                                                     MaxwellDLKernel<3>(kappa), param);
     

@@ -490,27 +490,28 @@ namespace ngbem
   template <typename T>    
   void BEMBlock<T> :: MultTransAdd (T s, const BaseVector & x, BaseVector & y) const
   {
-    // // Get only vector entries related to the index sets
-    // throw Exception("todo: allocate vectors in BEMBlock::MultTransAdd");
-    // FlatVector<T> xp, yp;
-    // x.GetIndirect(trialdofs, xp);
-    // y.GetIndirect(testdofs, yp);
+    VVector<T> xp(testdofs.Size()), yp(trialdofs.Size());
+    x.GetIndirect(testdofs, xp.FV());
+    
+    matrix->MultTrans(xp, yp);
+    yp.FV() *= s;
+    
+    y.AddIndirect(trialdofs, yp.FV(), /* useatomic= */ true); 
+
+    /*
+    // Get only vector entries related to the index sets
+    throw Exception("todo: allocate vectors in BEMBlock::MultTransAdd");
+    FlatVector<T> xp, yp;
+    x.GetIndirect(trialdofs, xp);
+    y.GetIndirect(testdofs, yp);
     
     // // We something like BaseVectorFromVector
     // S_BaseVectorPtr<T> xp_base(trialdofs.Size(), x.EntrySize(), xp.Data());
     // S_BaseVectorPtr<T> yp_base(testdofs.Size(), y.EntrySize(), yp.Data());
     // matrix->MultTransAdd(s, xp_base, yp_base);
 
-    // y.SetIndirect(testdofs, yp);
-    // Get only vector entries related to the index sets
-    
-    VVector<T> xp(testdofs.Size()), yp(trialdofs.Size());
-    x.GetIndirect(testdofs, xp.FV());
-
-    yp = 0.;
-    matrix->MultTransAdd(s, xp, yp);
-    
-    y.AddIndirect(trialdofs, yp.FV(), /* useatomic= */ true); 
+    y.SetIndirect(testdofs, yp);
+    */
   }
 
   template <typename T>
@@ -620,11 +621,28 @@ namespace ngbem
   }
 
   template <typename T>
+  size_t HMatrix<T> :: NZE() const
+  {
+    size_t nze = 0;
+    for (auto & mat : matList)
+      nze += mat.GetMat()->NZE();
+    return nze;
+  }
+  
+  template <typename T>
   void HMatrix<T> ::Mult (const BaseVector & x, BaseVector & y) const
   {
     y = 0.0;
     MultAdd (T(1.0), x, y);
   }
+
+  template <typename T>
+  void HMatrix<T> ::MultTrans (const BaseVector & x, BaseVector & y) const
+  {
+    y = 0.0;
+    MultTransAdd (T(1.0), x, y);
+  }
+  
   
   template <typename T>  
   void HMatrix<T> :: MultAdd (T s, const BaseVector & x, BaseVector & y) const

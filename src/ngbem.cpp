@@ -234,7 +234,7 @@ namespace ngbem
   
   
 
-
+  /*
   template <typename KERNEL>
   GenericIntegralOperator<KERNEL> ::
   GenericIntegralOperator(shared_ptr<FESpace> _trial_space, shared_ptr<FESpace> _test_space,
@@ -290,6 +290,7 @@ namespace ngbem
 	cout << "compression rate " << nf_c / ((double) test_space->GetNDof() * trial_space->GetNDof()) << "  2-norm error " << sqrt(L2Norm(x)) << endl;
       }
   }
+  */
 
 
   template <typename KERNEL>
@@ -1145,6 +1146,198 @@ namespace ngbem
     return make_unique<LowRankMatrix<value_type>> (std::move(U2), std::move(V2));
   }
 
+  
+  template <typename KERNEL>
+  shared_ptr<CoefficientFunction> GenericIntegralOperator<KERNEL> ::
+  GetPotential(shared_ptr<GridFunction> gf) const
+  {
+    return  make_shared<PotentialCF<KERNEL>> (gf, trial_evaluator,
+                                              kernel, param);
+  }
+
+
+  template <typename KERNEL>
+  PotentialCF<KERNEL> ::
+  PotentialCF (shared_ptr<GridFunction> _gf, shared_ptr<DifferentialOperator> _evaluator,
+               KERNEL _kernel, BEMParameters _param)
+    : CoefficientFunctionNoDerivative (_evaluator->Dim(), std::is_same<typename KERNEL::value_type,Complex>()),
+      gf(_gf), evaluator(_evaluator), kernel(_kernel), param(_param)
+  {
+    ;
+  }
+  
+  template <typename KERNEL> template <typename T>
+  void PotentialCF<KERNEL> :: T_Evaluate(const BaseMappedIntegrationPoint & mip,
+                                         FlatVector<T> result) const
+  {
+    static Timer t("ngbem evaluate potential (ip)"); RegionTimer reg(t);
+    LocalHeapMem<100000> lh("Potential::Eval");
+    auto space = this->gf->GetFESpace();
+    auto mesh = space->GetMeshAccess();
+
+    Vector<SIMD<T>> simd_result(Dimension());
+    simd_result = SIMD<T>(0.0);
+    auto & mip23 = dynamic_cast<const MappedIntegrationPoint<2,3>&>(mip);
+    if constexpr (std::is_same<typename KERNEL::value_type,T>())
+      for (size_t i = 0; i < mesh->GetNSE(); i++)
+        {
+          HeapReset hr(lh);
+          ElementId ei(BND, i);
+          if (!space->DefinedOn(ei)) continue;
+          
+          const FiniteElement &fel = space->GetFE(ei, lh);
+          const ElementTransformation &trafo = mesh->GetTrafo(ei, lh);
+          
+          Array<DofId> dnums(fel.GetNDof(), lh);
+          space->GetDofNrs(ei, dnums);
+          FlatVector<T> elvec(fel.GetNDof(), lh);
+          gf->GetElementVector(dnums, elvec);
+
+          IntegrationRule ir(fel.ElementType(), param.intorder);
+          SIMD_IntegrationRule simd_ir(ir);
+          SIMD_MappedIntegrationRule<2,3> miry(simd_ir, trafo, lh);
+          FlatMatrix<SIMD<T>> vals(evaluator->Dim(), miry.Size(), lh);
+          
+          evaluator->Apply (fel, miry, elvec, vals);
+          for (int iy = 0; iy < miry.Size(); iy++)
+            {
+              Vec<3,SIMD<double>> x = mip23.GetPoint();
+              Vec<3,SIMD<double>> nx = mip23.GetNV();
+
+              Vec<3,SIMD<double>> y = miry[iy].GetPoint();
+              Vec<3,SIMD<double>> ny = miry[iy].GetNV();
+              
+              for (auto term : kernel.terms)
+                {
+                  auto kernel_ = kernel.Evaluate(x, y, nx, ny)(term.kernel_comp);
+                  simd_result(term.test_comp) += miry[iy].GetWeight()*kernel_ * vals(term.trial_comp,iy);
+                }
+            }
+        }
+    for (int i = 0; i < Dimension(); i++)
+      result(i) = HSum(simd_result(i));
+  }
+
+
+  template <typename KERNEL> template <typename T>
+  void PotentialCF<KERNEL> :: T_Evaluate(const BaseMappedIntegrationRule & bmir,
+                                         BareSliceMatrix<T> result) const
+  {
+    try
+      {
+        static Timer t("ngbem evaluate potential (ip)"); RegionTimer reg(t);
+        LocalHeapMem<100000> lh("Potential::Eval");
+        auto space = this->gf->GetFESpace();
+        auto mesh = space->GetMeshAccess();
+
+        auto & mirx = dynamic_cast<const MappedIntegrationRule<2,3>&>(bmir);
+        
+        Matrix<SIMD<T>> simd_result(Dimension(), mirx.Size());
+        simd_result = SIMD<T>(0.0);
+        if constexpr (std::is_same<typename KERNEL::value_type,T>())
+          for (size_t i = 0; i < mesh->GetNSE(); i++)
+            {
+              HeapReset hr(lh);
+              ElementId ei(BND, i);
+              if (!space->DefinedOn(ei)) continue;
+              
+              const FiniteElement &fel = space->GetFE(ei, lh);
+              const ElementTransformation &trafo = mesh->GetTrafo(ei, lh);
+
+              Array<DofId> dnums(fel.GetNDof(), lh);
+              space->GetDofNrs(ei, dnums);
+              FlatVector<T> elvec(fel.GetNDof(), lh);
+              gf->GetElementVector(dnums, elvec);
+              
+              IntegrationRule ir(fel.ElementType(), param.intorder);
+              SIMD_IntegrationRule simd_ir(ir);
+              SIMD_MappedIntegrationRule<2,3> miry(simd_ir, trafo, lh);
+              FlatMatrix<SIMD<T>> vals(evaluator->Dim(), miry.Size(), lh);
+              
+              evaluator->Apply (fel, miry, elvec, vals);
+              for (int ix = 0; ix < mirx.Size(); ix++)
+                for (int iy = 0; iy < miry.Size(); iy++)
+                  {
+                    Vec<3,SIMD<double>> x = mirx[ix].GetPoint();
+                    Vec<3,SIMD<double>> y = miry[iy].GetPoint();
+                    
+                    Vec<3,SIMD<double>> nx = mirx[ix].GetNV();
+                    Vec<3,SIMD<double>> ny = miry[iy].GetNV();
+                    
+                    for (auto term : kernel.terms)
+                      {
+                        auto kernel_ = kernel.Evaluate(x, y, nx, ny)(term.kernel_comp);
+                        simd_result(term.test_comp, ix) += miry[iy].GetWeight()*kernel_ * vals(term.trial_comp,iy);
+                      }
+                  }
+            }
+        for (int i = 0; i < Dimension(); i++)
+          for (int j = 0; j < mirx.Size(); j++)
+            result(j, i) = HSum(simd_result(i,j));
+      }
+    catch (ExceptionNOSIMD & e)
+      {
+        *testout << "exception: " << e.What() << endl;
+      }
+  }
+
+  
+  
+  template <typename KERNEL> template <typename T>
+  void PotentialCF<KERNEL> :: T_Evaluate(const SIMD_BaseMappedIntegrationRule & ir,
+                                         BareSliceMatrix<SIMD<T>> result) const
+  {
+    static Timer t("ngbem evaluate potential (ir-simd)"); RegionTimer reg(t);
+    // cout << "Potential - eval (simd) called" << endl;
+    throw ExceptionNOSIMD ("PotentialCF::Evaluate (SIMD) not available");
+    
+    result.AddSize(Dimension(), ir.Size()) = SIMD<T>(0.0);
+    return;
+    /*
+    LocalHeapMem<100000> lh("Potential::Eval");
+    auto space = this->gf->GetFESpace();
+    auto mesh = space->GetMeshAccess();
+    
+    result = T(0.0);
+    auto & mip23 = dynamic_cast<const MappedIntegrationPoint<2,3>&>(mip);
+    if constexpr (std::is_same<typename KERNEL::value_type,T>())
+      for (size_t i = 0; i < mesh->GetNSE(); i++)
+        {
+          HeapReset hr(lh);
+          ElementId ei(BND, i);
+          
+          const FiniteElement &fel = space->GetFE(ei, lh);
+          const ElementTransformation &trafo = mesh->GetTrafo(ei, lh);
+          
+          Array<DofId> dnums(fel.GetNDof(), lh);
+          space->GetDofNrs(ei, dnums);
+          FlatVector<T> elvec(fel.GetNDof(), lh);
+          gf->GetElementVector(dnums, elvec);
+          
+          IntegrationRule ir(fel.ElementType(), param.intorder);
+          MappedIntegrationRule<2,3> mir(ir, trafo, lh);
+          FlatMatrix<T> vals(ir.Size(), evaluator->Dim(), lh);
+          
+          evaluator->Apply (fel, mir, elvec, vals, lh);
+          
+          for (int j = 0; j < ir.Size(); j++)
+            {
+              Vec<3> x = mir[j].GetPoint();
+              Vec<3> y = mip23.GetPoint();
+              
+              Vec<3> nx = mir[j].GetNV();
+              Vec<3> ny = mip23.GetNV();
+              
+              for (auto term : kernel.terms)
+                {
+                  auto kernel_ = kernel.Evaluate(x, y, nx, ny)(term.kernel_comp);
+                  result(term.test_comp) += mir[j].GetWeight()*kernel_ * vals(j, term.trial_comp);
+                }
+            }
+        }
+    */
+  }
+  
   
   template class GenericIntegralOperator<LaplaceSLKernel<3>>;
   template class GenericIntegralOperator<LaplaceDLKernel<3>>;

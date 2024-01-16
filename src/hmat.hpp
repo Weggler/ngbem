@@ -146,9 +146,9 @@ namespace ngbem
 
     virtual int VHeight() const override { return A.Height(); }
     virtual int VWidth() const override { return Bt.Width(); }
-    virtual int VRank() const { return rank; }
-    virtual size_t NZE () const override {return A.Height() * A.Width() + Bt.Height() * Bt.Width(); }
-
+    virtual size_t NZE() const override { return rank*(A.Height()+Bt.Width()); }
+    int VRank() const { return rank; }
+    
     virtual AutoVector CreateRowVector () const override;
     virtual AutoVector CreateColVector () const override;
   };
@@ -184,14 +184,15 @@ namespace ngbem
     Array<BEMBlock<T>> & GetMatList() { return matList; }
 
     /** Matrix-vector-multiply-add: \f$y = y + s A x \f$. */
-    virtual void Mult (const BaseVector & x, BaseVector & y) const override;    
+    virtual void Mult (const BaseVector & x, BaseVector & y) const override;
+    virtual void MultTrans (const BaseVector & x, BaseVector & y) const override;        
     virtual void MultAdd (T s, const BaseVector & x, BaseVector & y) const override;
     virtual void MultTransAdd (T s, const BaseVector & x, BaseVector & y) const override;
     bool IsComplex() const override { return std::is_same<T,Complex>(); }
 
     virtual int VHeight() const override { return height_vol_dof; }
     virtual int VWidth() const override { return width_vol_dof; }
-    
+    virtual size_t NZE() const override;
     virtual AutoVector CreateRowVector () const override;
     virtual AutoVector CreateColVector () const override;
 
