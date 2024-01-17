@@ -96,7 +96,7 @@ namespace ngbem
 
       for (int j = 0; j < mir.Size(); j++)
         {
-          Vec<3,SIMD<double>> nv = static_cast<const SIMD<ngfem::MappedIntegrationPoint<3,3>>&>(mir[j]).GetNV();
+          Vec<3,SIMD<double>> nv = static_cast<const SIMD<ngfem::MappedIntegrationPoint<2,3>>&>(mir[j]).GetNV();
           for (int i = 0; i < fel.GetNDof(); i++)
             {
               Vec<3,SIMD<double>> shape = mat.Col(j).Range(3*i, 3*i+3);
