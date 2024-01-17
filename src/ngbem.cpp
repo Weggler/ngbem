@@ -14,8 +14,11 @@ namespace ngbem
   template <typename T>  
   IntegralOperator<T> ::
   IntegralOperator(shared_ptr<FESpace> _trial_space, shared_ptr<FESpace> _test_space,
+                   optional<Region> _trial_definedon, optional<Region> _test_definedon,
                    BEMParameters _param)
-    : trial_space(_trial_space), test_space(_test_space), param(_param)
+    : trial_space(_trial_space), test_space(_test_space),
+      trial_definedon(_trial_definedon), test_definedon(_test_definedon),
+      param(_param)
   {
     if (!test_space)
       test_space = trial_space;
@@ -30,17 +33,28 @@ namespace ngbem
     auto mesh = trial_space->GetMeshAccess(); // trialspace
     auto mesh2 = test_space->GetMeshAccess(); // testspace
 
+
+    if (trial_definedon)
+      cout << "trial is definedon: " << (*trial_definedon).Mask() << endl;
+    if (test_definedon)
+      cout << "test is definedon: " << (*test_definedon).Mask() << endl;
     
     // setup global-2-boundary mappings;
     BitArray bnddofs(trial_space->GetNDof());
     bnddofs.Clear();
     for (int i = 0; i < mesh->GetNSE(); i++)
       {
-	Array<DofId> dnums;
-	trial_space->GetDofNrs(ElementId(BND, i), dnums);
-	for (auto d : dnums)
-	  bnddofs.SetBit(d);
+        ElementId ei(BND, i);
+        if (!trial_definedon || (*trial_definedon).Mask().Test(mesh->GetElIndex(ei)))
+          {
+            Array<DofId> dnums;
+            trial_space->GetDofNrs(ei, dnums);
+            for (auto d : dnums)
+              bnddofs.SetBit(d);
+          }
       }
+
+        
     mapglob2bnd.SetSize(trial_space->GetNDof());
     mapglob2bnd = -1;
     for (int i = 0; i < trial_space->GetNDof(); i++)
@@ -68,10 +82,14 @@ namespace ngbem
     bnddofs2.Clear();
     for (int i = 0; i < mesh2->GetNSE(); i++)
       {
-	Array<DofId> dnums;
-	test_space->GetDofNrs(ElementId(BND, i), dnums);
-	for (auto d : dnums)
-	  bnddofs2.SetBit(d);
+        ElementId ei(BND, i);        
+        if (!test_definedon || (*test_definedon).Mask().Test(mesh->GetElIndex(ei)))
+          {
+            Array<DofId> dnums;
+            test_space->GetDofNrs(ElementId(BND,i), dnums);
+            for (auto d : dnums)
+              bnddofs2.SetBit(d);
+          }
       }
     
     mapglob2bnd2.SetSize(test_space->GetNDof());
@@ -296,12 +314,13 @@ namespace ngbem
   template <typename KERNEL>
   GenericIntegralOperator<KERNEL> ::
   GenericIntegralOperator(shared_ptr<FESpace> _trial_space, shared_ptr<FESpace> _test_space,
+                          optional<Region> _definedon_trial, optional<Region> _definedon_test,                          
                           shared_ptr<DifferentialOperator> _trial_evaluator, 
                           shared_ptr<DifferentialOperator> _test_evaluator, 
                           KERNEL _kernel,
                           BEMParameters _param)
-    : IntegralOperator<value_type>(_trial_space, _test_space, _param), kernel(_kernel),
-      trial_evaluator(_trial_evaluator), test_evaluator(_test_evaluator)
+  : IntegralOperator<value_type>(_trial_space, _test_space, _definedon_trial, _definedon_test, _param), kernel(_kernel),
+    trial_evaluator(_trial_evaluator), test_evaluator(_test_evaluator)
   {
     hmatrix =
       make_shared<HMatrix<value_type>>(trial_ct, test_ct, 

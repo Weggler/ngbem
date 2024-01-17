@@ -35,6 +35,9 @@ namespace ngbem
   protected:
     shared_ptr<FESpace> trial_space; 
     shared_ptr<FESpace> test_space; 
+
+    optional<Region> trial_definedon;
+    optional<Region> test_definedon;
     
     /* parameters that specify the appoximation of linear operators and solving */
     BEMParameters param;
@@ -58,7 +61,9 @@ namespace ngbem
   public:
 
     /** Constructor. */
-    IntegralOperator (shared_ptr<FESpace> _trial_space, shared_ptr<FESpace> _test_space, BEMParameters param);
+    IntegralOperator (shared_ptr<FESpace> _trial_space, shared_ptr<FESpace> _test_space,
+                      optional<Region> _definedon_trial, optional<Region> _definedon_test,
+                      BEMParameters param);
     virtual ~IntegralOperator() = default;
 
     /** GetHMatrix returns the #hmatrix. */
@@ -116,10 +121,20 @@ namespace ngbem
     
   public:
     GenericIntegralOperator(shared_ptr<FESpace> _trial_space, shared_ptr<FESpace> _test_space,
+                            optional<Region> _definedon_trial, optional<Region> _definedon_test,
                             shared_ptr<DifferentialOperator> _trial_evaluator, 
                             shared_ptr<DifferentialOperator> _test_evaluator, 
                             KERNEL _kernel,
                             struct BEMParameters _param);
+
+    GenericIntegralOperator(shared_ptr<FESpace> _trial_space, shared_ptr<FESpace> _test_space,
+                            shared_ptr<DifferentialOperator> _trial_evaluator, 
+                            shared_ptr<DifferentialOperator> _test_evaluator, 
+                            KERNEL _kernel,
+                            struct BEMParameters _param)
+      : GenericIntegralOperator (_trial_space, _test_space,
+                                 nullopt, nullopt,
+                                 _trial_evaluator, _test_evaluator, _kernel, _param) { }
 
     GenericIntegralOperator(shared_ptr<FESpace> _trial_space, shared_ptr<FESpace> _test_space,
                             KERNEL _kernel,

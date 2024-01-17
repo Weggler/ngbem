@@ -39,26 +39,35 @@ PYBIND11_MODULE(libbem, m)
 
 
   m.def("DoubleLayerPotentialOperator", [](shared_ptr<FESpace> trial_space, shared_ptr<FESpace> test_space,
+                                           optional<Region> trial_definedon, optional<Region> test_definedon,
                                            int intorder, int leafsize, double eta, double eps,
                                            string method, bool testhmatrix) -> shared_ptr<IntegralOperator<>>
   {
     BEMParameters param({intorder, leafsize, eta, eps, method, testhmatrix});
-    return make_unique<GenericIntegralOperator<LaplaceDLKernel<3>>>(trial_space, test_space, LaplaceDLKernel<3>(), param);    
-  }, py::arg("trial_space"), py::arg("test_space"), py::arg("intorder")=3, py::arg("leafsize")=40,
+    return make_unique<GenericIntegralOperator<LaplaceDLKernel<3>>>(trial_space, test_space,
+                                                                    trial_definedon, test_definedon,
+                                                                    trial_space -> GetEvaluator(BND),
+                                                                    test_space -> GetEvaluator(BND),
+                                                                    LaplaceDLKernel<3>(), param);    
+  }, py::arg("trial_space"), py::arg("test_space"),
+        py::arg("trial_definedon")=nullopt, py::arg("test_definedon")=nullopt,
+        py::arg("intorder")=3, py::arg("leafsize")=40,
         py::arg("eta")=2., py::arg("eps")=1e-6,
         py::arg("method")="svd", py::arg("testhmatrix")=false);
 
 
-  m.def("HypersingularOperator", [](shared_ptr<FESpace> space, int intorder, int leafsize, double eta, double eps,
+  m.def("HypersingularOperator", [](shared_ptr<FESpace> space, optional<Region> definedon,
+                                    int intorder, int leafsize, double eta, double eps,
                                     string method, bool testhmatrix) -> shared_ptr<IntegralOperator<>>
   {
     BEMParameters param({intorder, leafsize, eta, eps, method, testhmatrix});
-    return make_unique<GenericIntegralOperator<LaplaceHSKernel<3>>>(space, space,
+    return make_unique<GenericIntegralOperator<LaplaceHSKernel<3>>>(space, space, definedon, definedon,
                                                                     make_shared<T_DifferentialOperator<DiffOpBoundaryRot>>(),
                                                                     make_shared<T_DifferentialOperator<DiffOpBoundaryRot>>(), 
                                                                     LaplaceHSKernel<3>(), param);
     
-  }, py::arg("space"), py::arg("intorder")=3, py::arg("leafsize")=40, py::arg("eta")=2., py::arg("eps")=1e-6,
+  }, py::arg("space"), py::arg("definedon")=nullopt,
+        py::arg("intorder")=3, py::arg("leafsize")=40, py::arg("eta")=2., py::arg("eps")=1e-6,
         py::arg("method")="svd", py::arg("testhmatrix")=false);
   
   
