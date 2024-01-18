@@ -253,6 +253,91 @@ namespace ngbem
       // TODO: curl part
     }
   };
+
+
+
+
+
+
+  // copied from ngsolve/fem/hdiv_equations.hpp, DiffOpIdHDivSurface
+  class DiffOpMaxwellNew : public DiffOp<DiffOpMaxwellNew>
+  {
+  public:
+    enum { DIM = 1 };
+    enum { DIM_SPACE = 3 };
+    enum { DIM_ELEMENT = 2 };
+    enum { DIM_DMAT = 4 };
+    enum { DIFFORDER = 1 };
+
+    static string Name() { return "Maxwell"; }
+    
+    static const HDivFiniteElement<2> & Cast (const FiniteElement & fel) 
+    { return static_cast<const HDivFiniteElement<2>&> (fel); }
+
+    ///
+    // mat is 4 x ndof
+    template <typename AFEL, typename MIP, typename MAT>
+    static void GenerateMatrix (const AFEL & fel, const MIP & mip,
+				MAT & mat, LocalHeap & lh)
+    {
+      auto matvec = mat.Rows(0,3);
+      matvec = (1.0 / mip.GetJacobiDet()) *mip.GetJacobian () * 
+        Trans (Cast(fel).GetShape(mip.IP(),lh));
+
+      mat.Row(3) =
+        1.0/mip.GetJacobiDet() * 
+	Cast(fel).GetDivShape(mip.IP(),lh).Col(0);
+    }
+
+    /// mat is (ndof*4) x mip.Size()
+    static void GenerateMatrixSIMDIR (const FiniteElement & fel,
+                                      const SIMD_BaseMappedIntegrationRule & mir,
+                                      BareSliceMatrix<SIMD<double>> mat)
+    {
+      Cast(fel).CalcMappedShape (mir, mat.Rows(0, 3*fel.GetNDof()));
+      for (int j = 0; j < mir.Size(); j++)
+        {
+          for (int i = fel.GetNDof()-1; i >= 0; i--)
+            {
+              Vec<3,SIMD<double>> shape = mat.Col(j).Range(3*i, 3*i+3);
+              mat.Col(j).Range(4*i,4*i+3) = shape;
+            }
+        }
+      
+      constexpr size_t BS=16;
+      LocalHeapMem<BS*SIMD<double>::Size()*sizeof(SIMD<MappedIntegrationPoint<2,2>>)+64> lh("genmatlh");
+      FE_ElementTransformation<2,2> trafo2d(fel.ElementType());
+      for (size_t first = 0; first < mir.Size(); first += BS)
+        {
+          HeapReset hr(lh);
+          size_t next = std::min(first+BS, mir.Size());
+          SIMD_MappedIntegrationRule<2,2> mir2d(mir.IR().Range(first, next), trafo2d, lh);
+          Cast(fel).CalcMappedDivShape (mir2d, mat.RowSlice(3,4).Cols(first, next));
+        }
+      for (size_t i = 0; i < mir.Size(); i++)
+        mat.Col(i).Slice(3,4).Range(fel.GetNDof()) *= 1.0 / mir[i].GetJacobiDet();
+    }
+
+    using DiffOp<DiffOpMaxwellNew>::ApplySIMDIR;
+    static void ApplySIMDIR (const FiniteElement & fel, const SIMD_BaseMappedIntegrationRule & mir,
+                             BareSliceVector<Complex> x, BareSliceMatrix<SIMD<Complex>> y)
+    {
+      Vector<> xr(fel.GetNDof()), xi(fel.GetNDof());
+      Matrix<SIMD<double>> valr(3,mir.Size()), vali(3, mir.Size());
+
+      xr = Real(x);
+      xi = Imag(x);
+      Cast(fel).Evaluate (mir, xr, valr);
+      Cast(fel).Evaluate (mir, xi, vali);
+      
+      for (int j = 0; j < mir.Size(); j++)
+        for (int k = 0; k < 3; k ++)
+          y(k,j) = SIMD<Complex> (valr(k,j), vali(k,j));
+      y.Row(3).Range(mir.Size()) = SIMD<Complex>(0.0);
+    }
+  };
+
+
   
 }
 
