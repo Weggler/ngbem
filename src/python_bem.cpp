@@ -174,10 +174,6 @@ PYBIND11_MODULE(libbem, m)
                                                                     make_shared<T_DifferentialOperator<DiffOpRotatedTrace>>(),
                                                                     make_shared<T_DifferentialOperator<DiffOpRotatedTrace>>(), 
                                                                     MaxwellDLKernel<3>(kappa), param);
-    //return make_unique<GenericIntegralOperator<MaxwellDLKernel<3>>>(space, space,
-    //                                                                space->GetEvaluator(BND),
-    //                                                                make_shared<T_DifferentialOperator<DiffOpRotatedTrace>>(), 
-    //                                                                MaxwellDLKernel<3>(kappa), param);
     
   }, py::arg("space"), py::arg("kappa"), py::arg("intorder")=3, py::arg("leafsize")=40, py::arg("eta")=2., py::arg("eps")=1e-6,
         py::arg("method")="aca", py::arg("testhmatrix")=false);
@@ -214,7 +210,8 @@ PYBIND11_MODULE(libbem, m)
     }
     BEMParameters param({intorder, leafsize, eta, eps, method, testhmatrix});
     return make_unique<GenericIntegralOperator<MaxwellDLKernel<3>>>(trial_space, test_space,
-                                                                    trial_space->GetEvaluator(BND),
+                                                                    make_shared<T_DifferentialOperator<DiffOpRotatedTrace>>(),
+                                                                    //trial_space->GetEvaluator(BND),
                                                                     test_space->GetEvaluator(BND),
                                                                     MaxwellDLKernel<3>(kappa), param);
   }, py::arg("trial_space"), py::arg("test_space"), py::arg("kappa"), py::arg("intorder")=3, py::arg("leafsize")=40, py::arg("eta")=2., py::arg("eps")=1e-6,
