@@ -115,76 +115,7 @@ PYBIND11_MODULE(libbem, m)
     py::arg("method")="aca", py::arg("testhmatrix")=false);
 
 
-  
   m.def("MaxwellSingleLayerPotentialOperator", [](shared_ptr<FESpace> space, double kappa, 
-                                                  int intorder, int leafsize, double eta, double eps,
-                                                  string method, bool testhmatrix) -> shared_ptr<IntegralOperator<Complex>>
-  {
-    BEMParameters param({intorder, leafsize, eta, eps, method, testhmatrix});
-    return make_unique<GenericIntegralOperator<MaxwellSLKernel<3>>>(space, space,
-                                                                    make_shared<T_DifferentialOperator<DiffOpMaxwell>>(),
-                                                                    make_shared<T_DifferentialOperator<DiffOpMaxwell>>(), 
-                                                                    MaxwellSLKernel<3>(kappa), param);
-    
-  }, py::arg("space"), py::arg("kappa"), py::arg("intorder")=3, py::arg("leafsize")=40, py::arg("eta")=2., py::arg("eps")=1e-6,
-        py::arg("method")="aca", py::arg("testhmatrix")=false);
-  
-
-
-  
-  m.def("MaxwellVecSingleLayerPotentialOperator", [](shared_ptr<FESpace> space, double kappa, 
-                                                  int intorder, int leafsize, double eta, double eps,
-                                                  string method, bool testhmatrix) -> shared_ptr<IntegralOperator<Complex>>
-  {
-    BEMParameters param({intorder, leafsize, eta, eps, method, testhmatrix});
-    return make_unique<GenericIntegralOperator<HelmholtzHSKernel<3>>>(space, space,
-                                                                      make_shared<T_DifferentialOperator<DiffOpRotatedTrace>>(),
-                                                                      make_shared<T_DifferentialOperator<DiffOpRotatedTrace>>(), 
-                                                                      HelmholtzHSKernel<3>(kappa), param);
-    
-  }, py::arg("space"), py::arg("kappa"), py::arg("intorder")=3, py::arg("leafsize")=40, py::arg("eta")=2., py::arg("eps")=1e-6,
-        py::arg("method")="aca", py::arg("testhmatrix")=false);
-  
-  
-
-  m.def("MaxwellScaSingleLayerPotentialOperator", [](shared_ptr<FESpace> space, double kappa, 
-                                                  int intorder, int leafsize, double eta, double eps,
-                                                  string method, bool testhmatrix) -> shared_ptr<IntegralOperator<Complex>>
-  {
-    BEMParameters param({intorder, leafsize, eta, eps, method, testhmatrix});
-    return make_unique<GenericIntegralOperator<HelmholtzSLKernel<3>>>(space, space,
-                                                                    make_shared<T_DifferentialOperator<DiffOpCurlBoundaryEdge<>>>(),
-                                                                    make_shared<T_DifferentialOperator<DiffOpCurlBoundaryEdge<>>>(), 
-                                                                    HelmholtzSLKernel<3>(kappa), param);
-    
-  }, py::arg("space"), py::arg("kappa"), py::arg("intorder")=3, py::arg("leafsize")=40, py::arg("eta")=2., py::arg("eps")=1e-6,
-        py::arg("method")="aca", py::arg("testhmatrix")=false);
-  
-  
-  m.def("MaxwellDoubleLayerPotentialOperator", [](shared_ptr<FESpace> space, double kappa, 
-                                                  int intorder, int leafsize, double eta, double eps,
-                                                  string method, bool testhmatrix) -> shared_ptr<IntegralOperator<Complex>>
-  {
-    if(!method.compare("dense")) {
-       leafsize = INT_MAX;
-       eta = 0.;
-    }
-    BEMParameters param({intorder, leafsize, eta, eps, method, testhmatrix});
-    return make_unique<GenericIntegralOperator<MaxwellDLKernel<3>>>(space, space,
-                                                                    make_shared<T_DifferentialOperator<DiffOpRotatedTrace>>(),
-                                                                    make_shared<T_DifferentialOperator<DiffOpRotatedTrace>>(), 
-                                                                    MaxwellDLKernel<3>(kappa), param);
-    
-  }, py::arg("space"), py::arg("kappa"), py::arg("intorder")=3, py::arg("leafsize")=40, py::arg("eta")=2., py::arg("eps")=1e-6,
-        py::arg("method")="aca", py::arg("testhmatrix")=false);
-  
-
-
-
-
-
-
-  m.def("MaxwellSingleLayerPotentialOperatorNew", [](shared_ptr<FESpace> space, double kappa, 
                                                   int intorder, int leafsize, double eta, double eps,
                                                   string method, bool testhmatrix) -> shared_ptr<IntegralOperator<Complex>>
   {
@@ -200,7 +131,7 @@ PYBIND11_MODULE(libbem, m)
   
 
   
-  m.def("MaxwellDoubleLayerPotentialOperatorNew", [](shared_ptr<FESpace> trial_space, shared_ptr<FESpace> test_space, double kappa, 
+  m.def("MaxwellDoubleLayerPotentialOperator", [](shared_ptr<FESpace> trial_space, shared_ptr<FESpace> test_space, double kappa, 
                                                      int intorder, int leafsize, double eta, double eps,
                                                      string method, bool testhmatrix) -> shared_ptr<IntegralOperator<Complex>>
   {
@@ -211,7 +142,6 @@ PYBIND11_MODULE(libbem, m)
     BEMParameters param({intorder, leafsize, eta, eps, method, testhmatrix});
     return make_unique<GenericIntegralOperator<MaxwellDLKernel<3>>>(trial_space, test_space,
                                                                     make_shared<T_DifferentialOperator<DiffOpRotatedTrace>>(),
-                                                                    //trial_space->GetEvaluator(BND),
                                                                     test_space->GetEvaluator(BND),
                                                                     MaxwellDLKernel<3>(kappa), param);
   }, py::arg("trial_space"), py::arg("test_space"), py::arg("kappa"), py::arg("intorder")=3, py::arg("leafsize")=40, py::arg("eta")=2., py::arg("eps")=1e-6,
