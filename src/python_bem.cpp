@@ -43,6 +43,10 @@ PYBIND11_MODULE(libbem, m)
                                            int intorder, int leafsize, double eta, double eps,
                                            string method, bool testhmatrix) -> shared_ptr<IntegralOperator<>>
   {
+    if(!method.compare("dense")) {
+       leafsize = INT_MAX;
+       eta = 0.;
+    }
     BEMParameters param({intorder, leafsize, eta, eps, method, testhmatrix});
     return make_unique<GenericIntegralOperator<LaplaceDLKernel<3>>>(trial_space, test_space,
                                                                     trial_definedon, test_definedon,
