@@ -447,8 +447,8 @@ namespace ngbem
     MaxwellSLKernel (double _kappa) : kappa(_kappa)
     {
       for (size_t i = 0; i < 3; i++)
-        terms += KernelTerm { 1.0, 0, i, i };
-      terms += KernelTerm { -1.0/(kappa*kappa), 0, 3, 3 };      
+        terms += KernelTerm { kappa, 0, i, i };
+      terms += KernelTerm { -1.0/kappa, 0, 3, 3 };      
     }
     
     template <typename T>    
@@ -503,7 +503,6 @@ namespace ngbem
         KernelTerm{-1.0, 2, 1, 0},
       };    
   };
-
 
   
 }
