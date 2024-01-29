@@ -1,48 +1,40 @@
 # testfile for checking integration accuracy accuracy, exspectation for sp
 
+import sys
+sys.path.append("../build/")
 from netgen.occ import *
 from ngsolve import *
 from libbem import *
 
+errref = [1.8017794920533596,
+          0.02077674341292797,
+          0.007395887818216881,
+          8.420761045817377e-06,
+          1.2916106824050212e-07,
+          1.495777703154113e-08,
+          1.7312930021482235e-09,
+          1.9893964711682858e-10,
+          2.2615647594836697e-11,
+          2.6809401671932852e-12]
 
-sp = Sphere( (0,0,0), 1)
-mesh = Mesh( OCCGeometry(sp).GenerateMesh(maxh=0.5)).Curve(1)
-
-fes = SurfaceL2(mesh, order=3, dual_mapping=True)
-u,v = fes.TnT()
-
-a8 = SingleLayerPotentialOperator(fes, intorder=8, method="dense")
-
-a10 = SingleLayerPotentialOperator(fes, intorder=10, method="dense")
-
-a12 = SingleLayerPotentialOperator(fes, intorder=12, method="dense")
-
-a14 = SingleLayerPotentialOperator(fes, intorder=14, method="dense")
-
-a16 = SingleLayerPotentialOperator(fes, intorder=16, method="dense")
-
-a18 = SingleLayerPotentialOperator(fes, intorder=18, method="dense")
-
-
-x = a8.mat.CreateRowVector()
-x.SetRandom(1)
-
-err1 = Norm ( (a8.mat -a10.mat)*x )
-print ("err-integration ( 8-10): ", err1 )
-err2 = Norm ( (a10.mat -a12.mat)*x )
-print ("err-integration (10-12): ", err2)
-err3 = Norm ( (a12.mat -a14.mat)*x )
-print ("err-integration (12-14): ", err3)
-err4 = Norm ( (a14.mat -a16.mat)*x )
-print ("err-integration (14-16): ", err4)
-err5 = Norm ( (a16.mat -a18.mat)*x )
-print ("err-integration (16-18): ", err5)
-
+def power_iteration(A, x):
+    y = x
+    for i in range(30):
+        x = (1. / Norm(y)) * y
+        y = A * x
+    return y;
 
 def test_answer():
-    assert err1 < 1e-5
-    assert err2 < 1e-6
-    assert err3 < 1e-7
-    assert err4 < 1e-8
-    assert err5 < 1e-9
+    sp = Sphere( (0,0,0), 1)
+    mesh = Mesh( OCCGeometry(sp).GenerateMesh(maxh=1.)).Curve(2)
+    fes = SurfaceL2(mesh, order=3, dual_mapping=True)
+    aref = SingleLayerPotentialOperator(fes, intorder=26, method="dense")
+    x = aref.mat.CreateRowVector()
 
+    for n in range(10):
+        intorder = 2 * (n + 1)
+        a = SingleLayerPotentialOperator(fes, intorder=intorder, method="dense")
+        x.SetRandom(1)
+        y = power_iteration(aref.mat - a.mat, x)
+        assert Norm(y) < 5. * errref[n]
+        

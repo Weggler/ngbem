@@ -1,60 +1,43 @@
-#  testfile for checking integration 
-#  output of testrun 29.11.23
-# err-integration (8-10):  1.6205859881425085e-07
-# err-integration (10-12):  1.5225443842172683e-08
-# err-integration (12-14):  1.3555959613067985e-09
-# err-integration (14-16):  1.3309124393862712e-10
-# err-integration (16-18):  1.507548088767588e-11
+# testfile for checking integration accuracy accuracy, exspectation for dp
 
-# testfile for checking integration accuracy accuracy, exspectation for sp
-
+import sys
+sys.path.append("../build/")
 from netgen.occ import *
 from ngsolve import *
 from libbem import *
 
+errref = [0.00014356401693177312,
+          1.1556523998207007e-05,
+          9.959433217687845e-07,
+          9.474259269075394e-08,
+          9.6163481617507e-09,
+          9.182994523208552e-10,
+          8.329321209219403e-11,
+          7.326096658552548e-12,
+          8.665555899250029e-13,
+          1.6241027931801214e-13]
 
-sp = Sphere( (0,0,0), 1)
-mesh = Mesh( OCCGeometry(sp).GenerateMesh(maxh=0.5)).Curve(1)
-
-fesL2 = SurfaceL2(mesh, order=0, dual_mapping=False)
-fesH1 = H1(mesh, order=1)
-u,v = fesL2.TnT()
-uH1, vH1 = fesH1.TnT()
-
-b8 = DoubleLayerPotentialOperator(fesH1, fesL2, intorder=8, method="dense")
-
-b10 = DoubleLayerPotentialOperator(fesH1, fesL2, intorder=10, method="dense")
-
-b12 = DoubleLayerPotentialOperator(fesH1, fesL2, intorder=12, method="dense")
-
-b14 = DoubleLayerPotentialOperator(fesH1, fesL2, intorder=14, method="dense")
-
-b16 = DoubleLayerPotentialOperator(fesH1, fesL2, intorder=16, method="dense")
-
-b18 = DoubleLayerPotentialOperator(fesH1, fesL2, intorder=18, method="dense")
-
-
-x = b8.mat.CreateRowVector()
-x.SetRandom(1)
-
-err1 = Norm ( (b8.mat -b10.mat)*x )
-print ("err-integration ( 8-10): ", err1 )
-err2 = Norm ( (b10.mat -b12.mat)*x )
-print ("err-integration (10-12): ", err2)
-err3 = Norm ( (b12.mat -b14.mat)*x )
-print ("err-integration (12-14): ", err3)
-err4 = Norm ( (b14.mat -b16.mat)*x )
-print ("err-integration (14-16): ", err4)
-err5 = Norm ( (b16.mat -b18.mat)*x )
-print ("err-integration (16-18): ", err5)
-
-
+def power_iteration(A, x, y):
+    z = x
+    for i in range(30):
+        x = (1. / Norm(z)) * z
+        y = A * x
+        z = A.T * y
+    return y;
 
 def test_answer():
-    assert err1 < 1e-6
-    assert err2 < 1e-6
-    assert err3 < 1e-7
-    assert err4 < 1e-8
-    assert err5 < 1e-10
+    sp = Sphere( (0,0,0), 1)
+    mesh = Mesh( OCCGeometry(sp).GenerateMesh(maxh=0.5)).Curve(1)
+    fesL2 = SurfaceL2(mesh, order=0, dual_mapping=False)
+    fesH1 = H1(mesh, order=1)
+    aref = DoubleLayerPotentialOperator(fesH1, fesL2, intorder=26, method="dense")
+    x = aref.mat.CreateRowVector()
+    y = aref.mat.CreateColVector()
 
+    for n in range(10):
+        intorder = 2 * (n + 1)
+        a = DoubleLayerPotentialOperator(fesH1, fesL2, intorder=intorder, method="dense")
+        x.SetRandom(1)
+        z = power_iteration(aref.mat - a.mat, x, y)
+        assert Norm(z ) < 5. * errref[n]
 
