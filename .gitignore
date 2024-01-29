@@ -36,3 +36,7 @@
 build
 _skbuild
 CMakeFiles
+.ipynb_checkpoints
+ng*.trace
+ng*.html
+__pycache__
