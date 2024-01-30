@@ -1167,17 +1167,19 @@ namespace ngbem
   shared_ptr<CoefficientFunction> GenericIntegralOperator<KERNEL> ::
   GetPotential(shared_ptr<GridFunction> gf) const
   {
-    return  make_shared<PotentialCF<KERNEL>> (gf, trial_evaluator,
+    return  make_shared<PotentialCF<KERNEL>> (gf, trial_definedon, trial_evaluator,
                                               kernel, param);
   }
 
 
   template <typename KERNEL>
   PotentialCF<KERNEL> ::
-  PotentialCF (shared_ptr<GridFunction> _gf, shared_ptr<DifferentialOperator> _evaluator,
+  PotentialCF (shared_ptr<GridFunction> _gf,
+               optional<Region> _definedon,                   
+               shared_ptr<DifferentialOperator> _evaluator,
                KERNEL _kernel, BEMParameters _param)
     : CoefficientFunctionNoDerivative (_evaluator->Dim(), std::is_same<typename KERNEL::value_type,Complex>()),
-      gf(_gf), evaluator(_evaluator), kernel(_kernel), param(_param)
+      gf(_gf), definedon(_definedon), evaluator(_evaluator), kernel(_kernel), param(_param)
   {
     ;
   }
@@ -1200,7 +1202,8 @@ namespace ngbem
           HeapReset hr(lh);
           ElementId ei(BND, i);
           if (!space->DefinedOn(ei)) continue;
-          
+          if (definedon &&  !(*definedon).Mask().Test(mesh->GetElIndex(ei))) continue;
+            
           const FiniteElement &fel = space->GetFE(ei, lh);
           const ElementTransformation &trafo = mesh->GetTrafo(ei, lh);
           
@@ -1208,7 +1211,6 @@ namespace ngbem
           space->GetDofNrs(ei, dnums);
           FlatVector<T> elvec(fel.GetNDof(), lh);
           gf->GetElementVector(dnums, elvec);
-
           IntegrationRule ir(fel.ElementType(), param.intorder);
           SIMD_IntegrationRule simd_ir(ir);
           SIMD_MappedIntegrationRule<2,3> miry(simd_ir, trafo, lh);
@@ -1293,7 +1295,8 @@ namespace ngbem
       }
     catch (ExceptionNOSIMD & e)
       {
-        *testout << "exception: " << e.What() << endl;
+        e.Append ("\nin PotentialCF::Evaluate(mir)");
+        throw e;
       }
   }
 

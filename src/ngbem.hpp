@@ -100,6 +100,9 @@ namespace ngbem
     
     using BASE::trial_space; 
     using BASE::test_space;
+
+    using BASE::trial_definedon; 
+    using BASE::test_definedon;
        
     using BASE::param;
 
@@ -161,11 +164,13 @@ namespace ngbem
   class PotentialCF : public CoefficientFunctionNoDerivative
   {
     shared_ptr<GridFunction> gf;
+    optional<Region> definedon;
     shared_ptr<DifferentialOperator> evaluator;
     KERNEL kernel;
     BEMParameters param;
   public:
     PotentialCF (shared_ptr<GridFunction> _gf,
+                 optional<Region> _definedon,    
                  shared_ptr<DifferentialOperator> _evaluator,
                  KERNEL _kernel, BEMParameters _param);
 
