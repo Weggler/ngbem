@@ -17,6 +17,7 @@ errref = [0.00014356401693177312,
           8.665555899250029e-13,
           1.6241027931801214e-13]
 
+# power iteration to estimate the error in the spectral norm
 def power_iteration(A, x, y):
     z = x
     for i in range(30):
@@ -34,6 +35,7 @@ def test_answer():
     x = aref.mat.CreateRowVector()
     y = aref.mat.CreateColVector()
 
+    # assemble dlp with increasing integration order and compute the 2-norm error
     for n in range(10):
         intorder = 2 * (n + 1)
         a = DoubleLayerPotentialOperator(fesH1, fesL2, intorder=intorder, method="dense")

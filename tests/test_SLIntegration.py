@@ -17,6 +17,7 @@ errref = [1.8017794920533596,
           2.2615647594836697e-11,
           2.6809401671932852e-12]
 
+# power iteration to estimate the error in the spectral norm
 def power_iteration(A, x):
     y = x
     for i in range(30):
@@ -31,6 +32,7 @@ def test_answer():
     aref = SingleLayerPotentialOperator(fes, intorder=26, method="dense")
     x = aref.mat.CreateRowVector()
 
+    # assemble slp with increasing integration order and compute the 2-norm error
     for n in range(10):
         intorder = 2 * (n + 1)
         a = SingleLayerPotentialOperator(fes, intorder=intorder, method="dense")
