@@ -15,10 +15,11 @@ from pathlib import Path
 # Get reference mie series current from cpp
 txt = Path('mie.cpp').read_text() 
 mie = CompilePythonModule(txt, init_function_name='Mie', add_header=False)
+miecurrent = mie.MieCurrent()
 
 # Scattering on a sphere
-order = 3
-sp = Sphere((0, 0, 0), 1)
+order = 4
+sp = Sphere((0, 0, 0), 0.25)
 mesh = Mesh(OCCGeometry(sp).GenerateMesh(maxh=1, perfstepsend=meshing.MeshingStep.MESHSURFACE)).Curve(order)
 
 fesHDiv = HDivSurface(mesh, order=order, complex=True)
@@ -37,17 +38,16 @@ with TaskManager():
     
 j.vec[:] *= kappa
     
-error = sqrt(Integrate(Norm(j - mie.MieCurrent())**2, mesh, BND))
+error = sqrt(Integrate(Norm(j - miecurrent)**2, mesh, BND))
 print("L2-error in j: ", error)
 
-Draw(mie.MieCurrent(), mesh, "mie", draw_vol=False, order=order)
-Draw(Norm(j[0]), mesh, "j0", draw_vol=False, order=order)
-Draw(Norm(j[1]), mesh, "j1", draw_vol=False, order=order)
-Draw(Norm(j[2]), mesh, "j2", draw_vol=False, order=order)
-Draw(Norm(j[1] - mie.MieCurrent()[1]), mesh, "j - mie", draw_vol=False, order=order)
+Draw(miecurrent, mesh, "mie", draw_vol=False, order=order)
+Draw(j, mesh, "j", draw_vol=False, order=order)
+Draw(Norm(j - miecurrent), mesh, "j - mie", draw_vol=False, order=order)
 
 jex = GridFunction(fesHDiv)
-jex.Set(mie.MieCurrent())
+jex.Set(miecurrent)
+print("jex-norm", Norm(jex.vec))
 jex.vec[:] *= 1./ kappa
 res = (V.mat * jex.vec).Evaluate() - rhs.vec
-print("residual: ", Norm(res))
+print("residual: ", Norm(res) / Norm(rhs.vec))

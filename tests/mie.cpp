@@ -12,9 +12,8 @@ const Complex I = Complex(0, 1);
 // kappa           = wave number: kappa^2 = w^2 mu epsilon => kappa= w/c 
 // theta,phi [rad] = Scattered field angles
 // lmax            = Maximum mode number for computing Bessel functions
-Complex*
-mie_serie_current (double ctheta, double stheta, 
-		   double radius, double kappa, int lmax)
+void 
+mie_serie_current (double ctheta, double stheta, double radius, double kappa, int lmax, Complex *field)
 {
   double pi = 3.1415926535897932;  // pi
 
@@ -31,8 +30,6 @@ mie_serie_current (double ctheta, double stheta,
   double  sgn1;
   Complex sgnI;
   Complex A, D, next;
-  Complex *field;
-  field = (Complex*) malloc(2*sizeof(Complex));
 
   int ierr, nz, c1, c2, nmax;
   double nu;
@@ -171,32 +168,18 @@ mie_serie_current (double ctheta, double stheta,
 
   field[0] = S1p + S1n;
   field[1] = S2p + S2n;
-
-  return field;
 }
 
 void mie_current(double *akappa, double *X, Complex *field)
 {
-  Complex *f;
-  double x,y,z;
-  double r, theta, phi;
-  double ctheta, stheta;
-  double kappa;
-  kappa = *akappa;
+  double r = sqrt(X[0] * X[0] + X[1] * X[1] + X[2] * X[2]);
+  double phi = atan2(X[1], X[0]);
+  double theta = acos(X[2] / r);
+  double ctheta = cos(theta);
+  double stheta = sin(theta);
 
-  f = (Complex*) malloc(2*sizeof(Complex));
-  
-  x     = *X;
-  y     = *(X+1);
-  z     = *(X+2);
-  
-  r      = sqrt(x*x+y*y+z*z);
-  phi    = atan2(y,x);
-  theta  = acos(z/r);
-  ctheta = cos(theta);
-  stheta = sqrt(1.-ctheta*ctheta);
-
-  f = mie_serie_current(ctheta,stheta,r,kappa,20);
+  Complex f[2] = {0.};
+  mie_serie_current(ctheta, stheta, r, *akappa, 20, f);
 
   // Explanation of the factor, in order to not further 
   // change the hp-solution, I shift all on the mie solution, i.e.
@@ -205,16 +188,18 @@ void mie_current(double *akappa, double *X, Complex *field)
   //  == I/(eta*x),see | the BIE solves for  | factor below
   //  p.294 Harrington | j_hp ~ -I*w*mu j_mie |
 
-  f[0] *= -1./r*cos(phi);
-  f[1] *= -1./r*sin(phi);
+  f[0] *= -1. / r * cos(phi);
+  f[1] *= -1. / r * sin(phi);
 
+  // need to -conjugate because of different sign (-kappa instead of kappa)
+  f[0] = -std::conj(f[0]);
+  f[1] = -std::conj(f[1]);
+  
   // Neumann trace of total electric field component \gamma_N E^t 
   // in cartesian coordinates
-  *(field  )=( f[0]*ctheta*cos(phi) - f[1]*sin(phi));
-  *(field+1)=( f[0]*ctheta*sin(phi) + f[1]*cos(phi));
-  *(field+2)=(-f[0]*stheta);
-
-  free(f);
+  field[0] = f[0] * ctheta * cos(phi) - f[1] * sin(phi);
+  field[1] = f[0] * ctheta * sin(phi) + f[1] * cos(phi);
+  field[2] = -f[0] * stheta;
 }
 
 /*
@@ -225,27 +210,34 @@ void mie_current(double *akappa, double *X, Complex *field)
 class MieCurrent : public CoefficientFunction
 {
 public:
-  MieCurrent() : CoefficientFunction(/*dimension = */ 3) { ; }
+  MieCurrent() : CoefficientFunction(/*dimension = */ 3, /*ais_complex=*/ true) { ; }
 
   // evaluation in one mapped point:
   virtual double Evaluate(const BaseMappedIntegrationPoint& mip) const override
   {
-    // cout << "MyXY - single point evaluation called" << endl;
     FlatVector<double> pnt = mip.GetPoint();
     double X[3] = {pnt(0), pnt(1), pnt(2)};
     Complex f[3] = {0.};
     mie_current(&KAPPA, X, f);
-    //return std::norm(f[0]) * std::norm(f[0]) + std::norm(f[1]) * std::norm(f[1]) + std::norm(f[2]) * std::norm(f[2]);
-    return std::real(f[2]);
+    return sqrt(std::norm(f[0]) * std::norm(f[0]) + std::norm(f[1]) * std::norm(f[1]) + std::norm(f[2]) * std::norm(f[2]));
   }
-
+  
+  virtual void Evaluate(const BaseMappedIntegrationPoint & mip, FlatVector<Complex> result) const override
+  {
+    FlatVector<double> pnt = mip.GetPoint();
+    double X[3] = {pnt(0), pnt(1), pnt(2)};
+    Complex f[3] = {0.};
+    mie_current(&KAPPA, X, f);
+    result(0) = f[0];
+    result(1) = f[1];
+    result(2) = f[2];
+  }
+  
   // evaluate in all points of the integration-rule
   // values are stores as N x dim matrix
   virtual void Evaluate (const BaseMappedIntegrationRule & mir, BareSliceMatrix<Complex> values) const override
   {
-    // cout << "MyXY - integration rule evaluation called" << endl;
-
-    // all point coordinates of integration points (N x 2 matrix)
+    // all point coordinates of integration points (N x 3 matrix)
     SliceMatrix<double> pnts = mir.GetPoints();
     // cout << "pnts = " << pnts << endl;
 
@@ -256,9 +248,6 @@ public:
       for (int j = 0; j < 3; j++)
 	values(i,j) = f[j];
     }
-
-    // more compact:
-    // values.Col(0).Range(mir.Size()) = pw_mult(pnts.Col(0), pnts.Col(1));
   }  
 };
 
@@ -269,11 +258,9 @@ extern "C" void Mie(py::object & res) {
   static py::module::module_def def;    
   py::module m = py::module::create_extension_module("", "", &def);    
 
-  
   py::class_<MieCurrent, shared_ptr<MieCurrent>, CoefficientFunction>
     (m, "MieCurrent", "CoefficientFunction that computes Mie series current.")
-    .def(py::init<>())
-    ;
+    .def(py::init<>());
   
   res = m;    
 }    
