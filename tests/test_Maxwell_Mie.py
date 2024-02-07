@@ -45,9 +45,3 @@ Draw(miecurrent, mesh, "mie", draw_vol=False, order=order)
 Draw(j, mesh, "j", draw_vol=False, order=order)
 Draw(Norm(j - miecurrent), mesh, "j - mie", draw_vol=False, order=order)
 
-jex = GridFunction(fesHDiv)
-jex.Set(miecurrent)
-print("jex-norm", Norm(jex.vec))
-jex.vec[:] *= 1./ kappa
-res = (V.mat * jex.vec).Evaluate() - rhs.vec
-print("residual: ", Norm(res) / Norm(rhs.vec))

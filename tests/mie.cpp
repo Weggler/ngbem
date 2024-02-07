@@ -188,12 +188,12 @@ void mie_current(double *akappa, double *X, Complex *field)
   //  == I/(eta*x),see | the BIE solves for  | factor below
   //  p.294 Harrington | j_hp ~ -I*w*mu j_mie |
 
-  f[0] *= -1. / r * cos(phi);
-  f[1] *= -1. / r * sin(phi);
+  f[0] *= 1. / r * cos(phi);
+  f[1] *= 1. / r * sin(phi);
 
-  // need to -conjugate because of different sign (-kappa instead of kappa)
-  f[0] = -std::conj(f[0]);
-  f[1] = -std::conj(f[1]);
+  // need to conjugate because of different sign (-kappa instead of kappa)
+  f[0] = std::conj(f[0]);
+  f[1] = std::conj(f[1]);
   
   // Neumann trace of total electric field component \gamma_N E^t 
   // in cartesian coordinates
