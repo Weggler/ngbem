@@ -133,9 +133,9 @@ namespace ngbem
           if(block.IsNearField())
             {
               // Compute dense block
-              Matrix<T> near(testdofs.Size(), trialdofs.Size());
-              CalcBlockMatrix(near, trialdofs, testdofs, lh);	    
-              block.SetMat(make_unique<BaseMatrixFromMatrix<T>>(std::move(near)));
+              Matrix<T> mat_near(testdofs.Size(), trialdofs.Size());
+              CalcBlockMatrix(mat_near, trialdofs, testdofs, lh);
+              block.SetMat(make_unique<BaseMatrixFromMatrix<T>>(std::move(mat_near)));
             }
           else
             {
@@ -147,9 +147,9 @@ namespace ngbem
               catch (netgen::NgException & e)
                 {
                   // cout << "not seperated, size = " << testdofs.Size() << " x " << trialdofs.Size() << endl;
-                  Matrix<T> near(testdofs.Size(), trialdofs.Size());
-                  CalcBlockMatrix(near, trialdofs, testdofs, lh);	    
-                  block.SetMat(make_unique<BaseMatrixFromMatrix<T>>(std::move(near)));
+                  Matrix<T> mat_near(testdofs.Size(), trialdofs.Size());
+                  CalcBlockMatrix(mat_near, trialdofs, testdofs, lh);
+                  block.SetMat(make_unique<BaseMatrixFromMatrix<T>>(std::move(mat_near)));
                 }
             }
         }
