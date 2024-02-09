@@ -443,7 +443,7 @@ namespace ngbem
       }
 
     Vec<3> x,y,nx,ny;
-    constexpr int KERNEL_COMPS = decltype(kernel.Evaluate (x,y,nx,ny))::SIZE;
+    typedef decltype(kernel.Evaluate (x,y,nx,ny)) KERNEL_COMPS_T;
 
 
     
@@ -471,7 +471,7 @@ namespace ngbem
       test_evaluator->CalcMatrix(feli, mirx, mshapesi);
       trial_evaluator->CalcMatrix(felj, miry, mshapesj);
                     
-      FlatVector<Vec<KERNEL_COMPS, SIMD<value_type>>> kernel_values(mirx.Size(), lh);
+      FlatVector<Vec<KERNEL_COMPS_T::SIZE, SIMD<value_type>>> kernel_values(mirx.Size(), lh);
       for (int k2 = 0; k2 < mirx.Size(); k2++)
         {
           Vec<3,SIMD<double>> x = mirx[k2].Point();
