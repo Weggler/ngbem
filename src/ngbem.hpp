@@ -7,6 +7,7 @@
 namespace ngbem
 {
   using namespace ngcomp;
+  using ngcore::INT;
 
   /** BEMParameters. 
       All parameters to define approximation of the layer potential operators. */
