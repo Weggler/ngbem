@@ -46,7 +46,7 @@ namespace ngbem
         ipy += Vec<2>(ip(2)-ip(3), ip(3));
       }
 
-    return tuple { ipx, ipy, weights };
+    return { std::move(ipx), std::move(ipy), std::move(weights) };    
   }
 
 
@@ -83,7 +83,7 @@ namespace ngbem
         ipy += Vec<2>(ip(2)-ip(3), ip(3));
       }
 
-    return tuple { ipx, ipy, weights };
+    return { std::move(ipx), std::move(ipy), std::move(weights) };
   }
 
 
@@ -125,7 +125,7 @@ namespace ngbem
         ipy += Vec<2>(ip(2)-ip(3), ip(3));
       }
 
-    return tuple { ipx, ipy, weights };
+    return { std::move(ipx), std::move(ipy), std::move(weights) };    
   }
   
 
