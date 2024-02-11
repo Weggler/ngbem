@@ -146,7 +146,7 @@ namespace ngbem
 	//cout << i << ":" << clcoord[i] << endl;
       }
 
-    return tuple {clweight, clcoord};
+    return tuple<Array<double>, Array<Vec<3>>> {std::move(clweight), std::move(clcoord)};
   }
 
   /* by S. Rjasanow

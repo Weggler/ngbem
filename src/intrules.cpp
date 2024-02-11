@@ -7,9 +7,10 @@
 
 namespace ngbem
 {
+  using Intrule_t = tuple<Array<Vec<2>>, Array<Vec<2>>, Array<double>>;
 
   // x, y in triangle [(0,0), (1,0), (0,1)]
-  tuple<Array<Vec<2>>, Array<Vec<2>>, Array<double>> IdenticPanelIntegrationRule (int order)
+  Intrule_t IdenticPanelIntegrationRule (int order)
   {
     IntegrationRule irsegm(ET_SEGM, order);
     IntegrationRule irhex (ET_HEX, order);    
@@ -46,13 +47,15 @@ namespace ngbem
         ipy += Vec<2>(ip(2)-ip(3), ip(3));
       }
 
-    return { std::move(ipx), std::move(ipy), std::move(weights) };    
+
+    return Intrule_t { std::move(ipx), std::move(ipy), std::move(weights )};
+
   }
 
 
   // x, y in triangle [(0,0), (1,0), (0,1)]
   // x=(0,0) and y=(0,0) are common vertices
-  tuple<Array<Vec<2>>, Array<Vec<2>>, Array<double>> CommonVertexIntegrationRule (int order)
+  Intrule_t CommonVertexIntegrationRule (int order)
   {
     IntegrationRule irsegm(ET_SEGM, order);
     IntegrationRule irhex (ET_HEX, order);    
@@ -83,13 +86,15 @@ namespace ngbem
         ipy += Vec<2>(ip(2)-ip(3), ip(3));
       }
 
-    return { std::move(ipx), std::move(ipy), std::move(weights) };
+
+    return Intrule_t { std::move(ipx), std::move(ipy), std::move(weights )};
+
   }
 
 
   // x, y in triangle [(0,0), (1,0), (0,1)]
   // x in [(0,0),(1,0)] and y in [(0,0),(1,0)] are common edges
-  tuple<Array<Vec<2>>, Array<Vec<2>>, Array<double>> CommonEdgeIntegrationRule (int order)
+  Intrule_t CommonEdgeIntegrationRule (int order)
   {
     IntegrationRule irsegm(ET_SEGM, order);
     IntegrationRule irhex (ET_HEX, order);    
@@ -125,7 +130,9 @@ namespace ngbem
         ipy += Vec<2>(ip(2)-ip(3), ip(3));
       }
 
-    return { std::move(ipx), std::move(ipy), std::move(weights) };    
+
+    return Intrule_t { std::move(ipx), std::move(ipy), std::move(weights )};
+
   }
   
 
