@@ -47,7 +47,9 @@ namespace ngbem
         ipy += Vec<2>(ip(2)-ip(3), ip(3));
       }
 
+
     return Intrule_t { std::move(ipx), std::move(ipy), std::move(weights )};
+
   }
 
 
@@ -84,7 +86,9 @@ namespace ngbem
         ipy += Vec<2>(ip(2)-ip(3), ip(3));
       }
 
+
     return Intrule_t { std::move(ipx), std::move(ipy), std::move(weights )};
+
   }
 
 
@@ -126,7 +130,9 @@ namespace ngbem
         ipy += Vec<2>(ip(2)-ip(3), ip(3));
       }
 
+
     return Intrule_t { std::move(ipx), std::move(ipy), std::move(weights )};
+
   }
   
 
