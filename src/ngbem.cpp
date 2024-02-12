@@ -571,8 +571,8 @@ namespace ngbem
 		for (int cx = 0; cx < 3; cx++)
 		  for (int cy = 0; cy < 3; cy++)
 		    {
-		      INT<2> ex (verti[edges[cx][0]], verti[edges[cx][1]]); 
-		      INT<2> ey (vertj[edges[cy][0]], vertj[edges[cy][1]]); 
+		      IVec<2> ex (verti[edges[cx][0]], verti[edges[cx][1]]); 
+		      IVec<2> ey (vertj[edges[cy][0]], vertj[edges[cy][1]]); 
 		      if (ex.Sort() == ey.Sort()) 
 			{
 			  cex = cx;  // -> "common" edge number triangle i
