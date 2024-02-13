@@ -8,5 +8,7 @@ chapters:
 - file: demos/Laplace_DtN_direct
 - file: demos/Laplace_NtD_indirect
 - file: demos/Laplace_NtD_direct
+- file: demos/Laplace_Mixed
+- file: demos/FEMBEM_Capacitor
 - file: demos/Maxwell_DtN_indirect
 
