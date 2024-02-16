@@ -4,6 +4,7 @@
 format: jb-book
 root: intro
 chapters:
+- file: ho_cvg
 - file: demos/Laplace_DtN_indirect
 - file: demos/Laplace_DtN_direct
 - file: demos/Laplace_NtD_indirect
