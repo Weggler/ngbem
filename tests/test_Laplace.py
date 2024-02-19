@@ -6,7 +6,6 @@ sys.path.append("../build/")
 from ngsolve import *
 from netgen.occ import *
 from ngsolve.krylovspace import CG, GMRes
-from ngsolve.webgui import Draw
 from libbem import *
 
 # Reference errors (dirichlet, neumann, screen)
