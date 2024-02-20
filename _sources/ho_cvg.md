@@ -3,7 +3,9 @@
 
 NG-BEM implements high order boundary element methods. The accuracy of the method depends on the order of the finite element spaces involved. On this page some numerical results of NG-BEM are presented: 
 
-1. Analytically solvable problems with an unkown in one of the following trace spaces are considered $$ H^{\frac12}(\Gamma), \quad \boldsymbol H^{-\frac12}(\mathrm{div}_\Gamma, \Gamma) \quad \textnormal{and} \quad H^{-\frac12}(\Gamma)\,.$$ The unkown trace is computed by NG-BEM for different orders of approximation $p$ on a sequence of subsequently refined meshes. The absolute $L_2$-error as function of degrees of freedom is analysed and convergence rates known from theory are exemplarily verified. 
+1. Analytically solvable problems with an unkown in one of the following trace spaces are considered $$ H^{\frac12}(\Gamma), \quad \boldsymbol H^{-\frac12}(\mathrm{div}_\Gamma, \Gamma) \quad \textnormal{and} \quad H^{-\frac12}(\Gamma)\,.$$ 
+
+The unkown trace is computed by NG-BEM for different orders of approximation $p$ on a sequence of subsequently refined meshes. The absolute $L_2$-error as function of degrees of freedom is analysed and convergence rates known from theory are exemplarily verified. 
 2. Given a complete set of Cauchy data the solution of the pde is given by its boundary integral representation. Thus, besides traces the numerical solution of the pde depends on $p$. We consider an electrostatic potential in $H^{1}(\Omega)$ as solution of the Laplacian and analyse the decrease of error with respect to varying order $p$.
 
 
