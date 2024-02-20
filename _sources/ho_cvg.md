@@ -135,7 +135,7 @@ The following table contains the numerical results of our convergence test.
 | 2804 | 4206  | 1.79e-01 | 8412| 8.09e-03  | 21030 | 3.14e-04  | 39256 | 3.93e-06 | 63180 | 3.64e-07 |  
 
 
-Using the NG-BEM solver we compute the Neumann data $\gamma_N \boldsymbol E \in \boldsymbol H^{-\frac12}(\mathrm{div}_\Gamma, \Gamma)$ for varying orders of approximation $p$. The following diagram shows the $L_2$-error of the approximated Neumann data as function of the number of degrees of freedom for $p=0,...,4$::w
+Using the NG-BEM solver we compute the Neumann data $\gamma_N \boldsymbol E \in \boldsymbol H^{-\frac12}(\mathrm{div}_\Gamma, \Gamma)$ for varying orders of approximation $p$. The following diagram shows the $L_2$-error of the approximated Neumann data as function of the number of degrees of freedom for $p=0,...,4$:
      
 
 ![](demos/resources/plot_Maxwell_Mie.png) 
