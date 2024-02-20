@@ -29,6 +29,7 @@ for order in range(1, 5):
         fesH1 = H1(mesh, order=order, dirichlet="dirichlet", definedon=mesh.Boundaries(".*"))
         u1,v1 = fesH1.TnT()
         fesL2 = SurfaceL2(mesh, order=order-1, dirichlet="neumann")
+        #test = SurfaceL2(mesh, order=0, dirichlet="neumann")
         u,v = fesL2.TnT()
 
         uexa = CF(1. / sqrt((x-1)**2 + (y-1)**2 + (z-1)**2))
@@ -82,3 +83,4 @@ for order in range(1, 5):
         errs = sqrt(Integrate((gf_screen - uexa)**2, mesh_screen.Boundaries(".*"), BND))
 
         print(order, fesL2.ndof, fesH1.ndof, errn, errd, errs)
+        #print(order, test.ndof, mesh.Elements(BND))
