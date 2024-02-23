@@ -119,25 +119,43 @@ PYBIND11_MODULE(libbem, m)
     py::arg("method")="aca", py::arg("testhmatrix")=false);
 
 
-  m.def("MaxwellSingleLayerPotentialOperator", [](shared_ptr<FESpace> space, double kappa, 
+  m.def("MaxwellSingleLayerPotentialOperator", [](shared_ptr<FESpace> space, double kappa, optional<Region> definedon,
                                                   int intorder, int leafsize, double eta, double eps,
                                                   string method, bool testhmatrix) -> shared_ptr<IntegralOperator<Complex>>
   {
     BEMParameters param({intorder, leafsize, eta, eps, method, testhmatrix});
-    return make_unique<GenericIntegralOperator<MaxwellSLKernel<3>>>(space, space,
+    return make_unique<GenericIntegralOperator<MaxwellSLKernel<3>>>(space, space, definedon, definedon,
                                                                     make_shared<T_DifferentialOperator<DiffOpMaxwellNew>>(),
                                                                     make_shared<T_DifferentialOperator<DiffOpMaxwellNew>>(), 
                                                                     MaxwellSLKernel<3>(kappa), param);
     
-  }, py::arg("space"), py::arg("kappa"), py::arg("intorder")=3, py::arg("leafsize")=40, py::arg("eta")=2., py::arg("eps")=1e-6,
+  }, py::arg("space"), py::arg("kappa"), py::arg("definedon")=nullopt,
+        py::arg("intorder")=3, py::arg("leafsize")=40, py::arg("eta")=2., py::arg("eps")=1e-6,
+        py::arg("method")="aca", py::arg("testhmatrix")=false);
+
+  
+  m.def("MaxwellSingleLayerPotentialOperatorCurl", [](shared_ptr<FESpace> space, double kappa, optional<Region> definedon,
+                                                      int intorder, int leafsize, double eta, double eps,
+                                                      string method, bool testhmatrix) -> shared_ptr<IntegralOperator<Complex>>
+  {
+    BEMParameters param({intorder, leafsize, eta, eps, method, testhmatrix});
+    return make_unique<GenericIntegralOperator<MaxwellSLKernel<3>>>(space, space, definedon, definedon,
+                                                                    make_shared<T_DifferentialOperator<DiffOpMaxwell>>(),
+                                                                    make_shared<T_DifferentialOperator<DiffOpMaxwell>>(), 
+                                                                    MaxwellSLKernel<3>(kappa), param);
+    
+  }, py::arg("space"), py::arg("kappa"), py::arg("definedon")=nullopt,
+        py::arg("intorder")=3, py::arg("leafsize")=40, py::arg("eta")=2., py::arg("eps")=1e-6,
         py::arg("method")="aca", py::arg("testhmatrix")=false);
   
   
 
   
-  m.def("MaxwellDoubleLayerPotentialOperator", [](shared_ptr<FESpace> trial_space, shared_ptr<FESpace> test_space, double kappa, 
-                                                     int intorder, int leafsize, double eta, double eps,
-                                                     string method, bool testhmatrix) -> shared_ptr<IntegralOperator<Complex>>
+  m.def("MaxwellDoubleLayerPotentialOperator", [](shared_ptr<FESpace> trial_space, shared_ptr<FESpace> test_space,
+                                                  double kappa, 
+                                                  optional<Region> trial_definedon, optional<Region> test_definedon,
+                                                  int intorder, int leafsize, double eta, double eps,
+                                                  string method, bool testhmatrix) -> shared_ptr<IntegralOperator<Complex>>
   {
       if(!method.compare("dense")) {
        leafsize = INT_MAX;
@@ -145,10 +163,13 @@ PYBIND11_MODULE(libbem, m)
     }
     BEMParameters param({intorder, leafsize, eta, eps, method, testhmatrix});
     return make_unique<GenericIntegralOperator<MaxwellDLKernel<3>>>(trial_space, test_space,
+                                                                    trial_definedon, test_definedon,
                                                                     make_shared<T_DifferentialOperator<DiffOpRotatedTrace>>(),
                                                                     test_space->GetEvaluator(BND),
                                                                     MaxwellDLKernel<3>(kappa), param);
-  }, py::arg("trial_space"), py::arg("test_space"), py::arg("kappa"), py::arg("intorder")=3, py::arg("leafsize")=40, py::arg("eta")=2., py::arg("eps")=1e-6,
+  }, py::arg("trial_space"), py::arg("test_space"), py::arg("kappa"),
+        py::arg("trial_definedon")=nullopt, py::arg("test_definedon")=nullopt,        
+        py::arg("intorder")=3, py::arg("leafsize")=40, py::arg("eta")=2., py::arg("eps")=1e-6,
         py::arg("method")="aca", py::arg("testhmatrix")=false);
   
 
