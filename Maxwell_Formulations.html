@@ -1,0 +1,715 @@
+
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+    <title>Boundary Integral Equations for Maxwell &#8212; NG-BEM</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="_static/styles/bootstrap.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+
+  
+  <link href="_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=5b4479735964841361fd" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" href="_static/styles/sphinx-book-theme.css?digest=14f4ca6b54d191a8c7657f6c759bf11a5fb86285" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="_static/togglebutton.css" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-thebe.css" />
+    <link rel="stylesheet" type="text/css" href="_static/design-style.4045f2051d55cab465a707391d5b2007.min.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=5b4479735964841361fd" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd" />
+  <script src="_static/vendor/fontawesome/6.1.2/js/all.min.js?digest=5b4479735964841361fd"></script>
+
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/clipboard.min.js"></script>
+    <script src="_static/copybutton.js"></script>
+    <script src="_static/scripts/sphinx-book-theme.js?digest=5a5c038af52cf7bc1a1ec88eea08e6366ee68824"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="_static/togglebutton.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script src="_static/design-tabs.js"></script>
+    <script>const THEBE_JS_URL = "https://unpkg.com/thebe@0.8.2/lib/index.js"
+const thebe_selector = ".thebe,.cell"
+const thebe_selector_input = "pre"
+const thebe_selector_output = ".output, .cell_output"
+</script>
+    <script async="async" src="_static/sphinx-thebe.js"></script>
+    <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'Maxwell_Formulations';</script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Maxwell solver for PEC bodies (EFIE)" href="demos/Maxwell_DtN_indirect.html" />
+    <link rel="prev" title="FEM-BEM Coupling" href="demos/FEMBEM_Capacitor.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search this book..."
+         aria-label="Search this book..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+
+<a class="navbar-brand logo" href="intro.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">NG-BEM</p>
+  
+</a></div>
+        <div class="sidebar-primary-item"><nav class="bd-links" id="bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        
+        <ul class="nav bd-sidenav bd-sidenav__home-link">
+            <li class="toctree-l1">
+                <a class="reference internal" href="intro.html">
+                    Welcome to NG-BEM
+                </a>
+            </li>
+        </ul>
+        <ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="demos/Laplace_DtN_indirect.html">Laplace solver using indirect formulation (Dirichlet)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="demos/Laplace_DtN_direct.html">Laplace solver using direct formulation (Dirichlet)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="demos/Laplace_NtD_indirect.html">Laplace solver using indirect formulation (Neumann)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="demos/Laplace_NtD_direct.html">Laplace solver using direct formulation (Neumann)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="demos/Laplace_Mixed.html">Laplace mixed boundary values</a></li>
+<li class="toctree-l1"><a class="reference internal" href="demos/FEMBEM_Capacitor.html">FEM-BEM Coupling</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Boundary Integral Equations for Maxwell</a></li>
+<li class="toctree-l1"><a class="reference internal" href="demos/Maxwell_DtN_indirect.html">Maxwell solver for PEC bodies (EFIE)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="demos/Maxwell_DtN_direct.html">Maxwell solver for Pec using direct formulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="demos/Maxwell_Mixed.html">Maxwell solver with mixed BC</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ho_cvg.html">Convergence Rates for HO BEM</a></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><label class="sidebar-toggle primary-toggle btn btn-sm" for="__primary" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</label></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+
+
+
+<div class="dropdown dropdown-source-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Source repositories">
+    <i class="fab fa-github"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="https://github.com/Weggler/ngbem" target="_blank"
+   class="btn btn-sm btn-source-repository-button dropdown-item"
+   title="Source repository"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fab fa-github"></i>
+  </span>
+<span class="btn__text-container">Repository</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li><a href="https://github.com/Weggler/ngbem/issues/new?title=Issue%20on%20page%20%2FMaxwell_Formulations.html&body=Your%20issue%20content%20here." target="_blank"
+   class="btn btn-sm btn-source-issues-button dropdown-item"
+   title="Open an issue"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-lightbulb"></i>
+  </span>
+<span class="btn__text-container">Open issue</span>
+</a>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="_sources/Maxwell_Formulations.md" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.md</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script>
+
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+  </button>
+`);
+</script>
+<label class="sidebar-toggle secondary-toggle btn btn-sm" for="__secondary"title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</label>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>Boundary Integral Equations for Maxwell</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#notations-for-relevant-trace-operators">Notations for relevant trace operators:</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#notations-for-relevant-trace-spaces">Notations for relevant trace spaces:</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#maxwell-equations-pec">Maxwell equations PEC</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#electric-field-boundary-integral-equations">Electric field boundary integral equations</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#direct-ansatz">Direct ansatz</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#indirect-ansatz">Indirect ansatz</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#notes">Notes</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#magnetic-field-boundary-integral-equations">Magnetic field boundary integral equations</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">Direct ansatz</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id2">Indirect ansatz</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id3">Notes</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#conclusion">Conclusion</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#ng-bem-python-functions">NG-BEM Python Functions</a></li>
+</ul>
+</li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <section class="tex2jax_ignore mathjax_ignore" id="boundary-integral-equations-for-maxwell">
+<h1>Boundary Integral Equations for Maxwell<a class="headerlink" href="#boundary-integral-equations-for-maxwell" title="Permalink to this heading">#</a></h1>
+<section id="notations-for-relevant-trace-operators">
+<h2>Notations for relevant trace operators:<a class="headerlink" href="#notations-for-relevant-trace-operators" title="Permalink to this heading">#</a></h2>
+<div class="math notranslate nohighlight">
+\[\begin{split} \begin{array}{r rcl } \textnormal{Dirichlet trace} \quad &amp; \gamma_R \boldsymbol u &amp;=&amp; \left( \boldsymbol n \times \boldsymbol u \right) \times \boldsymbol n \\[1ex] \textnormal{rotated Dirichlet trace} \quad &amp; \gamma_D \boldsymbol u &amp;=&amp; \boldsymbol n \times \boldsymbol u \\ \textnormal{Neumann trace} \quad &amp; \gamma_N \boldsymbol u &amp;=&amp; \dfrac{1}{\kappa} \boldsymbol n \times \mathbf{curl}\, \boldsymbol u\,,\quad \kappa = \omega\, \sqrt{\varepsilon\,\mu}\,. \end{array} \end{split}\]</div>
+</section>
+<section id="notations-for-relevant-trace-spaces">
+<h2>Notations for relevant trace spaces:<a class="headerlink" href="#notations-for-relevant-trace-spaces" title="Permalink to this heading">#</a></h2>
+<div class="math notranslate nohighlight">
+\[\begin{split} \begin{array}{r rcl l} \textnormal{Dirichlet trace} \quad &amp; \gamma_R \boldsymbol u &amp;\in&amp; H^{-\frac12}\left( \mathrm{curl}_\Gamma,\Gamma\right) \quad &amp;\textnormal{tangential edge projection weakly continuous}\\ \textnormal{rotated Dirichlet trace} \quad &amp; \gamma_D \boldsymbol u &amp;\in&amp; H^{-\frac12}\left( \mathrm{div}_\Gamma, \Gamma\right) \quad &amp; \textnormal{normal edge projection weakly condinuous} \\ \textnormal{Neumann trace} \quad &amp; \gamma_N \boldsymbol u &amp;\in&amp; H^{-\frac12}\left( \mathrm{div}_\Gamma, \Gamma\right) \quad &amp; \textnormal{normal edge projection weakly condinuous}\,. \end{array} \end{split}\]</div>
+</section>
+<section id="maxwell-equations-pec">
+<h2>Maxwell equations PEC<a class="headerlink" href="#maxwell-equations-pec" title="Permalink to this heading">#</a></h2>
+<p>Let <span class="math notranslate nohighlight">\(\Omega \in \mathbb R^3\)</span> denote a perfect electric conductor and <span class="math notranslate nohighlight">\(\gamma_R \boldsymbol E^i = -\boldsymbol m\)</span> the given Dirichlet trace of an incoming time-harmonic electromagnetic signal <span class="math notranslate nohighlight">\(\boldsymbol E^i\)</span>. The scattered electromagnetic field with components <span class="math notranslate nohighlight">\(\boldsymbol E\)</span> and <span class="math notranslate nohighlight">\(\boldsymbol H\)</span> solves the following equations in the exterior domain <span class="math notranslate nohighlight">\(\Omega^c\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split} \left\{ \begin{array}{ccl} \mathbf{curl} \, \boldsymbol H &amp;=&amp; -i\omega\varepsilon \boldsymbol E\,, \\ \mathbf{curl} \, \boldsymbol E &amp;=&amp; i\omega\mu \boldsymbol H\,, \\ \gamma_R\, \boldsymbol E &amp;=&amp; \boldsymbol m \end{array} \right. \end{split}\]</div>
+<p>From here we can derive two second order equations: one for the electric field <span class="math notranslate nohighlight">\(\boldsymbol E\)</span> and one for the magnetic field <span class="math notranslate nohighlight">\(\boldsymbol H\)</span>.</p>
+</section>
+<section id="electric-field-boundary-integral-equations">
+<h2>Electric field boundary integral equations<a class="headerlink" href="#electric-field-boundary-integral-equations" title="Permalink to this heading">#</a></h2>
+<p>The electric field <span class="math notranslate nohighlight">\(\boldsymbol E\)</span> solves the second order equation with Dirichlet boundary:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\left\{ \begin{array}{rcl l} \mathbf{curl} \, \mathbf{curl}\, \boldsymbol E - \kappa^2 \, \boldsymbol E &amp;=&amp; \boldsymbol 0, \quad &amp;\textnormal{in } \Omega^c \subset \mathbb R^3\,,\\ \gamma_R \,\boldsymbol E &amp;=&amp; \boldsymbol m, \quad &amp; \textnormal{on }\Gamma \\ \left\| \mathbf{curl} \, \boldsymbol E( x) - i\,\omega\,\epsilon \, \boldsymbol E( x)\right\| &amp;=&amp; \mathcal O\left( \displaystyle \frac{1}{\| x\|^2}\right), &amp;\textnormal{for} \; \|x\| \to \infty\,.\end{array} \right. \end{split}\]</div>
+<p>From here we can choose an direct or an indirect ansatz. We look first at the direct and then on the indirect ansatz.</p>
+<section id="direct-ansatz">
+<h3>Direct ansatz<a class="headerlink" href="#direct-ansatz" title="Permalink to this heading">#</a></h3>
+<p>Representation formula:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split} \begin{array}{rcl} \boldsymbol E(x) &amp;=&amp; \mathrm{SL}\left( \gamma_N \, \boldsymbol E\right)(x) + \mathrm{DL}\left( \gamma_D\,\boldsymbol E\right)(x) \\[1ex] &amp;=&amp;\underbrace{ \kappa\,\displaystyle \int\limits_\Gamma \displaystyle{ \frac{1}{4\,\pi} \, \frac{e^{i\,\kappa\,\|x-y\|}}{\| x-y\|} } \, \boldsymbol j(y)\, \mathrm{d}\sigma_y + \frac{1}{\kappa} \nabla \displaystyle\int\limits_\Gamma \displaystyle{ \frac{1}{4\,\pi}\, \frac{e^{i\,\kappa\,\|x-y\|}}{\| x-y\|} } \, \mathrm{div}_\Gamma \boldsymbol j(y)\, \mathrm{d}\sigma_y }_{\displaystyle{ =\mathrm{SL}(\boldsymbol j) } } + \underbrace{ \nabla \times \displaystyle \int\limits_\Gamma \displaystyle{ \frac{1}{4\,\pi} \, \frac{e^{i\,\kappa\,\|x-y\|}}{\| x-y\|} } \, \boldsymbol n(y) \times \boldsymbol{m}(y)\, \mathrm{d}\sigma_y }_{\displaystyle{ =\mathrm{DL}(\boldsymbol n\times \boldsymbol m)} } \,. \end{array}\end{split}\]</div>
+<p>Variational formulation and discretisation:</p>
+<div class="math notranslate nohighlight">
+\[ \forall \, \boldsymbol v\in H^{-\frac12}(\mathrm{div}_\Gamma, \Gamma): \quad \left\langle \gamma_R \, \mathrm{SL} (\boldsymbol j), \boldsymbol v \right\rangle_{-\frac12} = \left\langle \boldsymbol m, \boldsymbol v\right\rangle_{-\frac12}  - \left\langle \gamma_R\,\mathrm{DL}(\boldsymbol n \times \boldsymbol{m}), \boldsymbol v\right\rangle_{-\frac12} \quad \stackrel{\textnormal{MoM}}{\Longrightarrow} \quad \mathrm{V} \, \mathbf{j} = \left( \frac12 \mathrm{M} - \mathrm{K}\right) \,\mathbf{m} \,, \]</div>
+</section>
+<section id="indirect-ansatz">
+<h3>Indirect ansatz<a class="headerlink" href="#indirect-ansatz" title="Permalink to this heading">#</a></h3>
+<p>Representation formula:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split} \begin{array}{rcl} \boldsymbol E(x) &amp;=&amp; \mathrm{SL}\left( \gamma_N \, \boldsymbol E^t\right)(x)  \\[1ex] &amp;=&amp;\underbrace{ \kappa\,\displaystyle \int\limits_\Gamma \displaystyle{ \frac{1}{4\,\pi} \, \frac{e^{i\,\kappa\,\|x-y\|}}{\| x-y\|} } \, \boldsymbol j^t(y)\, \mathrm{d}\sigma_y + \frac{1}{\kappa} \nabla \displaystyle\int\limits_\Gamma \displaystyle{ \frac{1}{4\,\pi}\, \frac{e^{i\,\kappa\,\|x-y\|}}{\| x-y\|} } \, \mathrm{div}_\Gamma \boldsymbol j^t(y)\, \mathrm{d}\sigma_y }_{\displaystyle{ =\mathrm{SL}(\boldsymbol j^t) } } \,. \end{array}\end{split}\]</div>
+<p>Variational formulation and discretisation:</p>
+<div class="math notranslate nohighlight">
+\[ \forall \, \boldsymbol v\in H^{-\frac12}(\mathrm{div}_\Gamma, \Gamma): \quad \left\langle \gamma_R \, \mathrm{SL} (\boldsymbol j^t), \boldsymbol v \right\rangle_{-\frac12} = \left\langle \boldsymbol m, \boldsymbol v\right\rangle_{-\frac12}  \quad \stackrel{\textnormal{MoM}}{\Longrightarrow} \quad \mathrm{V} \, \mathbf{j^t} = \mathrm{M} \,\mathbf{m} \,, \]</div>
+<section id="notes">
+<h4>Notes<a class="headerlink" href="#notes" title="Permalink to this heading">#</a></h4>
+<ul class="simple">
+<li><p>The bie from an indirect ansatz is often called <strong>EFIE</strong> (electric field integral equation).</p></li>
+<li><p>The solution <span class="math notranslate nohighlight">\(\boldsymbol j^t\)</span> of the EFIE is the Neumann trace of the total electric field <span class="math notranslate nohighlight">\(\boldsymbol E^t = \boldsymbol E + \boldsymbol E^i\)</span>.</p></li>
+<li><p>The density <span class="math notranslate nohighlight">\(\boldsymbol j\)</span> from the direct ansatz is not the same as the density <span class="math notranslate nohighlight">\(\boldsymbol j^t\)</span> from the indirect ansatz. It holds</p></li>
+</ul>
+<div class="math notranslate nohighlight">
+\[\begin{split} \begin{array}{rcl cl l} \boldsymbol j &amp;=&amp; \gamma_N \, \boldsymbol E &amp;=&amp; \dfrac{1}{\kappa} \, \boldsymbol n \times \mathbf{curl}\,\boldsymbol E \quad &amp;\textnormal{Neumann trace of scattered field}  \\ \boldsymbol j^t &amp;=&amp; \gamma_N \, \boldsymbol E^t &amp;=&amp; \dfrac{1}{\kappa} \, \boldsymbol n \times \mathbf{curl}\,\boldsymbol E^t \quad &amp; \textnormal{Neumann trace of total field}\,.  \end{array} \end{split}\]</div>
+<ul class="simple">
+<li><p>The densities are related as follows</p></li>
+</ul>
+<div class="math notranslate nohighlight">
+\[ \boldsymbol j^t = \boldsymbol j + \boldsymbol j^i\]</div>
+</section>
+</section>
+</section>
+<section id="magnetic-field-boundary-integral-equations">
+<h2>Magnetic field boundary integral equations<a class="headerlink" href="#magnetic-field-boundary-integral-equations" title="Permalink to this heading">#</a></h2>
+<p>The magnetic field solves a second order equation with Neumann boundary conditions:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split} \left\{ \begin{array}{rcl l} \mathbf{curl} \, \mathbf{curl}\, \boldsymbol H - \kappa^2 \, \boldsymbol H &amp;=&amp; \boldsymbol 0, \quad &amp;\textnormal{in } \Omega^c \subset \mathbb R^3\,,\\ \gamma_N \,\boldsymbol H &amp;=&amp; -\dfrac{i\omega\varepsilon}{\kappa} \, \boldsymbol n\times \boldsymbol m, \quad &amp; \textnormal{on }\Gamma \\[1ex] \left\| \mathbf{curl} \, \boldsymbol H( x) + i\,\omega\,\mu \, \boldsymbol H( x)\right\| &amp;=&amp; \mathcal O\left( \displaystyle \frac{1}{\| x\|^2}\right), &amp;\textnormal{for} \; \|x\| \to \infty\,.\end{array} \right. \end{split}\]</div>
+<p>Again, we can choose an direct or an indirect ansatz. We look first at the direct and then on the indirect ansatz.</p>
+<section id="id1">
+<h3>Direct ansatz<a class="headerlink" href="#id1" title="Permalink to this heading">#</a></h3>
+<p>Representation formula:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{array}{rcl} \boldsymbol H(x) &amp;=&amp; \mathrm{SL}\left( \gamma_N \, \boldsymbol H\right)(x) +\mathrm{DL}\left( \gamma_R\,\boldsymbol H\right)(x) \\[1ex] &amp;=&amp;  -\dfrac{i\omega\varepsilon}{\kappa} \, \Big(\underbrace{ \kappa\, \displaystyle\int\limits_\Gamma \displaystyle{ \frac{1}{4\,\pi} \, \frac{e^{i\,\kappa\,\|x-y\|}}{\| x-y\|} } \, \boldsymbol n(y)\times \boldsymbol m(y)\, \mathrm{d}\sigma_y + \frac{1}{\kappa} \nabla \displaystyle\int\limits_\Gamma \displaystyle{ \frac{1}{4\,\pi}\, \frac{e^{i\,\kappa\,\|x-y\|}}{\| x-y\|} } \, \mathrm{curl}_\Gamma \,\boldsymbol m(y)\, \mathrm{d}\sigma_y }_{\displaystyle{\mathrm{SL}(\boldsymbol n \times \boldsymbol m)} } \Big)  + \dfrac{ \kappa }{ i\omega\mu} &amp; \underbrace{ \nabla \times \displaystyle\int\limits_\Gamma \displaystyle{ \frac{1}{4\,\pi} \, \frac{e^{i\,\kappa\,\|x-y\|}}{\| x-y\|} } \, \boldsymbol{j}(y) \, \mathrm{d}\sigma_y }_{\displaystyle{ \mathrm{DL} (\boldsymbol{j}) } }\,.\end{array}\end{split}\]</div>
+<p>Apply rotated Dirichlet trace:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{array}{c rcl} &amp; \gamma_D \,\boldsymbol H &amp;=&amp; -\dfrac{i\omega\varepsilon}{\kappa} \gamma_D \,\mathrm{SL}(\boldsymbol n\times \boldsymbol m) + \dfrac{\kappa}{i\omega\mu} \gamma_D \,\mathrm{DL}( \boldsymbol j) \\[1ex] \Rightarrow &amp; \dfrac{\kappa}{i\omega\mu}\boldsymbol j &amp;=&amp; -\dfrac{i\omega\varepsilon}{\kappa} \gamma_D \, \mathrm{SL}(\boldsymbol n\times \boldsymbol m) + \dfrac{\kappa}{i\omega\mu} \gamma_D \,\mathrm{DL}( \boldsymbol j) \quad \Rightarrow \quad \boldsymbol j = \gamma_D \,\mathrm{SL}( \boldsymbol n\times \boldsymbol m) + \gamma_D\, \mathrm{DL}(\boldsymbol j)  \end{array}\end{split}\]</div>
+<p>Variational formulation and discretisation:</p>
+<div class="math notranslate nohighlight">
+\[ \forall \, \boldsymbol v\in H^{-\frac12}(\mathrm{curl}_\Gamma, \Gamma): \quad \left\langle \boldsymbol v, \boldsymbol j\right\rangle_{-\frac12} - \left\langle \boldsymbol v, \gamma_D \,\mathrm{DL} (\boldsymbol j) \right\rangle_{-\frac12} = \left\langle \boldsymbol v,  \gamma_D\, \mathrm{SL}(\boldsymbol n \times \boldsymbol{m}) \right\rangle_{-\frac12} \quad \stackrel{\textnormal{MoM}}{\Longrightarrow} \quad  \left( \frac12 \mathrm{M}^\intercal + \mathrm{K}^\intercal\right) \,\mathbf{j} = -\mathrm D \, \mathbf m \,, \]</div>
+</section>
+<section id="id2">
+<h3>Indirect ansatz<a class="headerlink" href="#id2" title="Permalink to this heading">#</a></h3>
+<p>Representation formula:</p>
+<div class="math notranslate nohighlight">
+\[ \boldsymbol H(x) = \mathrm{DL}\left( \gamma_R\,\boldsymbol H^t\right)(x) = \dfrac{ \kappa }{ i\omega\mu} \underbrace{ \nabla \times \displaystyle\int\limits_\Gamma \displaystyle{ \frac{1}{4\,\pi} \, \frac{e^{i\,\kappa\,\|x-y\|}}{\| x-y\|} } \, \boldsymbol{j}^t(y) \, \mathrm{d}\sigma_y }_{\displaystyle{ \mathrm{DL} (\boldsymbol{j}^t) } }\,.\]</div>
+<p>Apply rotated Dirichlet trace and use <span class="math notranslate nohighlight">\(\boldsymbol j = \boldsymbol j^t - \boldsymbol j^i\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{array}{ l c rcl}  \gamma_D \,\boldsymbol H =  \dfrac{\kappa}{i\omega\mu} \gamma_D \,\mathrm{DL}( \boldsymbol j^t) \quad &amp;\Rightarrow &amp; \dfrac{\kappa}{i\omega\mu}\boldsymbol j &amp;=&amp;  \dfrac{\kappa}{i\omega\mu} \gamma_D \,\mathrm{DL}( \boldsymbol j^t) \\[2ex] &amp;\Rightarrow &amp;\boldsymbol j^t &amp;=&amp; \gamma_D \,\mathrm{DL}(\boldsymbol j^t) + \boldsymbol j^i  \end{array}\end{split}\]</div>
+<p>Variational formulation and discretisation:</p>
+<div class="math notranslate nohighlight">
+\[ \forall \, \boldsymbol v\in H^{-\frac12}(\mathrm{curl}_\Gamma, \Gamma): \quad \left\langle \boldsymbol v, \boldsymbol j^t\right\rangle_{-\frac12} - \left\langle \boldsymbol v, \gamma_D \,\mathrm{DL} (\boldsymbol j^t) \right\rangle_{-\frac12} = \left\langle \boldsymbol v,  \boldsymbol{j}^i \right\rangle_{-\frac12} \quad \stackrel{\textnormal{MoM}}{\Longrightarrow} \quad  \left( \frac12 \mathrm{M}^\intercal + \mathrm{K}^\intercal\right) \,\mathbf{j} = \mathrm M \, \mathbf j^i \,, \]</div>
+</section>
+<section id="id3">
+<h3>Notes<a class="headerlink" href="#id3" title="Permalink to this heading">#</a></h3>
+<ul class="simple">
+<li><p>The BIE from an indirect ansatz is often called <strong>MFIE</strong> (magnetic field integral equation).</p></li>
+</ul>
+<ul class="simple">
+<li><p>Also the magnetic field leads to boundary integral equations  <span class="math notranslate nohighlight">\(\boldsymbol j\)</span> and  <span class="math notranslate nohighlight">\(\boldsymbol j^t\)</span>. The boundary integral equation is are integral equations of second type.</p></li>
+<li><p>consider <span class="math notranslate nohighlight">\(H^{-\frac12}(\mathrm{curl}_\Gamma,\Gamma)\)</span> conforming finite elements for test and trial space. Here is the hypersingular operator entry <span class="math notranslate nohighlight">\(lk\)</span></p></li>
+</ul>
+<div class="math notranslate nohighlight">
+\[ \mathrm{D}_{lk} = \int\limits_\Gamma \int\limits_\Gamma \displaystyle{ \frac{1}{4\,\pi} \, \frac{e^{i\,\kappa\,\|x-y\|}}{\| x-y\|} } \, \langle \boldsymbol n(y)\times \boldsymbol v_l(y), \boldsymbol n(x) \times \boldsymbol \varphi_k(x)\rangle\, \mathrm{d}\sigma_y \, \mathrm{d}\sigma_x - \int\limits_\Gamma \displaystyle{ \frac{1}{4\,\pi}\, \frac{e^{i\,\kappa\,\|x-y\|}}{\| x-y\|} } \, \mathrm{curl}_\Gamma \,\boldsymbol v_l(y)\, \mathrm{curl}_\Gamma\,\boldsymbol \varphi_k(x) \mathrm{d}\sigma_y \mathrm{d}\sigma_x   \]</div>
+<ul class="simple">
+<li><p>consider a trial function <span class="math notranslate nohighlight">\(\boldsymbol \psi_k \in H^{-\frac12}(\mathrm{div}_\Gamma,\Gamma)\)</span> and a test function <span class="math notranslate nohighlight">\(\boldsymbol v_l \in H^{-\frac12}(\mathrm{curl}_\Gamma,\Gamma)\)</span>. Here is the adjoint double layer potential operator entry <span class="math notranslate nohighlight">\(lk\)</span></p></li>
+</ul>
+<div class="math notranslate nohighlight">
+\[ \mathrm{K}'_{lk} = \int\limits_\Gamma \int\limits_\Gamma \displaystyle{ \frac{1}{4\,\pi} \, \big\langle \boldsymbol n(y)\times \boldsymbol v_l(y), \nabla_{x} \frac{e^{i\,\kappa\,\|x-y\|}}{\| x-y\|} } \times \boldsymbol \psi_k(y) \big\rangle\, \mathrm{d}\sigma_y \, \mathrm{d}\sigma_x    \]</div>
+</section>
+<section id="conclusion">
+<h3>Conclusion<a class="headerlink" href="#conclusion" title="Permalink to this heading">#</a></h3>
+<table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Operator Name</p></th>
+<th class="head"><p>Symbol</p></th>
+<th class="head"><p>trial space</p></th>
+<th class="head"><p>test space</p></th>
+<th class="head"><p>rotation</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>single layer operator</p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathrm V \)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(H^{-\frac12}(\mathrm{div}_\Gamma,\Gamma)\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(H^{-\frac12}(\mathrm{div}_\Gamma,\Gamma)\)</span></p></td>
+<td><p>-</p></td>
+</tr>
+<tr class="row-odd"><td><p>double layer operator</p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathrm K \)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(H^{-\frac12}(\mathrm{curl}_\Gamma,\Gamma)\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(H^{-\frac12}(\mathrm{div}_\Gamma,\Gamma)\)</span></p></td>
+<td><p>trial space</p></td>
+</tr>
+<tr class="row-even"><td><p>hypersingular operator</p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathrm D\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(H^{-\frac12}(\mathrm{curl}_\Gamma,\Gamma)\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(H^{-\frac12}(\mathrm{curl}_\Gamma,\Gamma)\)</span></p></td>
+<td><p>-</p></td>
+</tr>
+<tr class="row-odd"><td><p>adjoint double layer operator</p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathrm K' \)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(H^{-\frac12}(\mathrm{div}_\Gamma,\Gamma)\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(H^{-\frac12}(\mathrm{curl}_\Gamma,\Gamma)\)</span></p></td>
+<td><p>test space</p></td>
+</tr>
+<tr class="row-even"><td><p>mass matrix</p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathrm M \)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(H^{-\frac12}(\mathrm{div}_\Gamma,\Gamma)\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(H^{-\frac12}(\mathrm{curl}_\Gamma,\Gamma)\)</span></p></td>
+<td><p>-</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="ng-bem-python-functions">
+<h3>NG-BEM Python Functions<a class="headerlink" href="#ng-bem-python-functions" title="Permalink to this heading">#</a></h3>
+<table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Operator</p></th>
+<th class="head"><p>Python Function</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(\mathrm V \)</span></p></td>
+<td><p>MaxwellSingleLayerPotentialOperator</p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(\mathrm K \)</span></p></td>
+<td><p>MaxwellDoubleLayerPotentialOperator</p></td>
+</tr>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(\mathrm D \)</span></p></td>
+<td><p>MaxwellSingleLayerPotentialOperatorCurl</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+</section>
+
+    <script type="text/x-thebe-config">
+    {
+        requestKernel: true,
+        binderOptions: {
+            repo: "binder-examples/jupyter-stacks-datascience",
+            ref: "master",
+        },
+        codeMirrorConfig: {
+            theme: "abcdef",
+            mode: "python"
+        },
+        kernelOptions: {
+            name: "python3",
+            path: "./."
+        },
+        predefinedOutput: true
+    }
+    </script>
+    <script>kernelName = 'python3'</script>
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="demos/FEMBEM_Capacitor.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">FEM-BEM Coupling</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="demos/Maxwell_DtN_indirect.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Maxwell solver for PEC bodies (EFIE)</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+  <div class="sidebar-secondary-item">
+  <div class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav class="bd-toc-nav page-toc">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#notations-for-relevant-trace-operators">Notations for relevant trace operators:</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#notations-for-relevant-trace-spaces">Notations for relevant trace spaces:</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#maxwell-equations-pec">Maxwell equations PEC</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#electric-field-boundary-integral-equations">Electric field boundary integral equations</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#direct-ansatz">Direct ansatz</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#indirect-ansatz">Indirect ansatz</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#notes">Notes</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#magnetic-field-boundary-integral-equations">Magnetic field boundary integral equations</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">Direct ansatz</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id2">Indirect ansatz</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id3">Notes</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#conclusion">Conclusion</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#ng-bem-python-functions">NG-BEM Python Functions</a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By J. Schöberl, D. Seibel, L. Weggler
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2023.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="_static/scripts/bootstrap.js?digest=5b4479735964841361fd"></script>
+<script src="_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>

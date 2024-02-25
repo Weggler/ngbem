@@ -88,34 +88,7 @@ To catch the meaning of these results consider the $L_2$-error as function of th
 
 
 
-**Test 3: Represenation formula for electrostatic potential in $H^{1}(\Omega)$** 
-
-Given complete Cauchy data $u_0 \in H^{\frac12}(\Gamma)$ and $u_1 \in H^{-\frac12}(\Gamma)$, the solution $u$ of the boundary value problem 
-
-$$\begin{array}{rcl l} \Delta u &=& 0, \quad  & \mathrm{in} \, \Omega\,, \\ \gamma_0 u &=& u_0, \quad & \mathrm{on} \, \Gamma_0\,,\\ \gamma_1 u &=& u_1, \quad & \mathrm{on} \, \Gamma_1\,, \end{array}$$
-
-is given by the represenation formula 
-
-$$u(x) = \int\limits_{\Gamma} G(x-y)\,u_1(y) \, \mathrm{d}\sigma_y - \int\limits_{\Gamma} \langle n(y), \nabla_y G(x-y) \rangle \, u_0(y) \, \mathrm{d} \sigma_y\,.$$
-
-
-In order to illustrate the high accuracy of the high order BEM, we evaluate the representation formula for numerically computed Cauchy data. In our test setting $\Omega$ is again the unit ball and $u$ is evaluated on a rectangular screen placed inside the ball, i.e.,  
-
-![](demos/resources/BEM_Screen.png) 
-
-The following table contains the numerical results of our convergence test. Note that $p$ denotes the order of approximation taken for the Dirichlet trace. The order of approximation of the Neumann trace is then $p-1$.
-
-
-| mesh size | $L_2$-error | $L_2$-error | $L_2$-error | $L_2$-error | 
-| :-:  | :-: | :-: | :-: | :-: | 
-| $N$  | for $p=1$   | for $p=2$ | for $p=3$ | for $p=4$  |
-|  |  |  |  |  |
-|  |  |  |  |  |
-|  |  |  |  |  |
-|  |  |  |  |  |
-
-
-**Test 4: Maxwell Neumann trace in $H^{-\frac12}(\mathrm{div}_\Gamma, \Gamma)$** 
+**Test 3: Maxwell Neumann trace in $H^{-\frac12}(\mathrm{div}_\Gamma, \Gamma)$** 
 
 Besides electrostatics we can also solve boundary value problems from electromagnetics. The relevant trace spaces are $\boldsymbol H^{-\frac12}(\mathrm{curl}_\Gamma, \Gamma)$, and its dual, $\boldsymbol H^{-\frac12}(\mathrm{div}_\Gamma, \Gamma)$. NG-BEM offers finite element spaces for both trace spaces. 
 
@@ -152,4 +125,31 @@ Using the NG-BEM solver we compute the Neumann data $\gamma_N \boldsymbol E \in 
 * The Mie series solves the scattering at the sphere. A high order mesh is required to obtain high order convergence at least if the traces are approximated with $p>2$.   
 * For approximation order $p=0$ the linear edge element functions are used, i.e., for a discretisation of trace space $H^{-\frac12}(\mathrm{div}_\Gamma, \Gamma)$ those funcitons are called Rao-Wilton-Glisson functions (RWG). 
 * Check out the repository's test folder if you like to run this test.
+
+
+**Test 4: Represenation formula for electrostatic potential in $H^{1}(\Omega)$** 
+
+Given complete Cauchy data $u_0 \in H^{\frac12}(\Gamma)$ and $u_1 \in H^{-\frac12}(\Gamma)$, the solution $u$ of the boundary value problem 
+
+$$\begin{array}{rcl l} \Delta u &=& 0, \quad  & \mathrm{in} \, \Omega\,, \\ \gamma_0 u &=& u_0, \quad & \mathrm{on} \, \Gamma_0\,,\\ \gamma_1 u &=& u_1, \quad & \mathrm{on} \, \Gamma_1\,, \end{array}$$
+
+is given by the represenation formula 
+
+$$u(x) = \int\limits_{\Gamma} G(x-y)\,u_1(y) \, \mathrm{d}\sigma_y - \int\limits_{\Gamma} \langle n(y), \nabla_y G(x-y) \rangle \, u_0(y) \, \mathrm{d} \sigma_y\,.$$
+
+
+In order to illustrate the high accuracy of the high order BEM, we evaluate the representation formula for numerically computed Cauchy data. In our test setting $\Omega$ is again the unit ball and $u$ is evaluated on a rectangular screen placed inside the ball, i.e.,  
+
+![](demos/resources/BEM_Screen.png) 
+
+The following table contains the numerical results of our convergence test. Note that $p$ denotes the order of approximation taken for the Dirichlet trace. The order of approximation of the Neumann trace is then $p-1$.
+
+
+| mesh size | $L_2$-error | $L_2$-error | $L_2$-error | $L_2$-error | 
+| :-:  | :-: | :-: | :-: | :-: | 
+| $N$  | for $p=1$   | for $p=2$ | for $p=3$ | for $p=4$  |
+|  |  |  |  |  |
+|  |  |  |  |  |
+|  |  |  |  |  |
+|  |  |  |  |  |
 

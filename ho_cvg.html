@@ -67,8 +67,7 @@ const thebe_selector_output = ".output, .cell_output"
     <script>DOCUMENTATION_OPTIONS.pagename = 'ho_cvg';</script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Laplace solver using indirect formulation (Dirichlet)" href="demos/Laplace_DtN_indirect.html" />
-    <link rel="prev" title="Welcome to NG-BEM" href="intro.html" />
+    <link rel="prev" title="Maxwell solver with mixed BC" href="demos/Maxwell_Mixed.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   </head>
@@ -165,14 +164,17 @@ const thebe_selector_output = ".output, .cell_output"
             </li>
         </ul>
         <ul class="current nav bd-sidenav">
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Convergence Rates for HO BEM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="demos/Laplace_DtN_indirect.html">Laplace solver using indirect formulation (Dirichlet)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="demos/Laplace_DtN_direct.html">Laplace solver using direct formulation (Dirichlet)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="demos/Laplace_NtD_indirect.html">Laplace solver using indirect formulation (Neumann)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="demos/Laplace_NtD_direct.html">Laplace solver using direct formulation (Neumann)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="demos/Laplace_Mixed.html">Laplace mixed boundary values</a></li>
 <li class="toctree-l1"><a class="reference internal" href="demos/FEMBEM_Capacitor.html">FEM-BEM Coupling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Maxwell_Formulations.html">Boundary Integral Equations for Maxwell</a></li>
 <li class="toctree-l1"><a class="reference internal" href="demos/Maxwell_DtN_indirect.html">Maxwell solver for PEC bodies (EFIE)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="demos/Maxwell_DtN_direct.html">Maxwell solver for Pec using direct formulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="demos/Maxwell_Mixed.html">Maxwell solver with mixed BC</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Convergence Rates for HO BEM</a></li>
 </ul>
 
     </div>
@@ -603,59 +605,7 @@ document.write(`
 <li><p>Our manufactured solution <span class="math notranslate nohighlight">\(u\)</span> does not depend on the mesh, i.e., it is a solution for all meshes. This is why the geometrical approximation order is <span class="math notranslate nohighlight">\(1\)</span> for all test runs.</p></li>
 <li><p>Check out the repository’s test folder if you like to run this test.</p></li>
 </ul>
-<p><strong>Test 3: Represenation formula for electrostatic potential in <span class="math notranslate nohighlight">\(H^{1}(\Omega)\)</span></strong></p>
-<p>Given complete Cauchy data <span class="math notranslate nohighlight">\(u_0 \in H^{\frac12}(\Gamma)\)</span> and <span class="math notranslate nohighlight">\(u_1 \in H^{-\frac12}(\Gamma)\)</span>, the solution <span class="math notranslate nohighlight">\(u\)</span> of the boundary value problem</p>
-<div class="math notranslate nohighlight">
-\[\begin{split}\begin{array}{rcl l} \Delta u &amp;=&amp; 0, \quad  &amp; \mathrm{in} \, \Omega\,, \\ \gamma_0 u &amp;=&amp; u_0, \quad &amp; \mathrm{on} \, \Gamma_0\,,\\ \gamma_1 u &amp;=&amp; u_1, \quad &amp; \mathrm{on} \, \Gamma_1\,, \end{array}\end{split}\]</div>
-<p>is given by the represenation formula</p>
-<div class="math notranslate nohighlight">
-\[u(x) = \int\limits_{\Gamma} G(x-y)\,u_1(y) \, \mathrm{d}\sigma_y - \int\limits_{\Gamma} \langle n(y), \nabla_y G(x-y) \rangle \, u_0(y) \, \mathrm{d} \sigma_y\,.\]</div>
-<p>In order to illustrate the high accuracy of the high order BEM, we evaluate the representation formula for numerically computed Cauchy data. In our test setting <span class="math notranslate nohighlight">\(\Omega\)</span> is again the unit ball and <span class="math notranslate nohighlight">\(u\)</span> is evaluated on a rectangular screen placed inside the ball, i.e.,</p>
-<p><img alt="" src="_images/BEM_Screen.png" /></p>
-<p>The following table contains the numerical results of our convergence test. Note that <span class="math notranslate nohighlight">\(p\)</span> denotes the order of approximation taken for the Dirichlet trace. The order of approximation of the Neumann trace is then <span class="math notranslate nohighlight">\(p-1\)</span>.</p>
-<table class="table">
-<thead>
-<tr class="row-odd"><th class="head text-center"><p>mesh size</p></th>
-<th class="head text-center"><p><span class="math notranslate nohighlight">\(L_2\)</span>-error</p></th>
-<th class="head text-center"><p><span class="math notranslate nohighlight">\(L_2\)</span>-error</p></th>
-<th class="head text-center"><p><span class="math notranslate nohighlight">\(L_2\)</span>-error</p></th>
-<th class="head text-center"><p><span class="math notranslate nohighlight">\(L_2\)</span>-error</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td class="text-center"><p><span class="math notranslate nohighlight">\(N\)</span></p></td>
-<td class="text-center"><p>for <span class="math notranslate nohighlight">\(p=1\)</span></p></td>
-<td class="text-center"><p>for <span class="math notranslate nohighlight">\(p=2\)</span></p></td>
-<td class="text-center"><p>for <span class="math notranslate nohighlight">\(p=3\)</span></p></td>
-<td class="text-center"><p>for <span class="math notranslate nohighlight">\(p=4\)</span></p></td>
-</tr>
-<tr class="row-odd"><td class="text-center"><p></p></td>
-<td class="text-center"><p></p></td>
-<td class="text-center"><p></p></td>
-<td class="text-center"><p></p></td>
-<td class="text-center"><p></p></td>
-</tr>
-<tr class="row-even"><td class="text-center"><p></p></td>
-<td class="text-center"><p></p></td>
-<td class="text-center"><p></p></td>
-<td class="text-center"><p></p></td>
-<td class="text-center"><p></p></td>
-</tr>
-<tr class="row-odd"><td class="text-center"><p></p></td>
-<td class="text-center"><p></p></td>
-<td class="text-center"><p></p></td>
-<td class="text-center"><p></p></td>
-<td class="text-center"><p></p></td>
-</tr>
-<tr class="row-even"><td class="text-center"><p></p></td>
-<td class="text-center"><p></p></td>
-<td class="text-center"><p></p></td>
-<td class="text-center"><p></p></td>
-<td class="text-center"><p></p></td>
-</tr>
-</tbody>
-</table>
-<p><strong>Test 4: Maxwell Neumann trace in <span class="math notranslate nohighlight">\(H^{-\frac12}(\mathrm{div}_\Gamma, \Gamma)\)</span></strong></p>
+<p><strong>Test 3: Maxwell Neumann trace in <span class="math notranslate nohighlight">\(H^{-\frac12}(\mathrm{div}_\Gamma, \Gamma)\)</span></strong></p>
 <p>Besides electrostatics we can also solve boundary value problems from electromagnetics. The relevant trace spaces are <span class="math notranslate nohighlight">\(\boldsymbol H^{-\frac12}(\mathrm{curl}_\Gamma, \Gamma)\)</span>, and its dual, <span class="math notranslate nohighlight">\(\boldsymbol H^{-\frac12}(\mathrm{div}_\Gamma, \Gamma)\)</span>. NG-BEM offers finite element spaces for both trace spaces.</p>
 <p>In order to verify convergence rates for high order bem, we consider the scattering of a plane wave <span class="math notranslate nohighlight">\(\boldsymbol E_{\mathrm{inc}}\)</span> at a perfect electric conducting sphere. This scattering problem is analytically solvable by so-called Mie series. In order to keep the geometrical approximation error negligible, the geometrical approximation oder is set to <span class="math notranslate nohighlight">\(4\)</span> for all tests runs.</p>
 <p>The scattered electric field <span class="math notranslate nohighlight">\(\boldsymbol E\)</span> solves the following boundary value problem:</p>
@@ -761,6 +711,58 @@ document.write(`
 <li><p>For approximation order <span class="math notranslate nohighlight">\(p=0\)</span> the linear edge element functions are used, i.e., for a discretisation of trace space <span class="math notranslate nohighlight">\(H^{-\frac12}(\mathrm{div}_\Gamma, \Gamma)\)</span> those funcitons are called Rao-Wilton-Glisson functions (RWG).</p></li>
 <li><p>Check out the repository’s test folder if you like to run this test.</p></li>
 </ul>
+<p><strong>Test 4: Represenation formula for electrostatic potential in <span class="math notranslate nohighlight">\(H^{1}(\Omega)\)</span></strong></p>
+<p>Given complete Cauchy data <span class="math notranslate nohighlight">\(u_0 \in H^{\frac12}(\Gamma)\)</span> and <span class="math notranslate nohighlight">\(u_1 \in H^{-\frac12}(\Gamma)\)</span>, the solution <span class="math notranslate nohighlight">\(u\)</span> of the boundary value problem</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{array}{rcl l} \Delta u &amp;=&amp; 0, \quad  &amp; \mathrm{in} \, \Omega\,, \\ \gamma_0 u &amp;=&amp; u_0, \quad &amp; \mathrm{on} \, \Gamma_0\,,\\ \gamma_1 u &amp;=&amp; u_1, \quad &amp; \mathrm{on} \, \Gamma_1\,, \end{array}\end{split}\]</div>
+<p>is given by the represenation formula</p>
+<div class="math notranslate nohighlight">
+\[u(x) = \int\limits_{\Gamma} G(x-y)\,u_1(y) \, \mathrm{d}\sigma_y - \int\limits_{\Gamma} \langle n(y), \nabla_y G(x-y) \rangle \, u_0(y) \, \mathrm{d} \sigma_y\,.\]</div>
+<p>In order to illustrate the high accuracy of the high order BEM, we evaluate the representation formula for numerically computed Cauchy data. In our test setting <span class="math notranslate nohighlight">\(\Omega\)</span> is again the unit ball and <span class="math notranslate nohighlight">\(u\)</span> is evaluated on a rectangular screen placed inside the ball, i.e.,</p>
+<p><img alt="" src="_images/BEM_Screen.png" /></p>
+<p>The following table contains the numerical results of our convergence test. Note that <span class="math notranslate nohighlight">\(p\)</span> denotes the order of approximation taken for the Dirichlet trace. The order of approximation of the Neumann trace is then <span class="math notranslate nohighlight">\(p-1\)</span>.</p>
+<table class="table">
+<thead>
+<tr class="row-odd"><th class="head text-center"><p>mesh size</p></th>
+<th class="head text-center"><p><span class="math notranslate nohighlight">\(L_2\)</span>-error</p></th>
+<th class="head text-center"><p><span class="math notranslate nohighlight">\(L_2\)</span>-error</p></th>
+<th class="head text-center"><p><span class="math notranslate nohighlight">\(L_2\)</span>-error</p></th>
+<th class="head text-center"><p><span class="math notranslate nohighlight">\(L_2\)</span>-error</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-center"><p><span class="math notranslate nohighlight">\(N\)</span></p></td>
+<td class="text-center"><p>for <span class="math notranslate nohighlight">\(p=1\)</span></p></td>
+<td class="text-center"><p>for <span class="math notranslate nohighlight">\(p=2\)</span></p></td>
+<td class="text-center"><p>for <span class="math notranslate nohighlight">\(p=3\)</span></p></td>
+<td class="text-center"><p>for <span class="math notranslate nohighlight">\(p=4\)</span></p></td>
+</tr>
+<tr class="row-odd"><td class="text-center"><p></p></td>
+<td class="text-center"><p></p></td>
+<td class="text-center"><p></p></td>
+<td class="text-center"><p></p></td>
+<td class="text-center"><p></p></td>
+</tr>
+<tr class="row-even"><td class="text-center"><p></p></td>
+<td class="text-center"><p></p></td>
+<td class="text-center"><p></p></td>
+<td class="text-center"><p></p></td>
+<td class="text-center"><p></p></td>
+</tr>
+<tr class="row-odd"><td class="text-center"><p></p></td>
+<td class="text-center"><p></p></td>
+<td class="text-center"><p></p></td>
+<td class="text-center"><p></p></td>
+<td class="text-center"><p></p></td>
+</tr>
+<tr class="row-even"><td class="text-center"><p></p></td>
+<td class="text-center"><p></p></td>
+<td class="text-center"><p></p></td>
+<td class="text-center"><p></p></td>
+<td class="text-center"><p></p></td>
+</tr>
+</tbody>
+</table>
 </section>
 
     <script type="text/x-thebe-config">
@@ -794,22 +796,13 @@ document.write(`
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="intro.html"
+       href="demos/Maxwell_Mixed.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Welcome to NG-BEM</p>
+        <p class="prev-next-title">Maxwell solver with mixed BC</p>
       </div>
-    </a>
-    <a class="right-next"
-       href="demos/Laplace_DtN_indirect.html"
-       title="next page">
-      <div class="prev-next-info">
-        <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Laplace solver using indirect formulation (Dirichlet)</p>
-      </div>
-      <i class="fa-solid fa-angle-right"></i>
     </a>
 </div>
                 </footer>
