@@ -9,4 +9,6 @@ The add-on enables the used of the higher order element methods. Both, Netgen/NG
 The current status comprises an Python interface to solve boundary value problems for homogeneous Laplace, Helmholtz and Maxwell equations.
 
 
+Quick installation:
 
+    python3 -m pip install git+https://github.com/Weggler/ngbem.git
