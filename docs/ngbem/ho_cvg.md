@@ -23,7 +23,7 @@ as unique solution of the Neumann boundary value problem
 
 |  |  |  |
 | -|--|- |
-|$\begin{array}{rcl l} \Delta u &=& 0, \quad  & \mathrm{in} \, \Omega\,, \\ \gamma_1 u &=& u_1, \quad & \mathrm{on} \, \Gamma\,. \end{array}$    | $\quad\quad\quad$  | ![](demos/resources/BEM.png)  |
+|$\begin{array}{rcl l} \Delta u &=& 0, \quad  & \mathrm{in} \, \Omega\,, \\ \gamma_1 u &=& u_1, \quad & \mathrm{on} \, \Gamma\,. \end{array}$    | $\quad\quad\quad$  | ![](demos/resources/BEM_interior.png)  |
 
 Let $\Omega$ be the unit ball and $\Gamma$ the unit sphere, respectively. Using the NG-BEM solver we compute the Dirichlet data for varying order $p$ on a sequence of meshes with decreasing mesh size, i.e., $h \sim\frac1N$. As the exact solution is kown, we compute the absolute $L_2$-error of the numerical solution.  
 
