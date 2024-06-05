@@ -372,10 +372,10 @@ document.write(`
             </div>
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ngsolve-spaces-and-ng-bem-operators">NGSolve Spaces and NG-BEM Operators</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#maxwell-equations-pec">Maxwell equations PEC</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#electric-field-integral-equations-efie">Electric field integral equations (EFIE)</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#magnetic-field-integral-equations-mfie">Magnetic field integral equations (MFIE)</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ng-bem-python-functions">NG-BEM Python Functions</a></li>
 </ul>
             </nav>
         </div>
@@ -387,7 +387,7 @@ document.write(`
 <div id="searchbox"></div>
                 <article class="bd-article" role="main">
                   
-  <section class="tex2jax_ignore mathjax_ignore" id="boundary-integral-equations-for-maxwell">
+  <section id="boundary-integral-equations-for-maxwell">
 <h1>Boundary Integral Equations for Maxwell<a class="headerlink" href="#boundary-integral-equations-for-maxwell" title="Permalink to this heading">#</a></h1>
 <p><strong>Notations of trace operators:</strong></p>
 <div class="math notranslate nohighlight">
@@ -395,6 +395,88 @@ document.write(`
 <p><strong>Properties of trace spaces:</strong></p>
 <div class="math notranslate nohighlight">
 \[\begin{split} \begin{array}{r rcl l} \textnormal{Dirichlet trace} \quad &amp; \gamma_R \boldsymbol u &amp;\in&amp; H^{-\frac12}\left( \mathrm{curl}_\Gamma,\Gamma\right) \quad &amp;\textnormal{tangential edge projection weakly continuous}\\ \textnormal{rotated Dirichlet trace} \quad &amp; \gamma_D \boldsymbol u &amp;\in&amp; H^{-\frac12}\left( \mathrm{div}_\Gamma, \Gamma\right) \quad &amp; \textnormal{normal edge projection weakly continuous} \\ \textnormal{Neumann trace} \quad &amp; \gamma_N \boldsymbol u &amp;\in&amp; H^{-\frac12}\left( \mathrm{div}_\Gamma, \Gamma\right) \quad &amp; \textnormal{normal edge projection weakly continuous} \\ \textnormal{normal trace} \quad &amp; \gamma_{\boldsymbol n} \boldsymbol u &amp;\in&amp; H^{-\frac12}\left( \Gamma\right) \quad &amp; \textnormal{not continuous}\,. \end{array} \end{split}\]</div>
+<p><strong>Relation between energy and trace space:</strong></p>
+<div class="math notranslate nohighlight">
+\[\begin{split}
+\begin{array}{rcccccc}
+\textnormal{trace spaces:} &amp;H^{\frac12}(\Gamma) &amp; \xrightarrow{\nabla_{\Gamma}} &amp; \boldsymbol{H}^{-\frac12}(\mathrm{curl}_{\Gamma},{\Gamma}) &amp; \xrightarrow{\mathrm{curl}_{\Gamma}}&amp; H^{-\frac12}({\Gamma})&amp; \\[1ex]
+&amp;\gamma_0 \Big\uparrow &amp;&amp; \gamma_R \Big\uparrow &amp;&amp; \gamma_{\boldsymbol n} \Big\uparrow &amp;\\[1ex]
+\textnormal{energy spaces:} &amp;H^1({\Omega}) &amp; \xrightarrow{\nabla} &amp; H(\mathbf{curl},{\Omega}) &amp; \xrightarrow{\mathbf{curl}}&amp; H(\mathrm{div},{\Omega}) &amp; \xrightarrow{\mathrm{div}} \; L_2(\Omega) \\[1ex]
+&amp;\gamma_0 \Big\downarrow &amp;&amp; \gamma_D \Big\downarrow &amp;&amp; \gamma_{\boldsymbol n} \Big\downarrow &amp;\\[1ex]
+\textnormal{dual trace spaces:} &amp;H^{\frac12}(\Gamma) &amp; \xrightarrow{\mathbf{curl}_{\Gamma}} &amp; \boldsymbol{H}^{-\frac12}(\mathrm{div}_{\Gamma},{\Gamma}) &amp; \xrightarrow{\mathrm{div}_{\Gamma}}&amp; H^{-\frac12}({\Gamma})&amp; 
+\end{array}
+\end{split}\]</div>
+<section id="ngsolve-spaces-and-ng-bem-operators">
+<h2>NGSolve Spaces and NG-BEM Operators<a class="headerlink" href="#ngsolve-spaces-and-ng-bem-operators" title="Permalink to this heading">#</a></h2>
+<p>The discretiszation of the boundary integral equations leads to following layer potential operators:</p>
+<table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p></p></th>
+<th class="head"><p>trial space</p></th>
+<th class="head"><p>test space</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>single layer potential operator</p></td>
+<td><p><span class="math notranslate nohighlight">\(H^{-\frac12}(\mathrm{div}_\Gamma,\Gamma)\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(H^{-\frac12}(\mathrm{div}_\Gamma,\Gamma)\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p>double layer potential operator</p></td>
+<td><p><span class="math notranslate nohighlight">\(H^{-\frac12}(\mathrm{curl}_\Gamma,\Gamma)\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(H^{-\frac12}(\mathrm{div}_\Gamma,\Gamma)\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p>hypersingular operator</p></td>
+<td><p><span class="math notranslate nohighlight">\(H^{-\frac12}(\mathrm{curl}_\Gamma,\Gamma)\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(H^{-\frac12}(\mathrm{curl}_\Gamma,\Gamma)\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p>adjoint double layer potential operator</p></td>
+<td><p><span class="math notranslate nohighlight">\(H^{-\frac12}(\mathrm{div}_\Gamma,\Gamma)\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(H^{-\frac12}(\mathrm{curl}_\Gamma,\Gamma)\)</span></p></td>
+</tr>
+</tbody>
+</table>
+<ul class="simple">
+<li><p>NG-BEM implements the layper potential operators based on conforming finite element spaces.</p></li>
+<li><p>The finite element spaces are either natural traces of energy spaces:</p>
+<ul>
+<li><p>The trace space <span class="math notranslate nohighlight">\(H^{-\frac12}(\mathrm{curl}_\Gamma, \Gamma)\)</span> is naturally given by <span class="math notranslate nohighlight">\(\gamma_R\)</span> <code class="docutils literal notranslate"><span class="pre">Hcurl</span></code>.</p></li>
+<li><p>The trace space <span class="math notranslate nohighlight">\(H^{-\frac12}(\mathrm{div}_\Gamma, \Gamma)\)</span> is explicitely implemented as finite element (FE) space <code class="docutils literal notranslate"><span class="pre">HDivSurface</span></code>.</p></li>
+</ul>
+</li>
+</ul>
+<p>The Python interface functions that provide the assembly of the resulting matrices for a given mesh are given in the following table:</p>
+<table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p></p></th>
+<th class="head text-center"><p>symbol</p></th>
+<th class="head"><p>FE trial space</p></th>
+<th class="head"><p>FE test space</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MaxwellSingleLayerPotentialOperator</span></code></p></td>
+<td class="text-center"><p><span class="math notranslate nohighlight">\(\mathrm V\)</span></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">HDivSurface</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">HDivSurface</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MaxwellDoubleLayerPotentialOperator</span></code></p></td>
+<td class="text-center"><p><span class="math notranslate nohighlight">\(\mathrm K\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\gamma_R\)</span> <code class="docutils literal notranslate"><span class="pre">HCurl</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">HDivSurface</span> </code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MaxwellSingleLayerPotentialOperatorCurl</span></code></p></td>
+<td class="text-center"><p><span class="math notranslate nohighlight">\(\mathrm D\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\gamma_R\)</span> <code class="docutils literal notranslate"><span class="pre">HCurl</span></code></p></td>
+<td><p><span class="math notranslate nohighlight">\(\gamma_R\)</span>  <code class="docutils literal notranslate"><span class="pre">HCurl</span> </code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MaxwellDoublelayerPotentialOperator</span></code></p></td>
+<td class="text-center"><p><span class="math notranslate nohighlight">\(\mathrm K'\)</span></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">HDivSurface</span></code></p></td>
+<td><p><span class="math notranslate nohighlight">\(\gamma_R\)</span>  <code class="docutils literal notranslate"><span class="pre">HCurl</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</section>
 <section id="maxwell-equations-pec">
 <h2>Maxwell equations PEC<a class="headerlink" href="#maxwell-equations-pec" title="Permalink to this heading">#</a></h2>
 <p>Let <span class="math notranslate nohighlight">\(\Omega \in \mathbb R^3\)</span> denote a perfect electric conductor and <span class="math notranslate nohighlight">\(\gamma_R \boldsymbol E^i = -\boldsymbol m\)</span> the given Dirichlet trace of an incoming time-harmonic electromagnetic signal <span class="math notranslate nohighlight">\(\boldsymbol E^i\)</span>. The scattered electromagnetic field with components <span class="math notranslate nohighlight">\(\boldsymbol E\)</span> and <span class="math notranslate nohighlight">\(\boldsymbol H\)</span> solves the following equations in the exterior domain <span class="math notranslate nohighlight">\(\Omega^c\)</span>:</p>
@@ -505,55 +587,6 @@ document.write(`
 <li><p>In case the wave number <span class="math notranslate nohighlight">\(\kappa\)</span> corresponds to an interior eigenvalue of <span class="math notranslate nohighlight">\(\mathbf{curl}\mathbf{curl}\)</span> the BIE is not uniquely solvable. Instead of EFIE one consideres the combined electric field integral equation (CFIE).</p></li>
 </ul>
 </section>
-<section id="ng-bem-python-functions">
-<h2>NG-BEM Python Functions<a class="headerlink" href="#ng-bem-python-functions" title="Permalink to this heading">#</a></h2>
-<table class="table">
-<thead>
-<tr class="row-odd"><th class="head"><p>Symbol</p></th>
-<th class="head"><p>Operator</p></th>
-<th class="head"><p>trial space</p></th>
-<th class="head"><p>test space</p></th>
-<th class="head"><p>NG-BEM</p></th>
-<th class="head"><p>trial NG-Solve</p></th>
-<th class="head"><p>test NG-Solve</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(\mathrm V\)</span></p></td>
-<td><p>single layer</p></td>
-<td><p><span class="math notranslate nohighlight">\(H^{-\frac12}(\mathrm{div}_\Gamma,\Gamma)\)</span></p></td>
-<td><p><span class="math notranslate nohighlight">\(H^{-\frac12}(\mathrm{div}_\Gamma,\Gamma)\)</span></p></td>
-<td><p>MaxwellSingleLayerPotentialOperator</p></td>
-<td><p>HDivSurface</p></td>
-<td><p>HDivSurface</p></td>
-</tr>
-<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(\mathrm K\)</span></p></td>
-<td><p>double layer</p></td>
-<td><p><span class="math notranslate nohighlight">\(H^{-\frac12}(\mathrm{curl}_\Gamma,\Gamma)\)</span> with rotation</p></td>
-<td><p><span class="math notranslate nohighlight">\(H^{-\frac12}(\mathrm{div}_\Gamma,\Gamma)\)</span></p></td>
-<td><p>MaxwellDoubleLayerPotentialOperator</p></td>
-<td><p>HCurl</p></td>
-<td><p>HDivSurface</p></td>
-</tr>
-<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(\mathrm D\)</span></p></td>
-<td><p>hypersingular</p></td>
-<td><p><span class="math notranslate nohighlight">\(H^{-\frac12}(\mathrm{curl}_\Gamma,\Gamma)\)</span></p></td>
-<td><p><span class="math notranslate nohighlight">\(H^{-\frac12}(\mathrm{curl}_\Gamma,\Gamma)\)</span></p></td>
-<td><p>MaxwellSingleLayerPotentialOperatorCurl</p></td>
-<td><p>HCurl</p></td>
-<td><p>HCurl</p></td>
-</tr>
-<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(\mathrm K'\)</span></p></td>
-<td><p>adjoint double layer</p></td>
-<td><p><span class="math notranslate nohighlight">\(H^{-\frac12}(\mathrm{div}_\Gamma,\Gamma)\)</span></p></td>
-<td><p><span class="math notranslate nohighlight">\(H^{-\frac12}(\mathrm{curl}_\Gamma,\Gamma)\)</span> with rotation</p></td>
-<td><p>MaxwellDoublelayerPotentialOperator</p></td>
-<td><p>HDivSurface</p></td>
-<td><p>HCurl</p></td>
-</tr>
-</tbody>
-</table>
-</section>
 </section>
 
     <script type="text/x-thebe-config">
@@ -619,10 +652,10 @@ document.write(`
   </div>
   <nav class="bd-toc-nav page-toc">
     <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ngsolve-spaces-and-ng-bem-operators">NGSolve Spaces and NG-BEM Operators</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#maxwell-equations-pec">Maxwell equations PEC</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#electric-field-integral-equations-efie">Electric field integral equations (EFIE)</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#magnetic-field-integral-equations-mfie">Magnetic field integral equations (MFIE)</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ng-bem-python-functions">NG-BEM Python Functions</a></li>
 </ul>
   </nav></div>
 

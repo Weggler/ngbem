@@ -1,5 +1,5 @@
 Boundary Integral Equations for Maxwell 
-=============================
+-----------------------------
 
 **Notations of trace operators:**
 
@@ -8,6 +8,44 @@ $$ \begin{array}{r rcl } \textnormal{Dirichlet trace} \quad & \gamma_R \boldsymb
 **Properties of trace spaces:**
 
 $$ \begin{array}{r rcl l} \textnormal{Dirichlet trace} \quad & \gamma_R \boldsymbol u &\in& H^{-\frac12}\left( \mathrm{curl}_\Gamma,\Gamma\right) \quad &\textnormal{tangential edge projection weakly continuous}\\ \textnormal{rotated Dirichlet trace} \quad & \gamma_D \boldsymbol u &\in& H^{-\frac12}\left( \mathrm{div}_\Gamma, \Gamma\right) \quad & \textnormal{normal edge projection weakly continuous} \\ \textnormal{Neumann trace} \quad & \gamma_N \boldsymbol u &\in& H^{-\frac12}\left( \mathrm{div}_\Gamma, \Gamma\right) \quad & \textnormal{normal edge projection weakly continuous} \\ \textnormal{normal trace} \quad & \gamma_{\boldsymbol n} \boldsymbol u &\in& H^{-\frac12}\left( \Gamma\right) \quad & \textnormal{not continuous}\,. \end{array} $$
+
+**Relation between energy and trace space:**
+
+$$
+\begin{array}{rcccccc}
+\textnormal{trace spaces:} &H^{\frac12}(\Gamma) & \xrightarrow{\nabla_{\Gamma}} & \boldsymbol{H}^{-\frac12}(\mathrm{curl}_{\Gamma},{\Gamma}) & \xrightarrow{\mathrm{curl}_{\Gamma}}& H^{-\frac12}({\Gamma})& \\[1ex]
+&\gamma_0 \Big\uparrow && \gamma_R \Big\uparrow && \gamma_{\boldsymbol n} \Big\uparrow &\\[1ex]
+\textnormal{energy spaces:} &H^1({\Omega}) & \xrightarrow{\nabla} & H(\mathbf{curl},{\Omega}) & \xrightarrow{\mathbf{curl}}& H(\mathrm{div},{\Omega}) & \xrightarrow{\mathrm{div}} \; L_2(\Omega) \\[1ex]
+&\gamma_0 \Big\downarrow && \gamma_D \Big\downarrow && \gamma_{\boldsymbol n} \Big\downarrow &\\[1ex]
+\textnormal{dual trace spaces:} &H^{\frac12}(\Gamma) & \xrightarrow{\mathbf{curl}_{\Gamma}} & \boldsymbol{H}^{-\frac12}(\mathrm{div}_{\Gamma},{\Gamma}) & \xrightarrow{\mathrm{div}_{\Gamma}}& H^{-\frac12}({\Gamma})& 
+\end{array}
+$$
+
+#### NGSolve Spaces and NG-BEM Operators
+
+The discretiszation of the boundary integral equations leads to following layer potential operators:
+
+|  | trial space | test space |  
+| - | - | - |
+| single layer potential operator | $H^{-\frac12}(\mathrm{div}_\Gamma,\Gamma)$ | $H^{-\frac12}(\mathrm{div}_\Gamma,\Gamma)$  |
+| double layer potential operator | $H^{-\frac12}(\mathrm{curl}_\Gamma,\Gamma)$ | $H^{-\frac12}(\mathrm{div}_\Gamma,\Gamma)$ |
+| hypersingular operator | $H^{-\frac12}(\mathrm{curl}_\Gamma,\Gamma)$ | $H^{-\frac12}(\mathrm{curl}_\Gamma,\Gamma)$  |
+| adjoint double layer potential operator | $H^{-\frac12}(\mathrm{div}_\Gamma,\Gamma)$ | $H^{-\frac12}(\mathrm{curl}_\Gamma,\Gamma)$|
+
+- NG-BEM implements the layper potential operators based on conforming finite element spaces. 
+- The finite element spaces are either natural traces of energy spaces:
+  - The trace space $H^{-\frac12}(\mathrm{curl}_\Gamma, \Gamma)$ is naturally given by $\gamma_R$ `Hcurl`.
+  - The trace space $H^{-\frac12}(\mathrm{div}_\Gamma, \Gamma)$ is explicitely implemented as finite element (FE) space `HDivSurface`. 
+
+The Python interface functions that provide the assembly of the resulting matrices for a given mesh are given in the following table:   
+
+|  | symbol | FE trial space | FE test space | 
+|-|:-:|-|-|
+| `MaxwellSingleLayerPotentialOperator` | $\mathrm V$ | `HDivSurface` | `HDivSurface` | 
+| `MaxwellDoubleLayerPotentialOperator` | $\mathrm K$ | $\gamma_R$ `HCurl`| `HDivSurface `|
+| `MaxwellSingleLayerPotentialOperatorCurl` | $\mathrm D$ | $\gamma_R$ `HCurl` | $\gamma_R$  `HCurl `|
+| `MaxwellDoublelayerPotentialOperator` | $\mathrm K'$ | `HDivSurface` | $\gamma_R$  `HCurl` |
+
 
 
 #### Maxwell equations PEC
@@ -122,15 +160,5 @@ $$ \mathrm{K}'_{lk} = \int\limits_\Gamma \int\limits_\Gamma \displaystyle{ \frac
 - For low frequencie problems it is necessary to introduce explicitly the electrostatic potential. This leads to an additional equation which is a weak form of the continuity equation relating traces on the boundary holds. Here the normal trace, i.e. the Neuman trace of the electrostatic potential pops up.
 - Scattering at arbitrary dielectrics and pec bodies leads to a system of equations which is coupled by corresponding interface conditions.
 - In case the wave number $\kappa$ corresponds to an interior eigenvalue of $\mathbf{curl}\mathbf{curl}$ the BIE is not uniquely solvable. Instead of EFIE one consideres the combined electric field integral equation (CFIE).
-
-
-#### NG-BEM Python Functions 
-
-| Symbol | Operator | trial space | test space | NG-BEM | trial NG-Solve | test NG-Solve | 
-|-|-|-|-|-|-|-|
-| $\mathrm V$ | single layer | $H^{-\frac12}(\mathrm{div}_\Gamma,\Gamma)$ | $H^{-\frac12}(\mathrm{div}_\Gamma,\Gamma)$  | MaxwellSingleLayerPotentialOperator| HDivSurface | HDivSurface | 
-| $\mathrm K$ | double layer | $H^{-\frac12}(\mathrm{curl}_\Gamma,\Gamma)$ with rotation | $H^{-\frac12}(\mathrm{div}_\Gamma,\Gamma)$ | MaxwellDoubleLayerPotentialOperator|  HCurl| HDivSurface |
-| $\mathrm D$ | hypersingular | $H^{-\frac12}(\mathrm{curl}_\Gamma,\Gamma)$ | $H^{-\frac12}(\mathrm{curl}_\Gamma,\Gamma)$       | MaxwellSingleLayerPotentialOperatorCurl | HCurl | HCurl |
-| $\mathrm K'$| adjoint double layer  | $H^{-\frac12}(\mathrm{div}_\Gamma,\Gamma)$ | $H^{-\frac12}(\mathrm{curl}_\Gamma,\Gamma)$ with rotation| MaxwellDoublelayerPotentialOperator | HDivSurface | HCurl |
 
 

@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
-    <title>Boundary Integral Equations for Laplace &#8212; NG-BEM</title>
+    <title>Function spaces &#8212; NG-BEM</title>
   
   
   
@@ -64,11 +64,9 @@ const thebe_selector_output = ".output, .cell_output"
     <script async="async" src="_static/sphinx-thebe.js"></script>
     <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
     <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'Laplace_Formulations';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'spaces';</script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Laplace solver using indirect formulation (Dirichlet)" href="demos/Laplace_DtN_indirect.html" />
-    <link rel="prev" title="Welcome to NG-BEM" href="intro.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   </head>
@@ -164,8 +162,8 @@ const thebe_selector_output = ".output, .cell_output"
                 </a>
             </li>
         </ul>
-        <ul class="current nav bd-sidenav">
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Boundary Integral Equations for Laplace</a></li>
+        <ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="Laplace_Formulations.html">Boundary Integral Equations for Laplace</a></li>
 <li class="toctree-l1"><a class="reference internal" href="demos/Laplace_DtN_indirect.html">Laplace solver using indirect formulation (Dirichlet)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="demos/Laplace_DtN_direct.html">Laplace solver using direct formulation (Dirichlet)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="demos/Laplace_NtD_indirect.html">Laplace solver using indirect formulation (Neumann)</a></li>
@@ -249,7 +247,7 @@ const thebe_selector_output = ".output, .cell_output"
       
       
       
-      <li><a href="https://github.com/Weggler/ngbem/issues/new?title=Issue%20on%20page%20%2FLaplace_Formulations.html&body=Your%20issue%20content%20here." target="_blank"
+      <li><a href="https://github.com/Weggler/ngbem/issues/new?title=Issue%20on%20page%20%2Fspaces.html&body=Your%20issue%20content%20here." target="_blank"
    class="btn btn-sm btn-source-issues-button dropdown-item"
    title="Open an issue"
    data-bs-placement="left" data-bs-toggle="tooltip"
@@ -279,7 +277,7 @@ const thebe_selector_output = ".output, .cell_output"
       
       
       
-      <li><a href="_sources/Laplace_Formulations.md" target="_blank"
+      <li><a href="_sources/spaces.md" target="_blank"
    class="btn btn-sm btn-download-source-button dropdown-item"
    title="Download source file"
    data-bs-placement="left" data-bs-toggle="tooltip"
@@ -363,7 +361,7 @@ document.write(`
               
 
 <div id="jb-print-docs-body" class="onlyprint">
-    <h1>Boundary Integral Equations for Laplace</h1>
+    <h1>Function spaces</h1>
     <!-- Table of contents -->
     <div id="print-main-content">
         <div id="jb-print-toc">
@@ -373,9 +371,7 @@ document.write(`
             </div>
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ngsolve-spaces-and-ng-bem-operators">NGSolve Spaces and NG-BEM Operators</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#dirichlet-bvp">Dirichlet BVP</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#neumann-bvp">Neumann BVP</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#energy-and-trace-spaces">Energy and trace spaces</a></li>
 </ul>
             </nav>
         </div>
@@ -387,157 +383,18 @@ document.write(`
 <div id="searchbox"></div>
                 <article class="bd-article" role="main">
                   
-  <section id="boundary-integral-equations-for-laplace">
-<h1>Boundary Integral Equations for Laplace<a class="headerlink" href="#boundary-integral-equations-for-laplace" title="Permalink to this heading">#</a></h1>
-<p><strong>Notations of trace operators:</strong></p>
+  <section id="function-spaces">
+<h1>Function spaces<a class="headerlink" href="#function-spaces" title="Permalink to this heading">#</a></h1>
+<section id="energy-and-trace-spaces">
+<h2>Energy and trace spaces<a class="headerlink" href="#energy-and-trace-spaces" title="Permalink to this heading">#</a></h2>
 <div class="math notranslate nohighlight">
-\[\begin{split} \begin{array}{r rcl } \textnormal{Dirichlet trace} \quad &amp; \gamma_0 u &amp;=&amp; u  \\[1ex] \textnormal{Neumann trace} \quad &amp; \gamma_1 u &amp;=&amp; \langle \boldsymbol n,   \nabla\, u \rangle \,. \end{array} \end{split}\]</div>
-<p><strong>Properties of trace spaces:</strong></p>
-<div class="math notranslate nohighlight">
-\[\begin{split} \begin{array}{r rcl l} \textnormal{Dirichlet trace} \quad &amp; \gamma_0 u &amp;\in&amp; H^{\frac12}\left( \Gamma\right) \quad &amp;\textnormal{weakly continuous}\\  \textnormal{Neumann trace} \quad &amp; \gamma_1 u &amp;\in&amp; H^{-\frac12}\left( \Gamma\right) \quad &amp; \textnormal{not continuous}\,. \end{array} \end{split}\]</div>
-<p><strong>Relation between energy and trace space:</strong></p>
-<div class="math notranslate nohighlight">
-\[\begin{split}
-\begin{array}{rcccccc}
-\textnormal{trace spaces:} &amp;H^{\frac12}(\Gamma) &amp; \xrightarrow{\nabla_{\Gamma}} &amp; \boldsymbol{H}^{-\frac12}(\mathrm{curl}_{\Gamma},{\Gamma}) &amp; \xrightarrow{\mathrm{curl}_{\Gamma}}&amp; H^{-\frac12}({\Gamma})&amp; \\[1ex]
-&amp;\gamma_0 \Big\uparrow &amp;&amp; \gamma_R \Big\uparrow &amp;&amp; \gamma_{\boldsymbol n} \Big\uparrow &amp;\\[1ex]
-\textnormal{energy spaces:} &amp;H^1({\Omega}) &amp; \xrightarrow{\nabla} &amp; H(\mathbf{curl},{\Omega}) &amp; \xrightarrow{\mathbf{curl}}&amp; H(\mathrm{div},{\Omega}) &amp; \xrightarrow{\mathrm{div}} \; L_2(\Omega) \\[1ex]
+\[ \begin{align}\begin{aligned}
+\begin{array}{rcccccc}\\\begin{split}\textnormal{natural trace spaces:} &amp;H^{\frac12}(\Gamma) &amp; \xrightarrow{\nabla_{\Gamma}} &amp; \boldsymbol{H}^{-\frac12}(\mathrm{curl}_{\Gamma},{\Gamma}) &amp; \xrightarrow{\mathrm{curl}_{\Gamma}}&amp; H^{-\frac12}({\Gamma})&amp; \\[1ex]\end{split}\\\begin{split}&amp;\gamma_0 \Big\uparrow &amp;&amp; \gamma_R \Big\uparrow &amp;&amp; \gamma_{\boldsymbol n} \Big\uparrow &amp;\\[1ex]
+\textnormal{energy spaces:} &amp;H^1({\Omega}) &amp; \xrightarrow{\nabla} &amp; H(\mathrm{curl},{\Omega}) &amp; \xrightarrow{\mathrm{curl}}&amp; H(\mathrm{div},{\Omega}) &amp; \xrightarrow{\mathrm{div}} \; L_2(\Omega) \\[1ex]
 &amp;\gamma_0 \Big\downarrow &amp;&amp; \gamma_D \Big\downarrow &amp;&amp; \gamma_{\boldsymbol n} \Big\downarrow &amp;\\[1ex]
 \textnormal{dual trace spaces:} &amp;H^{\frac12}(\Gamma) &amp; \xrightarrow{\mathbf{curl}_{\Gamma}} &amp; \boldsymbol{H}^{-\frac12}(\mathrm{div}_{\Gamma},{\Gamma}) &amp; \xrightarrow{\mathrm{div}_{\Gamma}}&amp; H^{-\frac12}({\Gamma})&amp; 
 \end{array}
-\end{split}\]</div>
-<section id="ngsolve-spaces-and-ng-bem-operators">
-<h2>NGSolve Spaces and NG-BEM Operators<a class="headerlink" href="#ngsolve-spaces-and-ng-bem-operators" title="Permalink to this heading">#</a></h2>
-<p><strong>Notations of layer potential operators:</strong></p>
-<p>The discretiszation of the boundary integral equations leads to the following layer potential operators:</p>
-<table class="table">
-<thead>
-<tr class="row-odd"><th class="head"><p></p></th>
-<th class="head"><p>trial space</p></th>
-<th class="head"><p>test space</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p>single layer potential operator <span class="math notranslate nohighlight">\(H^{-\frac12}(\Gamma)\)</span></p></td>
-<td><p><span class="math notranslate nohighlight">\(H^{-\frac12}(\Gamma)\)</span></p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-odd"><td><p>double layer potential operator <span class="math notranslate nohighlight">\(H^{\frac12}(\Gamma)\)</span></p></td>
-<td><p><span class="math notranslate nohighlight">\(H^{-\frac12}(\Gamma)\)</span></p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-even"><td><p>hypersingular operator          <span class="math notranslate nohighlight">\(H^{\frac12}(\Gamma)\)</span></p></td>
-<td><p><span class="math notranslate nohighlight">\(H^{\frac12}(\Gamma)\)</span></p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-odd"><td><p>adjoint double layer potential operator <span class="math notranslate nohighlight">\(H^{-\frac12}(\Gamma)\)</span></p></td>
-<td><p><span class="math notranslate nohighlight">\(H^{\frac12}(\Gamma)\)</span></p></td>
-<td><p></p></td>
-</tr>
-</tbody>
-</table>
-<ul class="simple">
-<li><p>NG-BEM implements the layper potential operators based on conforming finite element spaces.</p></li>
-<li><p>The finite element spaces are either natural traces of energy spaces:</p>
-<ul>
-<li><p>The trace space <span class="math notranslate nohighlight">\(H^{\frac12}(\Gamma)\)</span> is naturally given by <span class="math notranslate nohighlight">\(\gamma_0\)</span><code class="docutils literal notranslate"><span class="pre">H1</span></code>.</p></li>
-<li><p>The trace space <span class="math notranslate nohighlight">\(H^{-\frac12}(\Gamma)\)</span> which is explicitely implemented as finite element (FE) space <code class="docutils literal notranslate"><span class="pre">SurfaceL2</span></code>.</p></li>
-</ul>
-</li>
-</ul>
-<table class="table">
-<thead>
-<tr class="row-odd"><th class="head"><p>Python interface</p></th>
-<th class="head text-center"><p>symbol</p></th>
-<th class="head"><p>FE trial space</p></th>
-<th class="head"><p>FE test space</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">SingleLayerPotentialOperator</span></code></p></td>
-<td class="text-center"><p><span class="math notranslate nohighlight">\(\mathrm V \)</span></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">SurfaceL2</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">SurfaceL2</span></code></p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">DoubleLayerPotentialOperator</span></code></p></td>
-<td class="text-center"><p><span class="math notranslate nohighlight">\(\mathrm K \)</span></p></td>
-<td><p><span class="math notranslate nohighlight">\(\gamma_0\)</span> <code class="docutils literal notranslate"><span class="pre">H1</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">SurfaceL2</span></code></p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">HypersingularOperator</span>&#160;&#160;&#160;&#160;&#160;&#160; </code></p></td>
-<td class="text-center"><p><span class="math notranslate nohighlight">\(\mathrm D\)</span></p></td>
-<td><p><span class="math notranslate nohighlight">\(\gamma_0\)</span> <code class="docutils literal notranslate"><span class="pre">H1</span></code></p></td>
-<td><p><span class="math notranslate nohighlight">\(\gamma_0\)</span> <code class="docutils literal notranslate"><span class="pre">H1</span></code></p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">DoubleLayerPotentialOperator</span></code></p></td>
-<td class="text-center"><p><span class="math notranslate nohighlight">\(\mathrm K'\)</span></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">SurfaceL2</span></code></p></td>
-<td><p><span class="math notranslate nohighlight">\(\gamma_0\)</span> <code class="docutils literal notranslate"><span class="pre">H1</span></code></p></td>
-</tr>
-</tbody>
-</table>
-</section>
-<section id="dirichlet-bvp">
-<h2>Dirichlet BVP<a class="headerlink" href="#dirichlet-bvp" title="Permalink to this heading">#</a></h2>
-<p>Let <span class="math notranslate nohighlight">\(u\)</span> denote the electrostatic potential that arises under given Dirichlet boundary condition inside a source-free domain <span class="math notranslate nohighlight">\(\Omega \in \mathbb R^3\)</span>. Thus, <span class="math notranslate nohighlight">\(u\)</span> solves the interior boundary value problem</p>
-<table class="table">
-<thead>
-<tr class="row-odd"><th class="head"><p></p></th>
-<th class="head"><p></p></th>
-<th class="head"><p></p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><span class="math notranslate nohighlight">\( \left\{ \begin{array}{rcl l} \Delta u &amp;=&amp; 0\,, \quad &amp; \Omega \subset \mathbb R^3\,, \\ \gamma_0 u &amp;=&amp; u_0\,, \quad &amp; \Gamma = \partial \Omega\,. \end{array} \right. \)</span></p></td>
-<td><p><span class="math notranslate nohighlight">\(\quad\quad\quad\)</span></p></td>
-<td><p><img alt="" src="_images/BEM_interior.png" /></p></td>
-</tr>
-</tbody>
-</table>
-<p>From here we can choose an direct or an indirect ansatz.</p>
-<p><strong>1. direct ansatz: <span class="math notranslate nohighlight">\(\quad u = \mathrm{SL}(u_1) - \mathrm{DL}(u_0)\)</span></strong></p>
-<div class="math notranslate nohighlight">
-\[\begin{split} \begin{array}{r rcl }  
-\textnormal{variational formulation } &amp; \forall v\in H^{-\frac12}(\Gamma) \, \left\langle \gamma_0 \left(\mathrm{SL}(u_1)\right), v \right\rangle_{-\frac12} &amp;=&amp; \left\langle u_0, v\right\rangle_{-\frac12} + \left\langle \gamma_0 \left(\mathrm{DL}(u_0)\right), v \right\rangle_{-\frac12} \\ 
- \textnormal{discretisation} &amp; \mathrm{V} \,\mathrm{u}_1 &amp;=&amp; \left( \frac12 \,\mathrm{M} + \mathrm{K} \right) \, \mathrm{u}_0 \\ 
-\end{array}\end{split}\]</div>
-<p><strong>2. indirect ansatz</strong> <span class="math notranslate nohighlight">\(\quad u =  \mathrm{SL}(j) \)</span></p>
-<div class="math notranslate nohighlight">
-\[\begin{split} \begin{array}{r rcl }  
-\textnormal{variational formulation } &amp; \forall v\in H^{-\frac12}(\Gamma) \, \left\langle \gamma_0 \left(\mathrm{SL}(j)\right), v \right\rangle_{-\frac12} &amp;=&amp; \left\langle u_0, v\right\rangle_{-\frac12} \\ 
- \textnormal{discretisation} &amp; \mathrm{V} \, \mathrm{j} &amp;=&amp; \mathrm{M} \,\mathrm{u}_0  
-\end{array} \end{split}\]</div>
-</section>
-<section id="neumann-bvp">
-<h2>Neumann BVP<a class="headerlink" href="#neumann-bvp" title="Permalink to this heading">#</a></h2>
-<p>Let <span class="math notranslate nohighlight">\(u\)</span> denote the electrostatic potential that arises under given Neumann boundary condition inside a source-free domain <span class="math notranslate nohighlight">\(\Omega \in \mathbb R^3\)</span>. Thus, <span class="math notranslate nohighlight">\(u\)</span> solves the boundary value problem</p>
-<table class="table">
-<thead>
-<tr class="row-odd"><th class="head"><p></p></th>
-<th class="head"><p></p></th>
-<th class="head"><p></p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><span class="math notranslate nohighlight">\( \left\{ \begin{array}{rcl l} \Delta u &amp;=&amp; 0\,, \quad &amp; \Omega \subset \mathbb R^3\,, \\ \gamma_1 u &amp;=&amp; u_1\,, \quad &amp; \Gamma = \partial \Omega\,. \end{array} \right. \)</span></p></td>
-<td><p><span class="math notranslate nohighlight">\(\quad\quad\quad\)</span></p></td>
-<td><p><img alt="" src="_images/BEM_interior.png" /></p></td>
-</tr>
-</tbody>
-</table>
-<p>From here we can choose an direct or an indirect ansatz.</p>
-<p><strong>1. direct ansatz: <span class="math notranslate nohighlight">\(\quad u = \mathrm{SL}(u_1) - \mathrm{DL}(u_0)\)</span></strong></p>
-<div class="math notranslate nohighlight">
-\[\begin{split} \begin{array}{r rcl }  
-\textnormal{variational formulation }  &amp; \forall v\in H^{\frac12}(\Gamma) \, \left\langle v, \gamma_1 \left(\mathrm{DL}(u_0)\right) \right\rangle_{-\frac12}  &amp;=&amp; \left\langle u_1, v\right\rangle_{-\frac12} - \left\langle v, \gamma_1 \left(\mathrm{SL}(u_1)\right) \right\rangle_{-\frac12} \\ 
-\textnormal{discretisation} &amp; \left( \mathrm{D} + \mathrm{S}\right) \mathrm{u}_0 &amp;=&amp; \left( \frac12 \mathrm{M} - \mathrm{K}^\intercal\right) \, \mathrm{u}_1 \\ 
-\end{array} \end{split}\]</div>
-<p><strong>2. indirect ansatz: <span class="math notranslate nohighlight">\(\quad u = \mathrm{DL}(m)\)</span></strong></p>
-<div class="math notranslate nohighlight">
-\[\begin{split} \begin{array}{r rcl }  
-\textnormal{variational formulation } &amp; \forall \quad v\in H^{\frac12}(\Gamma)\, \left\langle v, \gamma_1 \left(\mathrm{DL}(m)\right) \right\rangle_{-\frac12} &amp;=&amp; \left\langle u_1, v\right\rangle_{-\frac12} \\ 
-\textnormal{discretisation} &amp; \left( \mathrm{D} + S\right) \, \mathrm{m} &amp;=&amp;  \mathrm{M}\,\mathrm{u}_1  
-\end{array} \end{split}\]</div>
+\end{split}\end{aligned}\end{align} \]</div>
 </section>
 </section>
 
@@ -571,24 +428,6 @@ document.write(`
                 <footer class="prev-next-footer">
                   
 <div class="prev-next-area">
-    <a class="left-prev"
-       href="intro.html"
-       title="previous page">
-      <i class="fa-solid fa-angle-left"></i>
-      <div class="prev-next-info">
-        <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Welcome to NG-BEM</p>
-      </div>
-    </a>
-    <a class="right-next"
-       href="demos/Laplace_DtN_indirect.html"
-       title="next page">
-      <div class="prev-next-info">
-        <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Laplace solver using indirect formulation (Dirichlet)</p>
-      </div>
-      <i class="fa-solid fa-angle-right"></i>
-    </a>
 </div>
                 </footer>
               
@@ -604,9 +443,7 @@ document.write(`
   </div>
   <nav class="bd-toc-nav page-toc">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ngsolve-spaces-and-ng-bem-operators">NGSolve Spaces and NG-BEM Operators</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#dirichlet-bvp">Dirichlet BVP</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#neumann-bvp">Neumann BVP</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#energy-and-trace-spaces">Energy and trace spaces</a></li>
 </ul>
   </nav></div>
 

@@ -55,7 +55,7 @@ To analyse convergence rates for traces in $H^{-\frac12}(\Gamma)$ consider now t
 
 |  |  |  |
 | -|--|- |
-|$\begin{array}{rcl l} \Delta u &=& 0, \quad  & \mathrm{in} \, \Omega\,, \\ \gamma_0 u &=& u_0, \quad & \mathrm{on} \, \Gamma\,. \end{array}$    | $\quad\quad\quad$  | ![](demos/resources/BEM.png)  |
+|$\begin{array}{rcl l} \Delta u &=& 0, \quad  & \mathrm{in} \, \Omega\,, \\ \gamma_0 u &=& u_0, \quad & \mathrm{on} \, \Gamma\,. \end{array}$    | $\quad\quad\quad$  | ![](demos/resources/BEM_interior.png)  |
 
 Thus, again $u$ from Test 1 is the unique solution of this problem. Using the NG-BEM solver we compute the Neumann data for varying order $p$  on a sequence of meshes with decreasing mesh size, i.e., $h \sim\frac1N$. As the exact solution is kown, we compute the absolute $L_2$-error of the numerical solution.
 
@@ -98,7 +98,7 @@ The scattered electric field $\boldsymbol E$ solves the following boundary value
 
 |  |  |  |
 | -|--|- |
-|$\begin{array}{rcl l} \mathbf{\mathrm{curl}}\,\mathbf{\mathrm{curl}}\, \boldsymbol E - \kappa^2 \, \boldsymbol E&=& \boldsymbol 0, \quad  & \mathrm{in} \, \Omega^c\,, \\ \gamma_R \boldsymbol E &=& \boldsymbol E_{\mathrm{inc}}, \quad & \mathrm{on} \, \Gamma\,, \\ \textnormal{ + radiation  condition} & & &\|x\| \to \infty\,. \end{array}$    | $\quad$  | ![](demos/resources/BEM.png)  |
+|$\begin{array}{rcl l} \mathbf{\mathrm{curl}}\,\mathbf{\mathrm{curl}}\, \boldsymbol E - \kappa^2 \, \boldsymbol E&=& \boldsymbol 0, \quad  & \mathrm{in} \, \Omega^c\,, \\ \gamma_R \boldsymbol E &=& \boldsymbol E_{\mathrm{inc}}, \quad & \mathrm{on} \, \Gamma\,, \\ \textnormal{ + radiation  condition} & & &\|x\| \to \infty\,. \end{array}$    | $\quad$  | ![](demos/resources/BEM_exterior.png)  |
 
 
 Using the NG-BEM solver we compute the Neumann data for varying order $p$ on a sequence of meshes with decreasing mesh size i.e., $h \sim\frac1N$. The mesh is approximated with curvilinear elements of order $4$. As the exact solution for Mie-scattering kown, we compute the absolute $L_2$-error of the numerical solution.  

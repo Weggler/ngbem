@@ -1,5 +1,5 @@
 Boundary Integral Equations for Laplace
-=============================
+-----------------------------
 
 **Notations of trace operators:**
 
@@ -9,18 +9,47 @@ $$ \begin{array}{r rcl } \textnormal{Dirichlet trace} \quad & \gamma_0 u &=& u  
 
 $$ \begin{array}{r rcl l} \textnormal{Dirichlet trace} \quad & \gamma_0 u &\in& H^{\frac12}\left( \Gamma\right) \quad &\textnormal{weakly continuous}\\  \textnormal{Neumann trace} \quad & \gamma_1 u &\in& H^{-\frac12}\left( \Gamma\right) \quad & \textnormal{not continuous}\,. \end{array} $$
 
-#### NG-BEM Operators
+**Relation between energy and trace space:**
 
-| Symbol | Operator | trial space | test space | NG-BEM | trial NG-Solve | test NG-Solve |   
-|-|-|-|-|-|-|-|
-| $\mathrm V $ | single layer | $H^{-\frac12}(\Gamma)$ | $H^{-\frac12}(\Gamma)$         | SingleLayerPotentialOperator | SurfaceL2 | SurfaceL2|
-| $\mathrm K $ | double layer | $H^{\frac12}(\Gamma)$ | $H^{-\frac12}(\Gamma)$          | DoubleLayerPotentialOperator | H1 | SurfaceL2 |
-| $\mathrm D$ | hypersingular  | $H^{\frac12}(\Gamma)$ | $H^{\frac12}(\Gamma)$          | HypersingularOperator | H1 | H1 |
-| $\mathrm K' $ | adjoint double layer | $H^{-\frac12}(\Gamma)$ | $H^{\frac12}(\Gamma)$ | DoubleLayerPotentialOperator | SurfaceL2 | H1 |               
+$$
+\begin{array}{rcccccc}
+\textnormal{trace spaces:} &H^{\frac12}(\Gamma) & \xrightarrow{\nabla_{\Gamma}} & \boldsymbol{H}^{-\frac12}(\mathrm{curl}_{\Gamma},{\Gamma}) & \xrightarrow{\mathrm{curl}_{\Gamma}}& H^{-\frac12}({\Gamma})& \\[1ex]
+&\gamma_0 \Big\uparrow && \gamma_R \Big\uparrow && \gamma_{\boldsymbol n} \Big\uparrow &\\[1ex]
+\textnormal{energy spaces:} &H^1({\Omega}) & \xrightarrow{\nabla} & H(\mathbf{curl},{\Omega}) & \xrightarrow{\mathbf{curl}}& H(\mathrm{div},{\Omega}) & \xrightarrow{\mathrm{div}} \; L_2(\Omega) \\[1ex]
+&\gamma_0 \Big\downarrow && \gamma_D \Big\downarrow && \gamma_{\boldsymbol n} \Big\downarrow &\\[1ex]
+\textnormal{dual trace spaces:} &H^{\frac12}(\Gamma) & \xrightarrow{\mathbf{curl}_{\Gamma}} & \boldsymbol{H}^{-\frac12}(\mathrm{div}_{\Gamma},{\Gamma}) & \xrightarrow{\mathrm{div}_{\Gamma}}& H^{-\frac12}({\Gamma})& 
+\end{array}
+$$
 
 
+#### NGSolve Spaces and NG-BEM Operators
 
-#### Interior Laplace with Dirichlet Condition
+
+**Notations of layer potential operators:**
+
+The discretiszation of the boundary integral equations leads to the following layer potential operators:
+
+|  | trial space | test space |  
+|-|-|-|
+| single layer potential operator $H^{-\frac12}(\Gamma)$ | $H^{-\frac12}(\Gamma)$ |
+| double layer potential operator $H^{\frac12}(\Gamma)$  | $H^{-\frac12}(\Gamma)$ |
+| hypersingular operator          $H^{\frac12}(\Gamma)$  | $H^{\frac12}(\Gamma)$  |
+| adjoint double layer potential operator $H^{-\frac12}(\Gamma)$ | $H^{\frac12}(\Gamma)$  | 
+
+- NG-BEM implements the layper potential operators based on conforming finite element spaces. 
+- The finite element spaces are either natural traces of energy spaces:
+  - The trace space $H^{\frac12}(\Gamma)$ is naturally given by $\gamma_0$`H1`.
+  - The trace space $H^{-\frac12}(\Gamma)$ which is explicitely implemented as finite element (FE) space `SurfaceL2`. 
+
+| Python interface | symbol |  FE trial space | FE test space |   
+|-|:-:|-|-|
+|`SingleLayerPotentialOperator` | $\mathrm V $ |  `SurfaceL2` | `SurfaceL2`|
+|`DoubleLayerPotentialOperator` | $\mathrm K $ | $\gamma_0$ `H1` | `SurfaceL2` |
+|`HypersingularOperator       ` | $\mathrm D$  | $\gamma_0$ `H1` | $\gamma_0$ `H1` |
+|`DoubleLayerPotentialOperator` | $\mathrm K'$ | `SurfaceL2` | $\gamma_0$ `H1` |               
+
+
+#### Dirichlet BVP
 
 Let $u$ denote the electrostatic potential that arises under given Dirichlet boundary condition inside a source-free domain $\Omega \in \mathbb R^3$. Thus, $u$ solves the interior boundary value problem 
 
@@ -47,7 +76,7 @@ $$ \begin{array}{r rcl }
 \end{array} $$ 
 
 
-#### Interior Laplace with Neumann Condition
+#### Neumann BVP
 
 Let $u$ denote the electrostatic potential that arises under given Neumann boundary condition inside a source-free domain $\Omega \in \mathbb R^3$. Thus, $u$ solves the boundary value problem
 
