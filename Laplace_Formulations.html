@@ -67,8 +67,8 @@ const thebe_selector_output = ".output, .cell_output"
     <script>DOCUMENTATION_OPTIONS.pagename = 'Laplace_Formulations';</script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Laplace solver using indirect formulation (Dirichlet)" href="demos/Laplace_DtN_indirect.html" />
-    <link rel="prev" title="Welcome to NG-BEM" href="intro.html" />
+    <link rel="next" title="Boundary Integral Equations for Maxwell" href="Maxwell_Formulations.html" />
+    <link rel="prev" title="Maxwell solver with mixed BC" href="demos/Maxwell_Mixed.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   </head>
@@ -165,18 +165,17 @@ const thebe_selector_output = ".output, .cell_output"
             </li>
         </ul>
         <ul class="current nav bd-sidenav">
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Boundary Integral Equations for Laplace</a></li>
 <li class="toctree-l1"><a class="reference internal" href="demos/Laplace_DtN_indirect.html">Laplace solver using indirect formulation (Dirichlet)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="demos/Laplace_DtN_direct.html">Laplace solver using direct formulation (Dirichlet)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="demos/Laplace_DtN_direct.html">Laplace Solver direct f</a></li>
 <li class="toctree-l1"><a class="reference internal" href="demos/Laplace_NtD_indirect.html">Laplace solver using indirect formulation (Neumann)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="demos/Laplace_NtD_direct.html">Laplace solver using direct formulation (Neumann)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="demos/Laplace_Mixed.html">Laplace mixed boundary values</a></li>
 <li class="toctree-l1"><a class="reference internal" href="demos/FEMBEM_Capacitor.html">FEM-BEM Coupling</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Maxwell_Formulations.html">Boundary Integral Equations for Maxwell</a></li>
 <li class="toctree-l1"><a class="reference internal" href="demos/Maxwell_DtN_indirect.html">Maxwell solver for PEC bodies (EFIE)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="demos/Maxwell_DtN_direct.html">Maxwell solver for Pec using direct formulation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="demos/Maxwell_Mixed.html">Maxwell solver with mixed BC</a></li>
-<li class="toctree-l1"><a class="reference internal" href="bem.html">Boundary Element Methods</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Boundary Integral Equations for Laplace</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Maxwell_Formulations.html">Boundary Integral Equations for Maxwell</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ho_cvg.html">Convergence Rates for HO BEM</a></li>
 </ul>
 
@@ -373,9 +372,9 @@ document.write(`
             </div>
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#laplace-dirichlet-bvp">Laplace Dirichlet BVP</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#laplace-neumann-bvp">Laplace Neumann BVP</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ngsolve-spaces-and-ng-bem-operators">NGSolve Spaces and NG-BEM Operators</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#dirichlet-bvp">Dirichlet BVP</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#neumann-bvp">Neumann BVP</a></li>
 </ul>
             </nav>
         </div>
@@ -389,13 +388,7 @@ document.write(`
                   
   <section id="boundary-integral-equations-for-laplace">
 <h1>Boundary Integral Equations for Laplace<a class="headerlink" href="#boundary-integral-equations-for-laplace" title="Permalink to this heading">#</a></h1>
-<p><strong>Notations of trace operators:</strong></p>
-<div class="math notranslate nohighlight">
-\[\begin{split} \begin{array}{r rcl } \textnormal{Dirichlet trace} \quad &amp; \gamma_0 u &amp;=&amp; u  \\[1ex] \textnormal{Neumann trace} \quad &amp; \gamma_1 u &amp;=&amp; \langle \boldsymbol n,   \nabla\, u \rangle \,. \end{array} \end{split}\]</div>
-<p><strong>Properties of trace spaces:</strong></p>
-<div class="math notranslate nohighlight">
-\[\begin{split} \begin{array}{r rcl l} \textnormal{Dirichlet trace} \quad &amp; \gamma_0 u &amp;\in&amp; H^{\frac12}\left( \Gamma\right) \quad &amp;\textnormal{weakly continuous}\\  \textnormal{Neumann trace} \quad &amp; \gamma_1 u &amp;\in&amp; H^{-\frac12}\left( \Gamma\right) \quad &amp; \textnormal{not continuous}\,. \end{array} \end{split}\]</div>
-<p><strong>Relation between energy and trace space:</strong></p>
+<p><strong>Energy Spaces and Trace Spaces</strong></p>
 <div class="math notranslate nohighlight">
 \[\begin{split}
 \begin{array}{rcccccc}
@@ -406,9 +399,83 @@ document.write(`
 \textnormal{dual trace spaces:} &amp;H^{\frac12}(\Gamma) &amp; \xrightarrow{\mathbf{curl}_{\Gamma}} &amp; \boldsymbol{H}^{-\frac12}(\mathrm{div}_{\Gamma},{\Gamma}) &amp; \xrightarrow{\mathrm{div}_{\Gamma}}&amp; H^{-\frac12}({\Gamma})&amp; 
 \end{array}
 \end{split}\]</div>
+<p><strong>Trace Operators</strong></p>
+<div class="math notranslate nohighlight">
+\[\begin{split} \begin{array}{r rcl } \textnormal{Dirichlet trace} \quad &amp; \gamma_0 u &amp;=&amp; u  \\[1ex] \textnormal{Neumann trace} \quad &amp; \gamma_1 u &amp;=&amp; \langle \boldsymbol n,   \nabla\, u \rangle \,. \end{array} \end{split}\]</div>
+<ul class="simple">
+<li><p>traces in <span class="math notranslate nohighlight">\( H^{\frac12}\left( \Gamma\right) \)</span> are weakly continous</p></li>
+<li><p>traces in <span class="math notranslate nohighlight">\( H^{-\frac12}\left( \Gamma\right) \)</span> are not continous</p></li>
+</ul>
+<p><strong>Layer Potentials</strong></p>
+<div class="math notranslate nohighlight">
+\[\begin{split} \begin{array}{rcl} \mathrm{SL}\left( j \right) (x) &amp;=&amp; \displaystyle{ \int\limits_\Gamma \displaystyle{\frac{1}{4\,\pi}\, \frac{1}{\| x-y\|} } \, j(y)\, \mathrm{d}\sigma_y } \\ 
+\mathrm{DL}\left(m \right)(x)  &amp;=&amp; \displaystyle{ \int\limits_\Gamma \displaystyle{\frac{1}{4\,\pi}\, \frac{ \langle n(y), x-y \rangle }{\| x-y\|^3} } \, m(y)\, \mathrm{d}\sigma_y }
+\end{array}\end{split}\]</div>
+<section id="laplace-dirichlet-bvp">
+<h2>Laplace Dirichlet BVP<a class="headerlink" href="#laplace-dirichlet-bvp" title="Permalink to this heading">#</a></h2>
+<p>Let <span class="math notranslate nohighlight">\(u\)</span> denote the electrostatic potential that arises under given Dirichlet boundary condition inside a source-free domain <span class="math notranslate nohighlight">\(\Omega \in \mathbb R^3\)</span>. Thus, <span class="math notranslate nohighlight">\(u\)</span> solves the interior boundary value problem</p>
+<table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p></p></th>
+<th class="head"><p></p></th>
+<th class="head"><p></p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\( \left\{ \begin{array}{rcl l} \Delta u &amp;=&amp; 0\,, \quad &amp; \Omega \subset \mathbb R^3\,, \\ \gamma_0 u &amp;=&amp; u_0\,, \quad &amp; \Gamma = \partial \Omega\,. \end{array} \right. \)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\quad\quad\quad\)</span></p></td>
+<td><p><img alt="" src="../demos/resources/BEM_interior.png" /></p></td>
+</tr>
+</tbody>
+</table>
+<p>From here we can choose an direct or an indirect ansatz.</p>
+<p><strong>1. Direct Method</strong>  <span class="math notranslate nohighlight">\(\quad u = \mathrm{SL}(u_1) - \mathrm{DL}(u_0)\)</span></p>
+<div class="math notranslate nohighlight">
+\[\begin{split} \begin{array}{r rcl }  
+\textnormal{variational formulation } &amp; \forall v\in H^{-\frac12}(\Gamma): \, \big\langle \gamma_0 \left(\mathrm{SL}(u_1)\right), v \big\rangle_{-\frac12} &amp;=&amp; \big\langle u_0, v\big\rangle_{-\frac12} + \big\langle \gamma_0 \left(\mathrm{DL}(u_0)\right), v \big\rangle_{-\frac12} \\ 
+ \textnormal{discretisation} &amp; \mathrm{V} \,\mathrm{u}_1 &amp;=&amp; \left( \frac12 \,\mathrm{M} + \mathrm{K} \right) \, \mathrm{u}_0 \\ 
+\end{array}\end{split}\]</div>
+<p><strong>2. Indirect Method</strong> <span class="math notranslate nohighlight">\(\quad u =  \mathrm{SL}(j) \)</span></p>
+<div class="math notranslate nohighlight">
+\[\begin{split} \begin{array}{r rcl }  
+\textnormal{variational formulation } &amp; \forall v\in H^{-\frac12}(\Gamma): \, \big\langle \gamma_0 \left(\mathrm{SL}(j)\right), v \big\rangle_{-\frac12} &amp;=&amp; \big\langle u_0, v\big\rangle_{-\frac12} \\ 
+ \textnormal{discretisation} &amp; \mathrm{V} \, \mathrm{j} &amp;=&amp; \mathrm{M} \,\mathrm{u}_0  
+\end{array} \end{split}\]</div>
+</section>
+<section id="laplace-neumann-bvp">
+<h2>Laplace Neumann BVP<a class="headerlink" href="#laplace-neumann-bvp" title="Permalink to this heading">#</a></h2>
+<p>Let <span class="math notranslate nohighlight">\(u\)</span> denote the electrostatic potential that arises under given Neumann boundary condition inside a source-free domain <span class="math notranslate nohighlight">\(\Omega \in \mathbb R^3\)</span>. Thus, <span class="math notranslate nohighlight">\(u\)</span> solves the boundary value problem</p>
+<table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p></p></th>
+<th class="head"><p></p></th>
+<th class="head"><p></p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\( \left\{ \begin{array}{rcl l} \Delta u &amp;=&amp; 0\,, \quad &amp; \Omega \subset \mathbb R^3\,, \\ \gamma_1 u &amp;=&amp; u_1\,, \quad &amp; \Gamma = \partial \Omega\,. \end{array} \right. \)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\quad\quad\quad\)</span></p></td>
+<td><p><img alt="" src="../demos/resources/BEM_interior.png" /></p></td>
+</tr>
+</tbody>
+</table>
+<p>From here we can choose an direct or an indirect ansatz.</p>
+<p><strong>1. Direct Method</strong> <span class="math notranslate nohighlight">\(\quad u = \mathrm{SL}(u_1) - \mathrm{DL}(u_0)\)</span></p>
+<div class="math notranslate nohighlight">
+\[\begin{split} \begin{array}{r rcl }  
+\textnormal{variational formulation }  &amp; \forall v\in H^{\frac12}(\Gamma): \, \big\langle v, \gamma_1 \left(\mathrm{DL}(u_0)\right) \big\rangle_{-\frac12}  &amp;=&amp; \big\langle u_1, v\big\rangle_{-\frac12} - \big\langle v, \gamma_1 \left(\mathrm{SL}(u_1)\right) \big\rangle_{-\frac12} \\ 
+\textnormal{discretisation} &amp; \left( \mathrm{D} + \mathrm{S}\right) \mathrm{u}_0 &amp;=&amp; \left( \frac12 \mathrm{M} - \mathrm{K}^\intercal\right) \, \mathrm{u}_1  
+\end{array} \end{split}\]</div>
+<p><strong>2. Indirect method</strong> <span class="math notranslate nohighlight">\(\quad u = \mathrm{DL}(m)\)</span></p>
+<div class="math notranslate nohighlight">
+\[\begin{split} \begin{array}{r rcl }  
+\textnormal{variational formulation } &amp; \forall \quad v\in H^{\frac12}(\Gamma):\, \big\langle v, \gamma_1 \left(\mathrm{DL}(m)\right) \big\rangle_{-\frac12} &amp;=&amp; \big\langle u_1, v\big\rangle_{-\frac12} \\ 
+\textnormal{discretisation} &amp; \left( \mathrm{D} + S\right) \, \mathrm{m} &amp;=&amp;  \mathrm{M}\,\mathrm{u}_1  
+\end{array} \end{split}\]</div>
+</section>
 <section id="ngsolve-spaces-and-ng-bem-operators">
 <h2>NGSolve Spaces and NG-BEM Operators<a class="headerlink" href="#ngsolve-spaces-and-ng-bem-operators" title="Permalink to this heading">#</a></h2>
-<p><strong>Notations of layer potential operators:</strong></p>
+<p><strong>Layer Potential Operators</strong></p>
 <p>The discretiszation of the boundary integral equations leads to the following layer potential operators:</p>
 <table class="table">
 <thead>
@@ -418,21 +485,21 @@ document.write(`
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p>single layer potential operator <span class="math notranslate nohighlight">\(H^{-\frac12}(\Gamma)\)</span></p></td>
+<tr class="row-even"><td><p>single layer potential operator</p></td>
 <td><p><span class="math notranslate nohighlight">\(H^{-\frac12}(\Gamma)\)</span></p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-odd"><td><p>double layer potential operator <span class="math notranslate nohighlight">\(H^{\frac12}(\Gamma)\)</span></p></td>
 <td><p><span class="math notranslate nohighlight">\(H^{-\frac12}(\Gamma)\)</span></p></td>
-<td><p></p></td>
 </tr>
-<tr class="row-even"><td><p>hypersingular operator          <span class="math notranslate nohighlight">\(H^{\frac12}(\Gamma)\)</span></p></td>
+<tr class="row-odd"><td><p>double layer potential operator</p></td>
 <td><p><span class="math notranslate nohighlight">\(H^{\frac12}(\Gamma)\)</span></p></td>
-<td><p></p></td>
+<td><p><span class="math notranslate nohighlight">\(H^{-\frac12}(\Gamma)\)</span></p></td>
 </tr>
-<tr class="row-odd"><td><p>adjoint double layer potential operator <span class="math notranslate nohighlight">\(H^{-\frac12}(\Gamma)\)</span></p></td>
+<tr class="row-even"><td><p>hypersingular operator</p></td>
 <td><p><span class="math notranslate nohighlight">\(H^{\frac12}(\Gamma)\)</span></p></td>
-<td><p></p></td>
+<td><p><span class="math notranslate nohighlight">\(H^{\frac12}(\Gamma)\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p>adjoint double layer potential operator</p></td>
+<td><p><span class="math notranslate nohighlight">\(H^{-\frac12}(\Gamma)\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(H^{\frac12}(\Gamma)\)</span></p></td>
 </tr>
 </tbody>
 </table>
@@ -477,68 +544,6 @@ document.write(`
 </tbody>
 </table>
 </section>
-<section id="dirichlet-bvp">
-<h2>Dirichlet BVP<a class="headerlink" href="#dirichlet-bvp" title="Permalink to this heading">#</a></h2>
-<p>Let <span class="math notranslate nohighlight">\(u\)</span> denote the electrostatic potential that arises under given Dirichlet boundary condition inside a source-free domain <span class="math notranslate nohighlight">\(\Omega \in \mathbb R^3\)</span>. Thus, <span class="math notranslate nohighlight">\(u\)</span> solves the interior boundary value problem</p>
-<table class="table">
-<thead>
-<tr class="row-odd"><th class="head"><p></p></th>
-<th class="head"><p></p></th>
-<th class="head"><p></p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><span class="math notranslate nohighlight">\( \left\{ \begin{array}{rcl l} \Delta u &amp;=&amp; 0\,, \quad &amp; \Omega \subset \mathbb R^3\,, \\ \gamma_0 u &amp;=&amp; u_0\,, \quad &amp; \Gamma = \partial \Omega\,. \end{array} \right. \)</span></p></td>
-<td><p><span class="math notranslate nohighlight">\(\quad\quad\quad\)</span></p></td>
-<td><p><img alt="" src="_images/BEM_interior.png" /></p></td>
-</tr>
-</tbody>
-</table>
-<p>From here we can choose an direct or an indirect ansatz.</p>
-<p><strong>1. direct ansatz: <span class="math notranslate nohighlight">\(\quad u = \mathrm{SL}(u_1) - \mathrm{DL}(u_0)\)</span></strong></p>
-<div class="math notranslate nohighlight">
-\[\begin{split} \begin{array}{r rcl }  
-\textnormal{variational formulation } &amp; \forall v\in H^{-\frac12}(\Gamma) \, \left\langle \gamma_0 \left(\mathrm{SL}(u_1)\right), v \right\rangle_{-\frac12} &amp;=&amp; \left\langle u_0, v\right\rangle_{-\frac12} + \left\langle \gamma_0 \left(\mathrm{DL}(u_0)\right), v \right\rangle_{-\frac12} \\ 
- \textnormal{discretisation} &amp; \mathrm{V} \,\mathrm{u}_1 &amp;=&amp; \left( \frac12 \,\mathrm{M} + \mathrm{K} \right) \, \mathrm{u}_0 \\ 
-\end{array}\end{split}\]</div>
-<p><strong>2. indirect ansatz</strong> <span class="math notranslate nohighlight">\(\quad u =  \mathrm{SL}(j) \)</span></p>
-<div class="math notranslate nohighlight">
-\[\begin{split} \begin{array}{r rcl }  
-\textnormal{variational formulation } &amp; \forall v\in H^{-\frac12}(\Gamma) \, \left\langle \gamma_0 \left(\mathrm{SL}(j)\right), v \right\rangle_{-\frac12} &amp;=&amp; \left\langle u_0, v\right\rangle_{-\frac12} \\ 
- \textnormal{discretisation} &amp; \mathrm{V} \, \mathrm{j} &amp;=&amp; \mathrm{M} \,\mathrm{u}_0  
-\end{array} \end{split}\]</div>
-</section>
-<section id="neumann-bvp">
-<h2>Neumann BVP<a class="headerlink" href="#neumann-bvp" title="Permalink to this heading">#</a></h2>
-<p>Let <span class="math notranslate nohighlight">\(u\)</span> denote the electrostatic potential that arises under given Neumann boundary condition inside a source-free domain <span class="math notranslate nohighlight">\(\Omega \in \mathbb R^3\)</span>. Thus, <span class="math notranslate nohighlight">\(u\)</span> solves the boundary value problem</p>
-<table class="table">
-<thead>
-<tr class="row-odd"><th class="head"><p></p></th>
-<th class="head"><p></p></th>
-<th class="head"><p></p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><span class="math notranslate nohighlight">\( \left\{ \begin{array}{rcl l} \Delta u &amp;=&amp; 0\,, \quad &amp; \Omega \subset \mathbb R^3\,, \\ \gamma_1 u &amp;=&amp; u_1\,, \quad &amp; \Gamma = \partial \Omega\,. \end{array} \right. \)</span></p></td>
-<td><p><span class="math notranslate nohighlight">\(\quad\quad\quad\)</span></p></td>
-<td><p><img alt="" src="_images/BEM_interior.png" /></p></td>
-</tr>
-</tbody>
-</table>
-<p>From here we can choose an direct or an indirect ansatz.</p>
-<p><strong>1. direct ansatz: <span class="math notranslate nohighlight">\(\quad u = \mathrm{SL}(u_1) - \mathrm{DL}(u_0)\)</span></strong></p>
-<div class="math notranslate nohighlight">
-\[\begin{split} \begin{array}{r rcl }  
-\textnormal{variational formulation }  &amp; \forall v\in H^{\frac12}(\Gamma) \, \left\langle v, \gamma_1 \left(\mathrm{DL}(u_0)\right) \right\rangle_{-\frac12}  &amp;=&amp; \left\langle u_1, v\right\rangle_{-\frac12} - \left\langle v, \gamma_1 \left(\mathrm{SL}(u_1)\right) \right\rangle_{-\frac12} \\ 
-\textnormal{discretisation} &amp; \left( \mathrm{D} + \mathrm{S}\right) \mathrm{u}_0 &amp;=&amp; \left( \frac12 \mathrm{M} - \mathrm{K}^\intercal\right) \, \mathrm{u}_1 \\ 
-\end{array} \end{split}\]</div>
-<p><strong>2. indirect ansatz: <span class="math notranslate nohighlight">\(\quad u = \mathrm{DL}(m)\)</span></strong></p>
-<div class="math notranslate nohighlight">
-\[\begin{split} \begin{array}{r rcl }  
-\textnormal{variational formulation } &amp; \forall \quad v\in H^{\frac12}(\Gamma)\, \left\langle v, \gamma_1 \left(\mathrm{DL}(m)\right) \right\rangle_{-\frac12} &amp;=&amp; \left\langle u_1, v\right\rangle_{-\frac12} \\ 
-\textnormal{discretisation} &amp; \left( \mathrm{D} + S\right) \, \mathrm{m} &amp;=&amp;  \mathrm{M}\,\mathrm{u}_1  
-\end{array} \end{split}\]</div>
-</section>
 </section>
 
     <script type="text/x-thebe-config">
@@ -572,20 +577,20 @@ document.write(`
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="intro.html"
+       href="demos/Maxwell_Mixed.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Welcome to NG-BEM</p>
+        <p class="prev-next-title">Maxwell solver with mixed BC</p>
       </div>
     </a>
     <a class="right-next"
-       href="demos/Laplace_DtN_indirect.html"
+       href="Maxwell_Formulations.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Laplace solver using indirect formulation (Dirichlet)</p>
+        <p class="prev-next-title">Boundary Integral Equations for Maxwell</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -604,9 +609,9 @@ document.write(`
   </div>
   <nav class="bd-toc-nav page-toc">
     <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#laplace-dirichlet-bvp">Laplace Dirichlet BVP</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#laplace-neumann-bvp">Laplace Neumann BVP</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ngsolve-spaces-and-ng-bem-operators">NGSolve Spaces and NG-BEM Operators</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#dirichlet-bvp">Dirichlet BVP</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#neumann-bvp">Neumann BVP</a></li>
 </ul>
   </nav></div>
 
