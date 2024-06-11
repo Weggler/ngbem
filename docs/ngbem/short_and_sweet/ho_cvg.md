@@ -1,4 +1,4 @@
-# Convergence Rates for HO BEM 
+# Convergence Rates
 
 
 NG-BEM implements high order boundary element methods. The accuracy of the method depends on the order of the finite element spaces involved. On this page some numerical results of NG-BEM are presented: 
@@ -23,7 +23,7 @@ as unique solution of the Neumann boundary value problem
 
 |  |  |  |
 | -|--|- |
-|$\begin{array}{rcl l} \Delta u &=& 0, \quad  & \mathrm{in} \, \Omega\,, \\ \gamma_1 u &=& u_1, \quad & \mathrm{on} \, \Gamma\,. \end{array}$    | $\quad\quad\quad$  | ![](demos/resources/BEM_interior.png)  |
+|$\begin{array}{rcl l} \Delta u &=& 0, \quad  & \mathrm{in} \, \Omega\,, \\ \gamma_1 u &=& u_1, \quad & \mathrm{on} \, \Gamma\,. \end{array}$    | $\quad\quad\quad$  | ![](resources/BEM_interior.png)  |
 
 Let $\Omega$ be the unit ball and $\Gamma$ the unit sphere, respectively. Using the NG-BEM solver we compute the Dirichlet data for varying order $p$ on a sequence of meshes with decreasing mesh size, i.e., $h \sim\frac1N$. As the exact solution is kown, we compute the absolute $L_2$-error of the numerical solution.  
 
@@ -43,7 +43,7 @@ The following table contains the numerical results of our convergence test.
 To catch the meaning of these results consider the $L_2$-error as function of the number of degrees of freedom (ndofs) for order $p=1,...,4$:
 
 
-![](demos/resources/plot_Laplace_Dirichlet.png) 
+![](resources/plot_Laplace_Dirichlet.png) 
 
 
 
@@ -55,7 +55,7 @@ To analyse convergence rates for traces in $H^{-\frac12}(\Gamma)$ consider now t
 
 |  |  |  |
 | -|--|- |
-|$\begin{array}{rcl l} \Delta u &=& 0, \quad  & \mathrm{in} \, \Omega\,, \\ \gamma_0 u &=& u_0, \quad & \mathrm{on} \, \Gamma\,. \end{array}$    | $\quad\quad\quad$  | ![](demos/resources/BEM_interior.png)  |
+|$\begin{array}{rcl l} \Delta u &=& 0, \quad  & \mathrm{in} \, \Omega\,, \\ \gamma_0 u &=& u_0, \quad & \mathrm{on} \, \Gamma\,. \end{array}$    | $\quad\quad\quad$  | ![](resources/BEM_interior.png)  |
 
 Thus, again $u$ from Test 1 is the unique solution of this problem. Using the NG-BEM solver we compute the Neumann data for varying order $p$  on a sequence of meshes with decreasing mesh size, i.e., $h \sim\frac1N$. As the exact solution is kown, we compute the absolute $L_2$-error of the numerical solution.
 
@@ -77,7 +77,7 @@ The following table contains the numerical results of our convergence test.
 To catch the meaning of these results consider the $L_2$-error as function of the number of degrees of freedom (ndofs) for order $p=1,...,4$:
 
 
-![](demos/resources/plot_Laplace_Neumann.png) 
+![](resources/plot_Laplace_Neumann.png) 
 
 
 **Common notes for Test 1 and 2:** 
@@ -98,7 +98,7 @@ The scattered electric field $\boldsymbol E$ solves the following boundary value
 
 |  |  |  |
 | -|--|- |
-|$\begin{array}{rcl l} \mathbf{\mathrm{curl}}\,\mathbf{\mathrm{curl}}\, \boldsymbol E - \kappa^2 \, \boldsymbol E&=& \boldsymbol 0, \quad  & \mathrm{in} \, \Omega^c\,, \\ \gamma_R \boldsymbol E &=& \boldsymbol E_{\mathrm{inc}}, \quad & \mathrm{on} \, \Gamma\,, \\ \textnormal{ + radiation  condition} & & &\|x\| \to \infty\,. \end{array}$    | $\quad$  | ![](demos/resources/BEM_exterior.png)  |
+|$\begin{array}{rcl l} \mathbf{\mathrm{curl}}\,\mathbf{\mathrm{curl}}\, \boldsymbol E - \kappa^2 \, \boldsymbol E&=& \boldsymbol 0, \quad  & \mathrm{in} \, \Omega^c\,, \\ \gamma_R \boldsymbol E &=& \boldsymbol E_{\mathrm{inc}}, \quad & \mathrm{on} \, \Gamma\,, \\ \textnormal{ + radiation  condition} & & &\|x\| \to \infty\,. \end{array}$    | $\quad$  | ![](resources/BEM_exterior.png)  |
 
 
 Using the NG-BEM solver we compute the Neumann data for varying order $p$ on a sequence of meshes with decreasing mesh size i.e., $h \sim\frac1N$. The mesh is approximated with curvilinear elements of order $4$. As the exact solution for Mie-scattering kown, we compute the absolute $L_2$-error of the numerical solution.  
@@ -117,7 +117,7 @@ The following table contains the numerical results of our convergence test.
 Using the NG-BEM solver we compute the Neumann data $\gamma_N \boldsymbol E \in \boldsymbol H^{-\frac12}(\mathrm{div}_\Gamma, \Gamma)$ for varying orders of approximation $p$. The following diagram shows the $L_2$-error of the approximated Neumann data as function of the number of degrees of freedom for $p=0,...,4$:
      
 
-![](demos/resources/plot_Maxwell_Mie.png) 
+![](resources/plot_Maxwell_Mie.png) 
 
 
 **Notes:** 
@@ -128,7 +128,6 @@ Using the NG-BEM solver we compute the Neumann data $\gamma_N \boldsymbol E \in 
 
 
 **Test 4: Represenation formula for electrostatic potential in $H^{1}(\Omega)$** 
-
 Given complete Cauchy data $u_0 \in H^{\frac12}(\Gamma)$ and $u_1 \in H^{-\frac12}(\Gamma)$, the solution $u$ of the boundary value problem 
 
 $$\begin{array}{rcl l} \Delta u &=& 0, \quad  & \mathrm{in} \, \Omega\,, \\ \gamma_0 u &=& u_0, \quad & \mathrm{on} \, \Gamma_0\,,\\ \gamma_1 u &=& u_1, \quad & \mathrm{on} \, \Gamma_1\,, \end{array}$$
@@ -140,7 +139,7 @@ $$u(x) = \int\limits_{\Gamma} G(x-y)\,u_1(y) \, \mathrm{d}\sigma_y - \int\limits
 
 In order to illustrate the high accuracy of the high order BEM, we evaluate the representation formula for numerically computed Cauchy data. In our test setting $\Omega$ is again the unit ball and $u$ is evaluated on a rectangular screen placed inside the ball, i.e.,  
 
-![](demos/resources/BEM_Screen.png) 
+![](resources/BEM_Screen.png) 
 
 The following table contains the numerical results of our convergence test. Note that $p$ denotes the order of approximation taken for the Dirichlet trace. The order of approximation of the Neumann trace is then $p-1$.
 

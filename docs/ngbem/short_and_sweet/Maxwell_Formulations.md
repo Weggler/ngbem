@@ -1,4 +1,4 @@
-Boundary Integral Equations for Maxwell 
+BIE for Maxwell 
 -----------------------------
 
 **Energy Spaces and Trace Spaces**
@@ -44,7 +44,7 @@ The electric field $\boldsymbol E$ solves the second order equation with Dirichl
 
 | |  |  |
 |-|--|- |
-| $\left\{ \begin{array}{rcl l} \mathbf{curl} \, \mathbf{curl}\, \boldsymbol E - \kappa^2 \, \boldsymbol E &=& \boldsymbol 0, \quad &\textnormal{in } \Omega^c \subset \mathbb R^3\,,\\ \gamma_R \,\boldsymbol E &=& \boldsymbol m, \quad & \textnormal{on }\Gamma \\ \left\| \mathbf{curl} \, \boldsymbol E( x) - i\,\omega\,\epsilon \, \boldsymbol E( x)\right\| &=& \mathcal O\left( \displaystyle \frac{1}{\| x\|^2}\right), &\textnormal{for} \; \|x\| \to \infty\,.\end{array} \right. $  | $\quad\quad\quad$  | ![](../demos/resources/BEM_exterior.png)  |
+| $\left\{ \begin{array}{rcl l} \mathbf{curl} \, \mathbf{curl}\, \boldsymbol E - \kappa^2 \, \boldsymbol E &=& \boldsymbol 0, \quad &\textnormal{in } \Omega^c \subset \mathbb R^3\,,\\ \gamma_R \,\boldsymbol E &=& \boldsymbol m, \quad & \textnormal{on }\Gamma \\ \left\| \mathbf{curl} \, \boldsymbol E( x) - i\,\omega\,\epsilon \, \boldsymbol E( x)\right\| &=& \mathcal O\left( \displaystyle \frac{1}{\| x\|^2}\right), &\textnormal{for} \; \|x\| \to \infty\,.\end{array} \right. $  | $\quad\quad\quad$  | ![](resources/BEM_exterior.png)  |
 
 **1. Direct Method** 
 
@@ -72,7 +72,7 @@ The magnetic field $\boldsymbol H$ solves the second order equation with Neumann
 
 | |  |  |
 |-|--|- |
-| $ \left\{ \begin{array}{rcl l} \mathbf{curl} \, \mathbf{curl}\, \boldsymbol H - \kappa^2 \, \boldsymbol H &=& \boldsymbol 0, \quad &\textnormal{in } \Omega^c \subset \mathbb R^3\,,\\ \gamma_N \,\boldsymbol H &=& -\dfrac{i\omega\varepsilon}{\kappa} \, \boldsymbol n\times \boldsymbol m, \quad & \textnormal{on }\Gamma \\[1ex] \left\| \mathbf{curl} \, \boldsymbol H( x) + i\,\omega\,\mu \, \boldsymbol H( x)\right\| &=& \mathcal O\left( \displaystyle \frac{1}{\| x\|^2}\right), &\textnormal{for} \; \|x\| \to \infty\end{array} \right. $  | $\quad\quad\quad$  | ![](../demos/resources/BEM_exterior.png)  |
+| $ \left\{ \begin{array}{rcl l} \mathbf{curl} \, \mathbf{curl}\, \boldsymbol H - \kappa^2 \, \boldsymbol H &=& \boldsymbol 0, \quad &\textnormal{in } \Omega^c \subset \mathbb R^3\,,\\ \gamma_N \,\boldsymbol H &=& -\dfrac{i\omega\varepsilon}{\kappa} \, \boldsymbol n\times \boldsymbol m, \quad & \textnormal{on }\Gamma \\[1ex] \left\| \mathbf{curl} \, \boldsymbol H( x) + i\,\omega\,\mu \, \boldsymbol H( x)\right\| &=& \mathcal O\left( \displaystyle \frac{1}{\| x\|^2}\right), &\textnormal{for} \; \|x\| \to \infty\end{array} \right. $  | $\quad\quad\quad$  | ![](resources/BEM_exterior.png)  |
 
 
 **1. Direct Method** 
@@ -85,7 +85,7 @@ Apply rotated Dirichlet trace:
 
 $$\begin{array}{c rcl} & \gamma_D \,\boldsymbol H &=& -\dfrac{i\omega\varepsilon}{\kappa} \gamma_D \,\mathrm{SL}(\boldsymbol n\times \boldsymbol m) + \dfrac{\kappa}{i\omega\mu} \gamma_D \,\mathrm{DL}( \boldsymbol j) \\[1ex] \Rightarrow & \dfrac{\kappa}{i\omega\mu}\boldsymbol j &=& -\dfrac{i\omega\varepsilon}{\kappa} \gamma_D \, \mathrm{SL}(\boldsymbol n\times \boldsymbol m) + \dfrac{\kappa}{i\omega\mu} \gamma_D \,\mathrm{DL}( \boldsymbol j) \quad \Rightarrow \quad \boldsymbol j = \gamma_D \,\mathrm{SL}( \boldsymbol n\times \boldsymbol m) + \gamma_D\, \mathrm{DL}(\boldsymbol j)  \end{array}$$
 
-Thus, 
+Thus,
 
 $$ \begin{array}{r rcl }  
 \textnormal{direct ansatz} & \boldsymbol H(x) &=& -\dfrac{i\omega\varepsilon}{\kappa} \mathrm{SL}(\boldsymbol n \times \boldsymbol m) + \dfrac{\kappa}{i\omega\mu} \mathrm{DL}(\boldsymbol j)  \\ 
@@ -112,7 +112,8 @@ $$ \begin{array}{r rcl }
  \textnormal{discretisation} & \left( \dfrac12 \mathrm{M}^\intercal + \mathrm{K}^\intercal\right) \,\mathbf{j}^t &=& \mathrm M \, \mathbf j^i  
 \end{array}$$
 
-#### NGSolve Spaces and NG-BEM Operators
+
+#### NG-BEM Operators
 
 The discretiszation of the boundary integral equations leads to following layer potential operators:
 
@@ -141,7 +142,11 @@ The Python interface functions that provide the assembly of the resulting matric
 
 - The indirect ansatz for Dirichlet problem is often called **EFIE** (electric field integral equation).  
 - The indirect ansatz for Neumann problem is often called **MFIE** (magnetic field integral equation).  
-- Also the magnetic field leads to boundary integral equations  $\boldsymbol j$ and  $\boldsymbol j^t$. The boundary integral equation is are integral equations of second type. 
+- MFIE equation is only valid on closed boundaries whereas EFIE holds in a generalized form on open screens
+- Also the magnetic field leads to boundary integral equations for  $\boldsymbol j$ and  $\boldsymbol j^t$. The boundary integral equations are integral equations of second type. 
+- For low frequencie problems it is necessary to introduce explicitly the electrostatic potential. This leads to an additional equation which is a weak form of the continuity equation relating traces on the boundary holds. Here the normal trace, i.e. the Neuman trace of the electrostatic potential pops up.
+- Scattering at arbitrary dielectrics and pec bodies leads to a system of equations which is coupled by corresponding interface conditions.
+- In case the wave number $\kappa$ corresponds to an interior eigenvalue of $\mathbf{curl}\mathbf{curl}$ the BIE is not uniquely solvable. Instead of EFIE one consideres the combined electric field integral equation (CFIE).
 - consider $H^{-\frac12}(\mathrm{curl}_\Gamma,\Gamma)$ conforming finite elements for test and trial space. Here is the hypersingular operator entry $lk$
 
 $$ \mathrm{D}_{lk} = \int\limits_\Gamma \int\limits_\Gamma \displaystyle{ \frac{1}{4\,\pi} \, \frac{e^{i\,\kappa\,\|x-y\|}}{\| x-y\|} } \, \langle \boldsymbol n(y)\times \boldsymbol v_l(y), \boldsymbol n(x) \times \boldsymbol \varphi_k(x)\rangle\, \mathrm{d}\sigma_y \, \mathrm{d}\sigma_x - \int\limits_\Gamma \displaystyle{ \frac{1}{4\,\pi}\, \frac{e^{i\,\kappa\,\|x-y\|}}{\| x-y\|} } \, \mathrm{curl}_\Gamma \,\boldsymbol v_l(y)\, \mathrm{curl}_\Gamma\,\boldsymbol \varphi_k(x) \mathrm{d}\sigma_y \mathrm{d}\sigma_x   $$
@@ -149,10 +154,4 @@ $$ \mathrm{D}_{lk} = \int\limits_\Gamma \int\limits_\Gamma \displaystyle{ \frac{
 - consider a trial function $\boldsymbol \psi_k \in H^{-\frac12}(\mathrm{div}_\Gamma,\Gamma)$ and a test function $\boldsymbol v_l \in H^{-\frac12}(\mathrm{curl}_\Gamma,\Gamma)$. Here is the adjoint double layer potential operator entry $lk$
 
 $$ \mathrm{K}'_{lk} = \int\limits_\Gamma \int\limits_\Gamma \displaystyle{ \frac{1}{4\,\pi} \, \big\langle \boldsymbol n(y)\times \boldsymbol v_l(y), \nabla_{x} \frac{e^{i\,\kappa\,\|x-y\|}}{\| x-y\|} } \times \boldsymbol \psi_k(y) \big\rangle\, \mathrm{d}\sigma_y \, \mathrm{d}\sigma_x    $$
-
-- MFIE equation is only valid on closed boundaries whereas EFIE holds in a generalized form on open screens
-- For low frequencie problems it is necessary to introduce explicitly the electrostatic potential. This leads to an additional equation which is a weak form of the continuity equation relating traces on the boundary holds. Here the normal trace, i.e. the Neuman trace of the electrostatic potential pops up.
-- Scattering at arbitrary dielectrics and pec bodies leads to a system of equations which is coupled by corresponding interface conditions.
-- In case the wave number $\kappa$ corresponds to an interior eigenvalue of $\mathbf{curl}\mathbf{curl}$ the BIE is not uniquely solvable. Instead of EFIE one consideres the combined electric field integral equation (CFIE).
-
 

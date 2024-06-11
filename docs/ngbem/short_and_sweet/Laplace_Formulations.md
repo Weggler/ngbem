@@ -1,29 +1,29 @@
-Boundary Integral Equations for Laplace
+BIE for Laplace
 -----------------------------
 
 **Energy Spaces and Trace Spaces**
 
 $$
 \begin{array}{rcccccc}
-\textnormal{trace spaces:} &H^{\frac12}(\Gamma) & \xrightarrow{\nabla_{\Gamma}} & \boldsymbol{H}^{-\frac12}(\mathrm{curl}_{\Gamma},{\Gamma}) & \xrightarrow{\mathrm{curl}_{\Gamma}}& H^{-\frac12}({\Gamma})& \\[1ex]
+\textnormal{natural sequence:} &H^{\frac12}(\Gamma) & \xrightarrow{\nabla_{\Gamma}} & \boldsymbol{H}^{-\frac12}(\mathrm{curl}_{\Gamma},{\Gamma}) & \xrightarrow{\mathrm{curl}_{\Gamma}}& H^{-\frac12}({\Gamma})& \\[1ex]
 &\gamma_0 \Big\uparrow && \gamma_R \Big\uparrow && \gamma_{\boldsymbol n} \Big\uparrow &\\[1ex]
 \textnormal{energy spaces:} &H^1({\Omega}) & \xrightarrow{\nabla} & H(\mathbf{curl},{\Omega}) & \xrightarrow{\mathbf{curl}}& H(\mathrm{div},{\Omega}) & \xrightarrow{\mathrm{div}} \; L_2(\Omega) \\[1ex]
 &\gamma_0 \Big\downarrow && \gamma_D \Big\downarrow && \gamma_{\boldsymbol n} \Big\downarrow &\\[1ex]
-\textnormal{dual trace spaces:} &H^{\frac12}(\Gamma) & \xrightarrow{\mathbf{curl}_{\Gamma}} & \boldsymbol{H}^{-\frac12}(\mathrm{div}_{\Gamma},{\Gamma}) & \xrightarrow{\mathrm{div}_{\Gamma}}& H^{-\frac12}({\Gamma})& 
+\textnormal{dual sequence:} &H^{\frac12}(\Gamma) & \xrightarrow{\mathbf{curl}_{\Gamma}} & \boldsymbol{H}^{-\frac12}(\mathrm{div}_{\Gamma},{\Gamma}) & \xrightarrow{\mathrm{div}_{\Gamma}}& H^{-\frac12}({\Gamma})& 
 \end{array}
 $$
 
 **Trace Operators**
 
-$$ \begin{array}{r rcl } \textnormal{Dirichlet trace} \quad & \gamma_0 u &=& u  \\[1ex] \textnormal{Neumann trace} \quad & \gamma_1 u &=& \langle \boldsymbol n,   \nabla\, u \rangle \,. \end{array} $$
+$$ \begin{array}{r rcl } \textnormal{Dirichlet trace:} \; & \gamma_0 u &=& u  \\[1ex] \textnormal{Neumann trace} \quad & \gamma_1 u &=& \langle \boldsymbol n,   \nabla\, u \rangle \,. \end{array} $$
 
-- traces in $ H^{\frac12}\left( \Gamma\right) $ are weakly continous
-- traces in $ H^{-\frac12}\left( \Gamma\right) $ are not continous
+- densities in $ H^{\frac12}\left( \Gamma\right) $ are weakly continous
+- densities in $ H^{-\frac12}\left( \Gamma\right) $ are not continous
 
 **Layer Potentials**
 
-$$ \begin{array}{rcl} \mathrm{SL}\left( j \right) (x) &=& \displaystyle{ \int\limits_\Gamma \displaystyle{\frac{1}{4\,\pi}\, \frac{1}{\| x-y\|} } \, j(y)\, \mathrm{d}\sigma_y } \\ 
-\mathrm{DL}\left(m \right)(x)  &=& \displaystyle{ \int\limits_\Gamma \displaystyle{\frac{1}{4\,\pi}\, \frac{ \langle n(y), x-y \rangle }{\| x-y\|^3} } \, m(y)\, \mathrm{d}\sigma_y }
+$$ \begin{array}{r rcl} \textnormal{single layer potential:} \; \mathrm{SL}\left( j \right) (x) &=& \displaystyle{ \int\limits_\Gamma \displaystyle{\frac{1}{4\,\pi}\, \frac{1}{\| x-y\|} } \, j(y)\, \mathrm{d}\sigma_y } \\ 
+ \textnormal{double layer potential:} \; \mathrm{DL}\left(m \right)(x)  &=& \displaystyle{ \int\limits_\Gamma \displaystyle{\frac{1}{4\,\pi}\, \frac{ \langle n(y), x-y \rangle }{\| x-y\|^3} } \, m(y)\, \mathrm{d}\sigma_y }
 \end{array}$$
 
 #### Laplace Dirichlet BVP
@@ -32,7 +32,7 @@ Let $u$ denote the electrostatic potential that arises under given Dirichlet bou
 
 |  |  |  |
 | -|--|- |
-|$ \left\{ \begin{array}{rcl l} \Delta u &=& 0\,, \quad & \Omega \subset \mathbb R^3\,, \\ \gamma_0 u &=& u_0\,, \quad & \Gamma = \partial \Omega\,. \end{array} \right. $ | $\quad\quad\quad$  | ![](../demos/resources/BEM_interior.png)  |
+|$ \left\{ \begin{array}{rcl l} \Delta u &=& 0\,, \quad & \Omega \subset \mathbb R^3\,, \\ \gamma_0 u &=& u_0\,, \quad & \Gamma = \partial \Omega\,. \end{array} \right. $ | $\quad\quad\quad$  | ![](resources/BEM_interior.png)  |
  
 
 From here we can choose an direct or an indirect ansatz.  
@@ -58,7 +58,7 @@ Let $u$ denote the electrostatic potential that arises under given Neumann bound
 
 |  |  |  |
 | -|--|- |
-|$ \left\{ \begin{array}{rcl l} \Delta u &=& 0\,, \quad & \Omega \subset \mathbb R^3\,, \\ \gamma_1 u &=& u_1\,, \quad & \Gamma = \partial \Omega\,. \end{array} \right. $ | $\quad\quad\quad$  | ![](../demos/resources/BEM_interior.png)  |
+|$ \left\{ \begin{array}{rcl l} \Delta u &=& 0\,, \quad & \Omega \subset \mathbb R^3\,, \\ \gamma_1 u &=& u_1\,, \quad & \Gamma = \partial \Omega\,. \end{array} \right. $ | $\quad\quad\quad$  | ![](resources/BEM_interior.png)  |
 
 
 From here we can choose an direct or an indirect ansatz. 
@@ -78,9 +78,7 @@ $$ \begin{array}{r rcl }
 \end{array} $$ 
 
 
-#### NGSolve Spaces and NG-BEM Operators
-
-**Layer Potential Operators**
+#### NG-BEM Operators
 
 The discretiszation of the boundary integral equations leads to the following layer potential operators:
 

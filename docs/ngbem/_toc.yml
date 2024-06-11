@@ -3,17 +3,31 @@
 
 format: jb-book
 root: intro
-chapters:
-- file: demos/Laplace_DtN_indirect
-- file: demos/Laplace_DtN_direct
-- file: demos/Laplace_NtD_indirect
-- file: demos/Laplace_NtD_direct
-- file: demos/Laplace_Mixed
-- file: demos/FEMBEM_Capacitor
-- file: demos/Maxwell_DtN_indirect
-- file: demos/Maxwell_DtN_direct
-- file: demos/Maxwell_Mixed
-- file: Laplace_Formulations
-- file: Maxwell_Formulations
-- file: ho_cvg
+
+parts: 
+  - caption: Short and Sweet 
+    numbered: False
+    chapters: 
+    - file: short_and_sweet/why_bem
+    - file: short_and_sweet/Laplace_Formulations
+    - file: short_and_sweet/Laplace_Demo_1
+    - file: short_and_sweet/Laplace_Demo_2
+    - file: short_and_sweet/Laplace_Demo_3
+    - file: short_and_sweet/Maxwell_Formulations
+    - file: short_and_sweet/Maxwell_Demo_1
+    - file: short_and_sweet/Maxwell_Demo_2
+    - file: short_and_sweet/ho_cvg
+
+  - caption: Detailed Demos  
+    numbered: False
+    chapters: 
+    - file: demos/Laplace_DtN_indirect
+    - file: demos/Laplace_DtN_direct
+    - file: demos/Laplace_NtD_indirect
+    - file: demos/Laplace_NtD_direct
+    - file: demos/Laplace_Mixed
+    - file: demos/FEMBEM_Capacitor
+    - file: demos/Maxwell_DtN_indirect
+    - file: demos/Maxwell_DtN_direct
+    - file: demos/Maxwell_Mixed
 
