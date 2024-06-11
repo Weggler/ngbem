@@ -1,0 +1,884 @@
+
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+    <title>Convergence Rates &#8212; NG-BEM</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../_static/styles/bootstrap.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+
+  
+  <link href="../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=5b4479735964841361fd" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" href="../_static/styles/sphinx-book-theme.css?digest=14f4ca6b54d191a8c7657f6c759bf11a5fb86285" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-thebe.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/design-style.4045f2051d55cab465a707391d5b2007.min.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=5b4479735964841361fd" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd" />
+  <script src="../_static/vendor/fontawesome/6.1.2/js/all.min.js?digest=5b4479735964841361fd"></script>
+
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/clipboard.min.js"></script>
+    <script src="../_static/copybutton.js"></script>
+    <script src="../_static/scripts/sphinx-book-theme.js?digest=5a5c038af52cf7bc1a1ec88eea08e6366ee68824"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../_static/togglebutton.js"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script src="../_static/design-tabs.js"></script>
+    <script>const THEBE_JS_URL = "https://unpkg.com/thebe@0.8.2/lib/index.js"
+const thebe_selector = ".thebe,.cell"
+const thebe_selector_input = "pre"
+const thebe_selector_output = ".output, .cell_output"
+</script>
+    <script async="async" src="../_static/sphinx-thebe.js"></script>
+    <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'short_and_sweet/ho_cvg';</script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Dirichlet Laplace Indirect Method" href="../demos/Laplace_DtN_indirect.html" />
+    <link rel="prev" title="Maxwell Demo 2" href="Maxwell_Demo_2.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search this book..."
+         aria-label="Search this book..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+
+<a class="navbar-brand logo" href="../intro.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">NG-BEM</p>
+  
+</a></div>
+        <div class="sidebar-primary-item"><nav class="bd-links" id="bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        
+        <ul class="nav bd-sidenav bd-sidenav__home-link">
+            <li class="toctree-l1">
+                <a class="reference internal" href="../intro.html">
+                    Welcome to NG-BEM
+                </a>
+            </li>
+        </ul>
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Short and Sweet</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="why_bem.html">Boundary Element Method</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Laplace_Formulations.html">BIE for Laplace</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Laplace_Demo_1.html">Laplace Demo 1</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Laplace_Demo_2.html">Laplace Demo 2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Laplace_Demo_3.html">Laplace Demo 3</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Maxwell_Formulations.html">BIE for Maxwell</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Maxwell_Demo_1.html">Maxwell Demo 1</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Maxwell_Demo_2.html">Maxwell Demo 2</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Convergence Rates</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Detailed Demos</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../demos/Laplace_DtN_indirect.html">Dirichlet Laplace Indirect Method</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../demos/Laplace_DtN_direct.html">Dirichlet Laplace Direct Method</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../demos/Laplace_NtD_indirect.html">Neumann Laplace Indirect Method</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../demos/Laplace_NtD_direct.html">Neumann Laplace Direct Method</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../demos/Laplace_Mixed.html">Laplace with Mixed Conditions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../demos/FEMBEM_Capacitor.html">Laplace FEM-BEM Coupling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../demos/Maxwell_DtN_indirect.html">Maxwell PEC Indirect Method</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../demos/Maxwell_DtN_direct.html">Maxwell PEC Direct method</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../demos/Maxwell_Mixed.html">Maxwell with Mixed Conditions</a></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><label class="sidebar-toggle primary-toggle btn btn-sm" for="__primary" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</label></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+
+
+
+<div class="dropdown dropdown-source-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Source repositories">
+    <i class="fab fa-github"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="https://github.com/Weggler/ngbem" target="_blank"
+   class="btn btn-sm btn-source-repository-button dropdown-item"
+   title="Source repository"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fab fa-github"></i>
+  </span>
+<span class="btn__text-container">Repository</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li><a href="https://github.com/Weggler/ngbem/issues/new?title=Issue%20on%20page%20%2Fshort_and_sweet/ho_cvg.html&body=Your%20issue%20content%20here." target="_blank"
+   class="btn btn-sm btn-source-issues-button dropdown-item"
+   title="Open an issue"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-lightbulb"></i>
+  </span>
+<span class="btn__text-container">Open issue</span>
+</a>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="../_sources/short_and_sweet/ho_cvg.md" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.md</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script>
+
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+  </button>
+`);
+</script>
+
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>Convergence Rates</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <section class="tex2jax_ignore mathjax_ignore" id="convergence-rates">
+<h1>Convergence Rates<a class="headerlink" href="#convergence-rates" title="Permalink to this heading">#</a></h1>
+<p>NG-BEM implements high order boundary element methods. The accuracy of the method depends on the order of the finite element spaces involved. On this page some numerical results of NG-BEM are presented:</p>
+<ol class="arabic simple">
+<li><p>Analytically solvable problems with an unkown in one of the following trace spaces are considered</p></li>
+</ol>
+<div class="math notranslate nohighlight">
+\[ H^{\frac12}(\Gamma), \quad \boldsymbol H^{-\frac12}(\mathrm{div}_\Gamma, \Gamma) \quad \textnormal{and} \quad H^{-\frac12}(\Gamma)\,.\]</div>
+<p>The unkown trace is computed by NG-BEM for different orders of approximation <span class="math notranslate nohighlight">\(p\)</span> on a sequence of subsequently refined meshes. The absolute <span class="math notranslate nohighlight">\(L_2\)</span>-error as function of degrees of freedom is analysed and convergence rates known from theory are exemplarily verified.</p>
+<ol class="arabic simple" start="2">
+<li><p>Given a complete set of Cauchy data the solution of the pde is given by its boundary integral representation. Thus, besides traces the numerical solution of the pde depends on <span class="math notranslate nohighlight">\(p\)</span>. We consider an electrostatic potential in <span class="math notranslate nohighlight">\(H^{1}(\Omega)\)</span> as solution of the Laplacian and analyse the decrease of error with respect to varying order <span class="math notranslate nohighlight">\(p\)</span>.</p></li>
+</ol>
+<p><strong>Test 1: Laplace Dirichlet trace in <span class="math notranslate nohighlight">\(H^{\frac12}(\Gamma)\)</span></strong></p>
+<p>Consider the harmonic function <span class="math notranslate nohighlight">\(u\)</span>,</p>
+<div class="math notranslate nohighlight">
+\[ u: \boldsymbol x \mapsto \dfrac{1}{\| \boldsymbol x - \boldsymbol x_s\|}, \quad \boldsymbol x_s = (1,1,1)^\intercal \in \Omega^c\,, \]</div>
+<p>as unique solution of the Neumann boundary value problem</p>
+<table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p></p></th>
+<th class="head"><p></p></th>
+<th class="head"><p></p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(\begin{array}{rcl l} \Delta u &amp;=&amp; 0, \quad  &amp; \mathrm{in} \, \Omega\,, \\ \gamma_1 u &amp;=&amp; u_1, \quad &amp; \mathrm{on} \, \Gamma\,. \end{array}\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\quad\quad\quad\)</span></p></td>
+<td><p><img alt="" src="../_images/BEM_interior.png" /></p></td>
+</tr>
+</tbody>
+</table>
+<p>Let <span class="math notranslate nohighlight">\(\Omega\)</span> be the unit ball and <span class="math notranslate nohighlight">\(\Gamma\)</span> the unit sphere, respectively. Using the NG-BEM solver we compute the Dirichlet data for varying order <span class="math notranslate nohighlight">\(p\)</span> on a sequence of meshes with decreasing mesh size, i.e., <span class="math notranslate nohighlight">\(h \sim\frac1N\)</span>. As the exact solution is kown, we compute the absolute <span class="math notranslate nohighlight">\(L_2\)</span>-error of the numerical solution.</p>
+<p>The following table contains the numerical results of our convergence test.</p>
+<table class="table">
+<thead>
+<tr class="row-odd"><th class="head text-center"><p>mesh size</p></th>
+<th class="head text-center"><p>ndofs</p></th>
+<th class="head text-center"><p>error</p></th>
+<th class="head text-center"><p>ndofs</p></th>
+<th class="head text-center"><p>error</p></th>
+<th class="head text-center"><p>ndofs</p></th>
+<th class="head text-center"><p>error</p></th>
+<th class="head text-center"><p>ndofs</p></th>
+<th class="head text-center"><p>error</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-center"><p><span class="math notranslate nohighlight">\(N\)</span></p></td>
+<td class="text-center"><p><span class="math notranslate nohighlight">\(p=1\)</span></p></td>
+<td class="text-center"><p><span class="math notranslate nohighlight">\(L_2\)</span></p></td>
+<td class="text-center"><p><span class="math notranslate nohighlight">\(p=2\)</span></p></td>
+<td class="text-center"><p><span class="math notranslate nohighlight">\(L_2\)</span></p></td>
+<td class="text-center"><p><span class="math notranslate nohighlight">\(p=3\)</span></p></td>
+<td class="text-center"><p><span class="math notranslate nohighlight">\(L_2\)</span></p></td>
+<td class="text-center"><p><span class="math notranslate nohighlight">\(p=4\)</span></p></td>
+<td class="text-center"><p><span class="math notranslate nohighlight">\(L_2\)</span></p></td>
+</tr>
+<tr class="row-odd"><td class="text-center"><p>96</p></td>
+<td class="text-center"><p>50</p></td>
+<td class="text-center"><p>5.64e-02</p></td>
+<td class="text-center"><p>194</p></td>
+<td class="text-center"><p>1.26e-02</p></td>
+<td class="text-center"><p>434</p></td>
+<td class="text-center"><p>4.17e-04</p></td>
+<td class="text-center"><p>770</p></td>
+<td class="text-center"><p>5.22e-05</p></td>
+</tr>
+<tr class="row-even"><td class="text-center"><p>172</p></td>
+<td class="text-center"><p>88</p></td>
+<td class="text-center"><p>3.13e-02</p></td>
+<td class="text-center"><p>346</p></td>
+<td class="text-center"><p>2.02e-03</p></td>
+<td class="text-center"><p>776</p></td>
+<td class="text-center"><p>2.37e-04</p></td>
+<td class="text-center"><p>1378</p></td>
+<td class="text-center"><p>2.70e-05</p></td>
+</tr>
+<tr class="row-odd"><td class="text-center"><p>456</p></td>
+<td class="text-center"><p>230</p></td>
+<td class="text-center"><p>1.11e-02</p></td>
+<td class="text-center"><p>914</p></td>
+<td class="text-center"><p>5.85e-04</p></td>
+<td class="text-center"><p>2054</p></td>
+<td class="text-center"><p>3.86e-05</p></td>
+<td class="text-center"><p>3650</p></td>
+<td class="text-center"><p>3.82e-06</p></td>
+</tr>
+<tr class="row-even"><td class="text-center"><p>784</p></td>
+<td class="text-center"><p>394</p></td>
+<td class="text-center"><p>5.39e-04</p></td>
+<td class="text-center"><p>1570</p></td>
+<td class="text-center"><p>2.40e-04</p></td>
+<td class="text-center"><p>3530</p></td>
+<td class="text-center"><p>9.51e-06</p></td>
+<td class="text-center"><p>6274</p></td>
+<td class="text-center"><p>4.48e-07</p></td>
+</tr>
+<tr class="row-odd"><td class="text-center"><p>1228</p></td>
+<td class="text-center"><p>616</p></td>
+<td class="text-center"><p>3.38e-04</p></td>
+<td class="text-center"><p>2458</p></td>
+<td class="text-center"><p>1.24e-04</p></td>
+<td class="text-center"><p>5528</p></td>
+<td class="text-center"><p>3.73e-06</p></td>
+<td class="text-center"><p>9826</p></td>
+<td class="text-center"><p>1.40e-07</p></td>
+</tr>
+<tr class="row-even"><td class="text-center"><p>1922</p></td>
+<td class="text-center"><p>963</p></td>
+<td class="text-center"><p>2.04e-04</p></td>
+<td class="text-center"><p>3846</p></td>
+<td class="text-center"><p>6.44e-05</p></td>
+<td class="text-center"><p>8651</p></td>
+<td class="text-center"><p>1.47e-06</p></td>
+<td class="text-center"><p>15378</p></td>
+<td class="text-center"><p>4.52e-08</p></td>
+</tr>
+</tbody>
+</table>
+<p>To catch the meaning of these results consider the <span class="math notranslate nohighlight">\(L_2\)</span>-error as function of the number of degrees of freedom (ndofs) for order <span class="math notranslate nohighlight">\(p=1,...,4\)</span>:</p>
+<p><img alt="" src="../_images/plot_Laplace_Dirichlet.png" /></p>
+<p><strong>Test 2: Laplace Neumann trace in <span class="math notranslate nohighlight">\(H^{-\frac12}(\Gamma)\)</span></strong></p>
+<p>To analyse convergence rates for traces in <span class="math notranslate nohighlight">\(H^{-\frac12}(\Gamma)\)</span> consider now the Dirichlet boundary value problem with unkonwn Neumann data, i.e.,</p>
+<table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p></p></th>
+<th class="head"><p></p></th>
+<th class="head"><p></p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(\begin{array}{rcl l} \Delta u &amp;=&amp; 0, \quad  &amp; \mathrm{in} \, \Omega\,, \\ \gamma_0 u &amp;=&amp; u_0, \quad &amp; \mathrm{on} \, \Gamma\,. \end{array}\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\quad\quad\quad\)</span></p></td>
+<td><p><img alt="" src="../_images/BEM_interior.png" /></p></td>
+</tr>
+</tbody>
+</table>
+<p>Thus, again <span class="math notranslate nohighlight">\(u\)</span> from Test 1 is the unique solution of this problem. Using the NG-BEM solver we compute the Neumann data for varying order <span class="math notranslate nohighlight">\(p\)</span>  on a sequence of meshes with decreasing mesh size, i.e., <span class="math notranslate nohighlight">\(h \sim\frac1N\)</span>. As the exact solution is kown, we compute the absolute <span class="math notranslate nohighlight">\(L_2\)</span>-error of the numerical solution.</p>
+<p>The following table contains the numerical results of our convergence test.</p>
+<table class="table">
+<thead>
+<tr class="row-odd"><th class="head text-center"><p>mesh size</p></th>
+<th class="head text-center"><p>ndofs</p></th>
+<th class="head text-center"><p>error</p></th>
+<th class="head"><p>ndofs</p></th>
+<th class="head"><p>error</p></th>
+<th class="head"><p>ndofs</p></th>
+<th class="head"><p>error</p></th>
+<th class="head"><p>ndofs</p></th>
+<th class="head"><p>error</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-center"><p><span class="math notranslate nohighlight">\(N\)</span></p></td>
+<td class="text-center"><p><span class="math notranslate nohighlight">\(p=0\)</span></p></td>
+<td class="text-center"><p><span class="math notranslate nohighlight">\(L_2\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(p=1\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(L_2\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(p=2\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(L_2\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(p=3\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(L_2\)</span></p></td>
+</tr>
+<tr class="row-odd"><td class="text-center"><p>96</p></td>
+<td class="text-center"><p>96</p></td>
+<td class="text-center"><p>2.59e-01</p></td>
+<td><p>288</p></td>
+<td><p>7.05e-02</p></td>
+<td><p>576</p></td>
+<td><p>6.66e-03</p></td>
+<td><p>960</p></td>
+<td><p>5.10e-04</p></td>
+</tr>
+<tr class="row-even"><td class="text-center"><p>172</p></td>
+<td class="text-center"><p>1720</p></td>
+<td class="text-center"><p>1.84e-01</p></td>
+<td><p>516</p></td>
+<td><p>5.02e-02</p></td>
+<td><p>1032</p></td>
+<td><p>4.06e-03</p></td>
+<td><p>1720</p></td>
+<td><p>2.49e-04</p></td>
+</tr>
+<tr class="row-odd"><td class="text-center"><p>456</p></td>
+<td class="text-center"><p>4560</p></td>
+<td class="text-center"><p>1.15e-01</p></td>
+<td><p>1368</p></td>
+<td><p>2.00e-02</p></td>
+<td><p>2736</p></td>
+<td><p>1.01e-03</p></td>
+<td><p>4560</p></td>
+<td><p>4.08e-05</p></td>
+</tr>
+<tr class="row-even"><td class="text-center"><p>784</p></td>
+<td class="text-center"><p>7840</p></td>
+<td class="text-center"><p>8.47e-02</p></td>
+<td><p>2352</p></td>
+<td><p>1.04e-02</p></td>
+<td><p>4704</p></td>
+<td><p>4.09e-04</p></td>
+<td><p>7840</p></td>
+<td><p>1.30e-05</p></td>
+</tr>
+<tr class="row-odd"><td class="text-center"><p>1228</p></td>
+<td class="text-center"><p>1220</p></td>
+<td class="text-center"><p>6.89e-02</p></td>
+<td><p>3684</p></td>
+<td><p>6.72e-03</p></td>
+<td><p>7368</p></td>
+<td><p>2.07e-04</p></td>
+<td><p>12280</p></td>
+<td><p>5.40e-06</p></td>
+</tr>
+<tr class="row-even"><td class="text-center"><p>1922</p></td>
+<td class="text-center"><p>1922</p></td>
+<td class="text-center"><p>5.39e-02</p></td>
+<td><p>5766</p></td>
+<td><p>4.21e-03</p></td>
+<td><p>11532</p></td>
+<td><p>1.06e-04</p></td>
+<td><p>19220</p></td>
+<td><p>2.06e-06</p></td>
+</tr>
+</tbody>
+</table>
+<p>To catch the meaning of these results consider the <span class="math notranslate nohighlight">\(L_2\)</span>-error as function of the number of degrees of freedom (ndofs) for order <span class="math notranslate nohighlight">\(p=1,...,4\)</span>:</p>
+<p><img alt="" src="../_images/plot_Laplace_Neumann.png" /></p>
+<p><strong>Common notes for Test 1 and 2:</strong></p>
+<ul class="simple">
+<li><p>We actually considered the Laplace operator with mixed boundary values and solved the bvp only once.</p></li>
+<li><p>Our manufactured solution <span class="math notranslate nohighlight">\(u\)</span> does not depend on the mesh, i.e., it is a solution for all meshes. This is why the geometrical approximation order is <span class="math notranslate nohighlight">\(1\)</span> for all test runs.</p></li>
+<li><p>Check out the repository’s test folder if you like to run this test.</p></li>
+</ul>
+<p><strong>Test 3: Maxwell Neumann trace in <span class="math notranslate nohighlight">\(H^{-\frac12}(\mathrm{div}_\Gamma, \Gamma)\)</span></strong></p>
+<p>Besides electrostatics we can also solve boundary value problems from electromagnetics. The relevant trace spaces are <span class="math notranslate nohighlight">\(\boldsymbol H^{-\frac12}(\mathrm{curl}_\Gamma, \Gamma)\)</span>, and its dual, <span class="math notranslate nohighlight">\(\boldsymbol H^{-\frac12}(\mathrm{div}_\Gamma, \Gamma)\)</span>. NG-BEM offers finite element spaces for both trace spaces.</p>
+<p>In order to verify convergence rates for high order bem, we consider the scattering of a plane wave <span class="math notranslate nohighlight">\(\boldsymbol E_{\mathrm{inc}}\)</span> at a perfect electric conducting sphere. This scattering problem is analytically solvable by so-called Mie series. In order to keep the geometrical approximation error negligible, the geometrical approximation oder is set to <span class="math notranslate nohighlight">\(4\)</span> for all tests runs.</p>
+<p>The scattered electric field <span class="math notranslate nohighlight">\(\boldsymbol E\)</span> solves the following boundary value problem:</p>
+<table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p></p></th>
+<th class="head"><p></p></th>
+<th class="head"><p></p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(\begin{array}{rcl l} \mathbf{\mathrm{curl}}\,\mathbf{\mathrm{curl}}\, \boldsymbol E - \kappa^2 \, \boldsymbol E&amp;=&amp; \boldsymbol 0, \quad  &amp; \mathrm{in} \, \Omega^c\,, \\ \gamma_R \boldsymbol E &amp;=&amp; \boldsymbol E_{\mathrm{inc}}, \quad &amp; \mathrm{on} \, \Gamma\,, \\ \textnormal{ + radiation  condition} &amp; &amp; &amp;|x| \to \infty\,. \end{array}\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\quad\)</span></p></td>
+<td><p><img alt="" src="../_images/BEM_exterior.png" /></p></td>
+</tr>
+</tbody>
+</table>
+<p>Using the NG-BEM solver we compute the Neumann data for varying order <span class="math notranslate nohighlight">\(p\)</span> on a sequence of meshes with decreasing mesh size i.e., <span class="math notranslate nohighlight">\(h \sim\frac1N\)</span>. The mesh is approximated with curvilinear elements of order <span class="math notranslate nohighlight">\(4\)</span>. As the exact solution for Mie-scattering kown, we compute the absolute <span class="math notranslate nohighlight">\(L_2\)</span>-error of the numerical solution.</p>
+<p>The following table contains the numerical results of our convergence test.</p>
+<table class="table">
+<thead>
+<tr class="row-odd"><th class="head text-center"><p>mesh size</p></th>
+<th class="head text-center"><p>ndofs</p></th>
+<th class="head text-center"><p>error</p></th>
+<th class="head text-center"><p>ndofs</p></th>
+<th class="head text-center"><p>error</p></th>
+<th class="head text-center"><p>ndofs</p></th>
+<th class="head text-center"><p>error</p></th>
+<th class="head text-center"><p>ndofs</p></th>
+<th class="head text-center"><p>error</p></th>
+<th class="head text-center"><p>ndofs</p></th>
+<th class="head text-center"><p>error</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-center"><p><span class="math notranslate nohighlight">\(N\)</span></p></td>
+<td class="text-center"><p><span class="math notranslate nohighlight">\(p=0\)</span></p></td>
+<td class="text-center"><p><span class="math notranslate nohighlight">\(L_2\)</span></p></td>
+<td class="text-center"><p><span class="math notranslate nohighlight">\(p=1\)</span></p></td>
+<td class="text-center"><p><span class="math notranslate nohighlight">\(L_2\)</span></p></td>
+<td class="text-center"><p><span class="math notranslate nohighlight">\(p=2\)</span></p></td>
+<td class="text-center"><p><span class="math notranslate nohighlight">\(L_2\)</span></p></td>
+<td class="text-center"><p><span class="math notranslate nohighlight">\(p=3\)</span></p></td>
+<td class="text-center"><p><span class="math notranslate nohighlight">\(L_2\)</span></p></td>
+<td class="text-center"><p><span class="math notranslate nohighlight">\(p=4\)</span></p></td>
+<td class="text-center"><p><span class="math notranslate nohighlight">\(L_2\)</span></p></td>
+</tr>
+<tr class="row-odd"><td class="text-center"><p>188</p></td>
+<td class="text-center"><p>282</p></td>
+<td class="text-center"><p>7.72e-01</p></td>
+<td class="text-center"><p>564</p></td>
+<td class="text-center"><p>1.27e-01</p></td>
+<td class="text-center"><p>1410</p></td>
+<td class="text-center"><p>2.01e-02</p></td>
+<td class="text-center"><p>2632</p></td>
+<td class="text-center"><p>1.15e-03</p></td>
+<td class="text-center"><p>4230</p></td>
+<td class="text-center"><p>3.56e-04</p></td>
+</tr>
+<tr class="row-even"><td class="text-center"><p>722</p></td>
+<td class="text-center"><p>1083</p></td>
+<td class="text-center"><p>3.54e-01</p></td>
+<td class="text-center"><p>2166</p></td>
+<td class="text-center"><p>3.19e-02</p></td>
+<td class="text-center"><p>5415</p></td>
+<td class="text-center"><p>2.49e-03</p></td>
+<td class="text-center"><p>10108</p></td>
+<td class="text-center"><p>7.34e-05</p></td>
+<td class="text-center"><p>16245</p></td>
+<td class="text-center"><p>1.17e-05</p></td>
+</tr>
+<tr class="row-odd"><td class="text-center"><p>1620</p></td>
+<td class="text-center"><p>2430</p></td>
+<td class="text-center"><p>2.36e-01</p></td>
+<td class="text-center"><p>4860</p></td>
+<td class="text-center"><p>1.42e-02</p></td>
+<td class="text-center"><p>12150</p></td>
+<td class="text-center"><p>7.14e-04</p></td>
+<td class="text-center"><p>22680</p></td>
+<td class="text-center"><p>1.33e-05</p></td>
+<td class="text-center"><p>36450</p></td>
+<td class="text-center"><p>1.39e-06</p></td>
+</tr>
+<tr class="row-even"><td class="text-center"><p>2804</p></td>
+<td class="text-center"><p>4206</p></td>
+<td class="text-center"><p>1.79e-01</p></td>
+<td class="text-center"><p>8412</p></td>
+<td class="text-center"><p>8.09e-03</p></td>
+<td class="text-center"><p>21030</p></td>
+<td class="text-center"><p>3.14e-04</p></td>
+<td class="text-center"><p>39256</p></td>
+<td class="text-center"><p>3.93e-06</p></td>
+<td class="text-center"><p>63180</p></td>
+<td class="text-center"><p>3.64e-07</p></td>
+</tr>
+</tbody>
+</table>
+<p>Using the NG-BEM solver we compute the Neumann data <span class="math notranslate nohighlight">\(\gamma_N \boldsymbol E \in \boldsymbol H^{-\frac12}(\mathrm{div}_\Gamma, \Gamma)\)</span> for varying orders of approximation <span class="math notranslate nohighlight">\(p\)</span>. The following diagram shows the <span class="math notranslate nohighlight">\(L_2\)</span>-error of the approximated Neumann data as function of the number of degrees of freedom for <span class="math notranslate nohighlight">\(p=0,...,4\)</span>:</p>
+<p><img alt="" src="../_images/plot_Maxwell_Mie.png" /></p>
+<p><strong>Notes:</strong></p>
+<ul class="simple">
+<li><p>The Mie series solves the scattering at the sphere. A high order mesh is required to obtain high order convergence at least if the traces are approximated with <span class="math notranslate nohighlight">\(p&gt;2\)</span>.</p></li>
+<li><p>For approximation order <span class="math notranslate nohighlight">\(p=0\)</span> the linear edge element functions are used, i.e., for a discretisation of trace space <span class="math notranslate nohighlight">\(H^{-\frac12}(\mathrm{div}_\Gamma, \Gamma)\)</span> those funcitons are called Rao-Wilton-Glisson functions (RWG).</p></li>
+<li><p>Check out the repository’s test folder if you like to run this test.</p></li>
+</ul>
+<p><strong>Test 4: Represenation formula for electrostatic potential in <span class="math notranslate nohighlight">\(H^{1}(\Omega)\)</span></strong>
+Given complete Cauchy data <span class="math notranslate nohighlight">\(u_0 \in H^{\frac12}(\Gamma)\)</span> and <span class="math notranslate nohighlight">\(u_1 \in H^{-\frac12}(\Gamma)\)</span>, the solution <span class="math notranslate nohighlight">\(u\)</span> of the boundary value problem</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{array}{rcl l} \Delta u &amp;=&amp; 0, \quad  &amp; \mathrm{in} \, \Omega\,, \\ \gamma_0 u &amp;=&amp; u_0, \quad &amp; \mathrm{on} \, \Gamma_0\,,\\ \gamma_1 u &amp;=&amp; u_1, \quad &amp; \mathrm{on} \, \Gamma_1\,, \end{array}\end{split}\]</div>
+<p>is given by the represenation formula</p>
+<div class="math notranslate nohighlight">
+\[u(x) = \int\limits_{\Gamma} G(x-y)\,u_1(y) \, \mathrm{d}\sigma_y - \int\limits_{\Gamma} \langle n(y), \nabla_y G(x-y) \rangle \, u_0(y) \, \mathrm{d} \sigma_y\,.\]</div>
+<p>In order to illustrate the high accuracy of the high order BEM, we evaluate the representation formula for numerically computed Cauchy data. In our test setting <span class="math notranslate nohighlight">\(\Omega\)</span> is again the unit ball and <span class="math notranslate nohighlight">\(u\)</span> is evaluated on a rectangular screen placed inside the ball, i.e.,</p>
+<p><img alt="" src="../_images/BEM_Screen.png" /></p>
+<p>The following table contains the numerical results of our convergence test. Note that <span class="math notranslate nohighlight">\(p\)</span> denotes the order of approximation taken for the Dirichlet trace. The order of approximation of the Neumann trace is then <span class="math notranslate nohighlight">\(p-1\)</span>.</p>
+<table class="table">
+<thead>
+<tr class="row-odd"><th class="head text-center"><p>mesh size</p></th>
+<th class="head text-center"><p><span class="math notranslate nohighlight">\(L_2\)</span>-error</p></th>
+<th class="head text-center"><p><span class="math notranslate nohighlight">\(L_2\)</span>-error</p></th>
+<th class="head text-center"><p><span class="math notranslate nohighlight">\(L_2\)</span>-error</p></th>
+<th class="head text-center"><p><span class="math notranslate nohighlight">\(L_2\)</span>-error</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td class="text-center"><p><span class="math notranslate nohighlight">\(N\)</span></p></td>
+<td class="text-center"><p>for <span class="math notranslate nohighlight">\(p=1\)</span></p></td>
+<td class="text-center"><p>for <span class="math notranslate nohighlight">\(p=2\)</span></p></td>
+<td class="text-center"><p>for <span class="math notranslate nohighlight">\(p=3\)</span></p></td>
+<td class="text-center"><p>for <span class="math notranslate nohighlight">\(p=4\)</span></p></td>
+</tr>
+<tr class="row-odd"><td class="text-center"><p></p></td>
+<td class="text-center"><p></p></td>
+<td class="text-center"><p></p></td>
+<td class="text-center"><p></p></td>
+<td class="text-center"><p></p></td>
+</tr>
+<tr class="row-even"><td class="text-center"><p></p></td>
+<td class="text-center"><p></p></td>
+<td class="text-center"><p></p></td>
+<td class="text-center"><p></p></td>
+<td class="text-center"><p></p></td>
+</tr>
+<tr class="row-odd"><td class="text-center"><p></p></td>
+<td class="text-center"><p></p></td>
+<td class="text-center"><p></p></td>
+<td class="text-center"><p></p></td>
+<td class="text-center"><p></p></td>
+</tr>
+<tr class="row-even"><td class="text-center"><p></p></td>
+<td class="text-center"><p></p></td>
+<td class="text-center"><p></p></td>
+<td class="text-center"><p></p></td>
+<td class="text-center"><p></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+
+    <script type="text/x-thebe-config">
+    {
+        requestKernel: true,
+        binderOptions: {
+            repo: "binder-examples/jupyter-stacks-datascience",
+            ref: "master",
+        },
+        codeMirrorConfig: {
+            theme: "abcdef",
+            mode: "python"
+        },
+        kernelOptions: {
+            name: "python3",
+            path: "./short_and_sweet"
+        },
+        predefinedOutput: true
+    }
+    </script>
+    <script>kernelName = 'python3'</script>
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="Maxwell_Demo_2.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Maxwell Demo 2</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="../demos/Laplace_DtN_indirect.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Dirichlet Laplace Indirect Method</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By J. Schöberl, D. Seibel, L. Weggler
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2024.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=5b4479735964841361fd"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>

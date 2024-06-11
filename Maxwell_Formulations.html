@@ -67,8 +67,6 @@ const thebe_selector_output = ".output, .cell_output"
     <script>DOCUMENTATION_OPTIONS.pagename = 'Maxwell_Formulations';</script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Convergence Rates for HO BEM" href="ho_cvg.html" />
-    <link rel="prev" title="Boundary Integral Equations for Laplace" href="Laplace_Formulations.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   </head>
@@ -164,19 +162,29 @@ const thebe_selector_output = ".output, .cell_output"
                 </a>
             </li>
         </ul>
-        <ul class="current nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="demos/Laplace_DtN_indirect.html">Laplace solver using indirect formulation (Dirichlet)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="demos/Laplace_DtN_direct.html">Laplace Solver direct f</a></li>
-<li class="toctree-l1"><a class="reference internal" href="demos/Laplace_NtD_indirect.html">Laplace solver using indirect formulation (Neumann)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="demos/Laplace_NtD_direct.html">Laplace solver using direct formulation (Neumann)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="demos/Laplace_Mixed.html">Laplace mixed boundary values</a></li>
-<li class="toctree-l1"><a class="reference internal" href="demos/FEMBEM_Capacitor.html">FEM-BEM Coupling</a></li>
-<li class="toctree-l1"><a class="reference internal" href="demos/Maxwell_DtN_indirect.html">Maxwell solver for PEC bodies (EFIE)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="demos/Maxwell_DtN_direct.html">Maxwell solver for Pec using direct formulation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="demos/Maxwell_Mixed.html">Maxwell solver with mixed BC</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Laplace_Formulations.html">Boundary Integral Equations for Laplace</a></li>
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Boundary Integral Equations for Maxwell</a></li>
-<li class="toctree-l1"><a class="reference internal" href="ho_cvg.html">Convergence Rates for HO BEM</a></li>
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Short and Sweet</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="short_and_sweet/why_bem.html">1. Boundary Element Method</a></li>
+<li class="toctree-l1"><a class="reference internal" href="short_and_sweet/Laplace_Formulations.html">2. BIE for Laplace</a></li>
+<li class="toctree-l1"><a class="reference internal" href="short_and_sweet/Laplace_Demo_1.html">3. Laplace Demo 1</a></li>
+<li class="toctree-l1"><a class="reference internal" href="short_and_sweet/Laplace_Demo_2.html">4. Laplace Demo 2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="short_and_sweet/Laplace_Demo_3.html">5. Laplace Demo 3</a></li>
+<li class="toctree-l1"><a class="reference internal" href="short_and_sweet/Maxwell_Formulations.html">6. BIE for Maxwell</a></li>
+<li class="toctree-l1"><a class="reference internal" href="short_and_sweet/Maxwell_Demo_1.html">7. Maxwell Demo 1</a></li>
+<li class="toctree-l1"><a class="reference internal" href="short_and_sweet/Maxwell_Demo_2.html">8. Maxwell Demo 2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="short_and_sweet/ho_cvg.html">9. Convergence Rates</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Detailed Demos</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="demos/Laplace_DtN_indirect.html">10. Laplace solver using indirect formulation (Dirichlet)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="demos/Laplace_DtN_direct.html">11. Laplace Solver direct f</a></li>
+<li class="toctree-l1"><a class="reference internal" href="demos/Laplace_NtD_indirect.html">12. Laplace solver using indirect formulation (Neumann)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="demos/Laplace_NtD_direct.html">13. Laplace solver using direct formulation (Neumann)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="demos/Laplace_Mixed.html">14. Laplace mixed boundary values</a></li>
+<li class="toctree-l1"><a class="reference internal" href="demos/FEMBEM_Capacitor.html">15. FEM-BEM Coupling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="demos/Maxwell_DtN_indirect.html">16. Maxwell solver for PEC bodies (EFIE)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="demos/Maxwell_DtN_direct.html">17. Maxwell solver for Pec using direct formulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="demos/Maxwell_Mixed.html">18. Maxwell solver with mixed BC</a></li>
 </ul>
 
     </div>
@@ -626,24 +634,6 @@ document.write(`
                 <footer class="prev-next-footer">
                   
 <div class="prev-next-area">
-    <a class="left-prev"
-       href="Laplace_Formulations.html"
-       title="previous page">
-      <i class="fa-solid fa-angle-left"></i>
-      <div class="prev-next-info">
-        <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Boundary Integral Equations for Laplace</p>
-      </div>
-    </a>
-    <a class="right-next"
-       href="ho_cvg.html"
-       title="next page">
-      <div class="prev-next-info">
-        <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Convergence Rates for HO BEM</p>
-      </div>
-      <i class="fa-solid fa-angle-right"></i>
-    </a>
 </div>
                 </footer>
               
