@@ -8,7 +8,7 @@ using namespace ngsolve;
 #include "test_compression.hpp"
 using namespace ngbem;
 
-PYBIND11_MODULE(libbem, m)
+PYBIND11_MODULE(_ngbem, m)
 {
   cout << "Loading ngbem library" << endl;
 

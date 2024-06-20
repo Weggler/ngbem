@@ -1,18 +1,12 @@
 cmake_minimum_required(VERSION 3.16)
 
-###############################################################################
-# Edit here
-###############################################################################
+project(ngbem)
+include(ngsolve_addon.cmake)
 
-# make sure the module_name matches the first argument of PYBIND11_MODULE
-set(module_name libbem)
-set(source_files src/ngbem.cpp src/python_bem.cpp
+add_ngsolve_addon(_ngbem src/ngbem.cpp src/python_bem.cpp
       src/hmat.cpp src/intrules.cpp src/test_compression.cpp)
 
-###############################################################################
-# STOP editing here
-###############################################################################
+install(TARGETS _ngbem DESTINATION ${ADDON_INSTALL_DIR_PYTHON}/ngbem/)
+install(FILES src/__init__.py DESTINATION ${ADDON_INSTALL_DIR_PYTHON}/ngbem/)
 
-# Don't change this
-project(${module_name})
-include(ngsolve_addon.cmake)
+ngsolve_generate_stub_files(ngbem)
