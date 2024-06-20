@@ -1,12 +1,10 @@
 #!/usr/bin/env python
 
-import sys
-sys.path.append("../build/")
 from netgen.occ import *
 import netgen.meshing as meshing
 from ngsolve import *
 from ngsolve.krylovspace import GMRes
-from libbem import *
+from ngbem import *
 
 # reference L2-error in current
 errref = 0.015

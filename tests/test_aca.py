@@ -1,6 +1,6 @@
 from netgen.occ import *
 from ngsolve import *
-from libbem import *
+from ngbem import *
 
 
 sp = Sphere( (0,0,0), 1)

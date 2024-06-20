@@ -1,12 +1,10 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import sys
-sys.path.append("../build/")
 from ngsolve import *
 from netgen.occ import *
 from ngsolve.krylovspace import CG, GMRes
-from libbem import *
+from ngbem import *
 
 # Reference errors (dirichlet, neumann, screen)
 errref = [0.0004, 0.007, 8e-07]

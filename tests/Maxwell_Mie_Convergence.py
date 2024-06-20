@@ -1,11 +1,9 @@
 #!/usr/bin/env python
 
-import sys
-sys.path.append("../build/")
 from netgen.occ import *
 import netgen.meshing as meshing
 from ngsolve import *
-from libbem import *
+from ngbem import *
 from ngsolve import Projector, Preconditioner
 from ngsolve.krylovspace import GMRes
 from ngsolve.fem import CompilePythonModule

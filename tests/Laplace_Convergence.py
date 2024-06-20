@@ -1,14 +1,12 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import sys
-sys.path.append("../build/")
 from ngsolve import *
 from netgen.occ import *
 import netgen.meshing as meshing
 from ngsolve.krylovspace import CG, GMRes
 from ngsolve.webgui import Draw
-from libbem import *
+from ngbem import *
 
 # Bottom sphere: Dirichlet boundary, top sphere: Neumann boundary
 topsphere = Sphere((0,0,0), 1) * Box((-1,-1,0),(1,1,1))

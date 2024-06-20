@@ -1,12 +1,10 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import sys
-sys.path.append("../build/")
 from ngsolve import *
 from netgen.occ import *
 from ngsolve.krylovspace import GMRes
-from libbem import *
+from ngbem import *
 
 # reference errors vol, dirichlet, neumann for costabel and nedelec coupling
 errref = [0.0006,

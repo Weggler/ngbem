@@ -1,10 +1,8 @@
 # testfile for checking integration accuracy accuracy, exspectation for dp
 
-import sys
-sys.path.append("../build/")
 from netgen.occ import *
 from ngsolve import *
-from libbem import *
+from ngbem import *
 
 errref = [0.00014356401693177312,
           1.1556523998207007e-05,
