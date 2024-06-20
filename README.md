@@ -12,5 +12,5 @@ The current status comprises an Python interface to solve boundary value problem
 Quick installation: (CMake and NGSolve should be installed)
 
 
-    pip3 install scikit-build pybind11_stubgen
+    pip3 install scikit-build-core pybind11_stubgen numpy webgui_jupyter_widgets
     python3 -m pip install --no-build-isolation git+https://github.com/Weggler/ngbem.git
