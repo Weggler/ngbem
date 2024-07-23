@@ -55,7 +55,8 @@ namespace ngbem
     shared_ptr<ClusterTree> trial_ct; 
     shared_ptr<ClusterTree> test_ct;
     
-    shared_ptr<HMatrix<T>> hmatrix;
+    // shared_ptr<HMatrix<T>> hmatrix;
+    shared_ptr<BaseMatrix> matrix;
 
 
   public:
@@ -67,12 +68,15 @@ namespace ngbem
     virtual ~IntegralOperator() = default;
 
     /** GetHMatrix returns the #hmatrix. */
-    shared_ptr<BaseMatrix> GetMatrix() const { return hmatrix; }
+    shared_ptr<BaseMatrix> GetMatrix() const { return matrix; }
 
     /** CalcHMatrix fills the #hmatrix, i.e., memory for farfield blocks is allocated and 
         all blocks are computed. */
     void CalcHMatrix(HMatrix<T> & hmatrix, LocalHeap &lh, struct BEMParameters &param) const;
 
+
+    virtual shared_ptr<BaseMatrix> CreateMatrixFMM(LocalHeap & lh) const = 0;
+    
     /** CalcBlockMatrix computes the block of entries with trialdofs and testdofs indices. */
     virtual void CalcBlockMatrix(FlatMatrix<T> matrix,
                                  FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, 
@@ -117,7 +121,7 @@ namespace ngbem
     using BASE::trial_ct; 
     using BASE::test_ct;
     
-    using BASE::hmatrix;
+    using BASE::matrix;
 
     shared_ptr<DifferentialOperator> trial_evaluator;
     shared_ptr<DifferentialOperator> test_evaluator;
@@ -155,6 +159,8 @@ namespace ngbem
     CalcFarFieldBlock(FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs,
                       LocalHeap &lh) const override;
 
+    shared_ptr<BaseMatrix> CreateMatrixFMM(LocalHeap & lh) const override;
+    
     virtual shared_ptr<CoefficientFunction> GetPotential(shared_ptr<GridFunction> gf) const override;
   };
 

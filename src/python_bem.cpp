@@ -37,6 +37,27 @@ PYBIND11_MODULE(_ngbem, m)
   }, py::arg("space"), py::arg("intorder")=3, py::arg("leafsize")=40, py::arg("eta")=2., py::arg("eps")=1e-6,
     py::arg("method")="aca", py::arg("testhmatrix")=false);
 
+  m.def("SingleLayerPotentialOperator", [](shared_ptr<FESpace> trial_space, shared_ptr<FESpace> test_space,
+                                           optional<Region> trial_definedon, optional<Region> test_definedon,
+                                           int intorder, int leafsize, double eta, double eps,
+                                           string method, bool testhmatrix) -> shared_ptr<IntegralOperator<>>
+  {
+    if(!method.compare("dense")) {
+       leafsize = INT_MAX;
+       eta = 0.;
+    }
+    BEMParameters param({intorder, leafsize, eta, eps, method, testhmatrix});
+    return make_unique<GenericIntegralOperator<LaplaceSLKernel<3>>>(trial_space, test_space,
+                                                                    trial_definedon, test_definedon,
+                                                                    trial_space -> GetEvaluator(BND),
+                                                                    test_space -> GetEvaluator(BND), LaplaceSLKernel<3>(), param);
+    
+  }, py::arg("trial_space"), py::arg("test_space"),
+        py::arg("trial_definedon")=nullopt, py::arg("test_definedon")=nullopt,
+        py::arg("intorder")=3, py::arg("leafsize")=40, py::arg("eta")=2., py::arg("eps")=1e-6,
+        py::arg("method")="aca", py::arg("testhmatrix")=false);
+  
+  
 
   m.def("DoubleLayerPotentialOperator", [](shared_ptr<FESpace> trial_space, shared_ptr<FESpace> test_space,
                                            optional<Region> trial_definedon, optional<Region> test_definedon,

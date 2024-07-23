@@ -4,6 +4,7 @@
 #include "intrules.hpp"
 #include "ngbem.hpp"
 #include "hmat.hpp"
+#include "fmmoperator.hpp"
 
 
 namespace ngbem
@@ -113,6 +114,119 @@ namespace ngbem
     elems4dof2 = creator2.MoveTable();
   }
 
+
+  template <typename KERNEL>
+  shared_ptr<BaseMatrix> GenericIntegralOperator<KERNEL> ::
+  CreateMatrixFMM(LocalHeap & lh) const
+  {
+    cout << "createFMM" << endl;
+    Array<Vec<3>> xpts, ypts;
+    IntegrationRule ir(ET_TRIG, param.intorder);
+    auto trial_mesh = trial_space->GetMeshAccess();
+    auto test_mesh = test_space->GetMeshAccess();
+    
+    for (auto el : trial_mesh->Elements(BND))
+      {
+        HeapReset hr(lh);
+        auto & trafo = trial_mesh->GetTrafo(el, lh);
+        auto & mir = trafo(ir, lh);
+        for (auto & mip : mir)
+          xpts.Append(mip.GetPoint());
+      }
+    for (auto el : test_mesh->Elements(BND))
+      {
+        HeapReset hr(lh);
+        auto & trafo = test_mesh->GetTrafo(el, lh);
+        auto & mir = trafo(ir, lh);
+        for (auto & mip : mir)
+          ypts.Append(mip.GetPoint());
+      }
+
+    
+    auto create_eval = [&](const FESpace & fes,
+                           const DifferentialOperator & evaluator)
+    {
+      auto mesh = fes.GetMeshAccess();
+      Array<short> classnr(mesh->GetNE(BND));
+      mesh->IterateElements
+        (BND, lh, [&] (auto el, LocalHeap & llh)
+        {
+          classnr[el.Nr()] = 
+            SwitchET<ET_SEGM, ET_TRIG,ET_TET>
+            (el.GetType(),
+             [el] (auto et) { return ET_trait<et.ElementType()>::GetClassNr(el.Vertices()); });
+        });
+      
+      TableCreator<size_t> creator;
+      for ( ; !creator.Done(); creator++)
+        for (auto i : Range(classnr))
+          creator.Add (classnr[i], i);
+      Table<size_t> table = creator.MoveTable();
+
+      shared_ptr<BaseMatrix> evalx;
+      
+      for (auto elclass_inds : table)
+        {
+          if (elclass_inds.Size() == 0) continue;
+          ElementId ei(BND, elclass_inds[0]);
+          auto & felx = fes.GetFE (ei, lh);
+          
+          Matrix<double,ColMajor> bmat_(ir.Size(), felx.GetNDof());
+          
+          for (int i : Range(ir.Size()))
+            evaluator.CalcMatrix(felx, ir[i], bmat_.Rows(i, i+1), lh);
+          
+          Matrix bmat = bmat_;
+          
+          Table<DofId> xdofsin(elclass_inds.Size(), felx.GetNDof());
+          Table<DofId> xdofsout(elclass_inds.Size(), bmat.Height());
+
+          Array<DofId> dnumsx, dnumsy;
+          for (auto i : Range(elclass_inds))
+            {
+              ElementId ei(BND, elclass_inds[i]);
+              fes.GetDofNrs(ei, dnumsx);
+              xdofsin[i] = dnumsx;
+              
+              for (int j = 0; j < ir.Size(); j++)
+                xdofsout[i][j] = elclass_inds[i]*ir.Size()+j;
+            }
+          
+          auto part_evalx = make_shared<ConstantElementByElementMatrix>
+            (mesh->GetNE(BND)*ir.Size(), fes.GetNDof(),
+             bmat, std::move(xdofsout), std::move(xdofsin));
+          
+          if (evalx)
+            evalx = evalx + part_evalx;
+          else
+            evalx = part_evalx;
+        }
+      
+
+      VVector<double> weights(mesh->GetNE(BND)*ir.Size());
+      for (auto el : mesh->Elements(BND))
+        {
+          HeapReset hr(lh);
+          auto & trafo = mesh->GetTrafo(el, lh);
+          auto & mir = trafo(ir, lh);
+          for (auto j : Range(mir.Size()))
+            weights(el.Nr()*mir.Size()+j) = mir[j].GetWeight();
+        }
+      auto diagmat = make_shared<DiagonalMatrix<double>>(std::move(weights));
+      
+      return diagmat*evalx;
+    };
+
+    auto evalx = create_eval(*trial_space, *trial_evaluator);
+    auto evaly = create_eval(*test_space, *test_evaluator);    
+    auto fmmop = make_shared<FMM_Operator<KERNEL>> (kernel, std::move(xpts), std::move(ypts));
+
+    // ***************
+    // TODO
+    // nearfield operator:
+    
+    return TransposeOperator(evaly) * fmmop * evalx;
+  }
   
   
   template <typename T>    
@@ -322,11 +436,18 @@ namespace ngbem
   : IntegralOperator<value_type>(_trial_space, _test_space, _definedon_trial, _definedon_test, _param), kernel(_kernel),
     trial_evaluator(_trial_evaluator), test_evaluator(_test_evaluator)
   {
-    hmatrix =
+    LocalHeap lh(100000000);
+
+    if (param.method == "fmm")
+      {
+        matrix = this->CreateMatrixFMM(lh);
+        return;
+      }
+    
+    auto hmatrix =
       make_shared<HMatrix<value_type>>(trial_ct, test_ct, 
                                        param.eta, trial_space->GetNDof(), test_space->GetNDof());
-    
-    LocalHeap lh(100000000);
+    this->matrix = hmatrix;
     this->CalcHMatrix(*hmatrix, lh, param);
 
     if (param.testhmatrix)
