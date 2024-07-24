@@ -192,7 +192,7 @@ namespace ngbem
                 xdofsout[i][j] = elclass_inds[i]*ir.Size()+j;
             }
           
-          auto part_evalx = make_shared<ConstantElementByElementMatrix>
+          auto part_evalx = make_shared<ConstantElementByElementMatrix<typename KERNEL::value_type>>
             (mesh->GetNE(BND)*ir.Size(), fes.GetNDof(),
              bmat, std::move(xdofsout), std::move(xdofsin));
           
@@ -203,7 +203,7 @@ namespace ngbem
         }
       
 
-      VVector<double> weights(mesh->GetNE(BND)*ir.Size());
+      VVector<typename KERNEL::value_type> weights(mesh->GetNE(BND)*ir.Size());
       for (auto el : mesh->Elements(BND))
         {
           HeapReset hr(lh);
@@ -212,7 +212,7 @@ namespace ngbem
           for (auto j : Range(mir.Size()))
             weights(el.Nr()*mir.Size()+j) = mir[j].GetWeight();
         }
-      auto diagmat = make_shared<DiagonalMatrix<double>>(std::move(weights));
+      auto diagmat = make_shared<DiagonalMatrix<typename KERNEL::value_type>>(std::move(weights));
       
       return diagmat*evalx;
     };

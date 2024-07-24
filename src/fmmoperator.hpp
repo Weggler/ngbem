@@ -28,11 +28,11 @@ namespace ngbem
 
     void Mult(const BaseVector & x, BaseVector & y) const override
     {
-      auto fx = x.FV<double>();
-      auto fy = y.FV<double>();
-
+      auto fx = x.FV<typename KERNEL::value_type>();
+      auto fy = y.FV<typename KERNEL::value_type>();
+      
       fy = 0;
-      if (std::is_same<KERNEL, class LaplaceSLKernel<3>>())
+      if constexpr (std::is_same<KERNEL, class LaplaceSLKernel<3>>())
         {
 #ifdef USE_FMM3D
           double eps = 1e-8;
@@ -51,6 +51,19 @@ namespace ngbem
             fy(iy) += __Kernel(xpts[ix], ypts[iy]) * fx(ix);
 #endif // USE_FMM3D
         }
+      else if constexpr (std::is_same<KERNEL, class HelmholtzSLKernel<3>>())
+        {
+          for (size_t ix = 0; ix < xpts.Size(); ix++)
+            for (size_t iy = 0; iy < ypts.Size(); iy++)
+              {
+                double norm = L2Norm(xpts[ix]-ypts[iy]);
+                if (norm > 0)
+                  {
+                    auto kern = exp(Complex(0,kernel.GetKappa())*norm) / (4 * M_PI * norm);
+                    fy(iy) += kern * fx(ix);
+                  }
+              }
+        }
       else
         throw Exception("fmm not available");
     }
@@ -58,11 +71,11 @@ namespace ngbem
 
     AutoVector CreateRowVector () const override
     {
-      return make_unique<VVector<double>>(xpts.Size());
+      return make_unique<VVector<typename KERNEL::value_type>>(xpts.Size());
     }
     AutoVector CreateColVector () const override
     {
-      return make_unique<VVector<double>>(ypts.Size());
+      return make_unique<VVector<typename KERNEL::value_type>>(ypts.Size());
     }
   };
 }
