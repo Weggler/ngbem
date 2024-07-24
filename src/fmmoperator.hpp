@@ -44,6 +44,7 @@ namespace ngbem
                        fy.Data(), &ier);
           if (ier != 0)
             throw Exception("FMM3D failed with err code " + std::to_string(ier));
+          y *= 1.0 / (4*M_PI);
 #else
         for (size_t ix = 0; ix < xpts.Size(); ix++)
           for (size_t iy = 0; iy < ypts.Size(); iy++)
