@@ -81,6 +81,11 @@ namespace ngbem
     virtual void CalcBlockMatrix(FlatMatrix<T> matrix,
                                  FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, 
                                  LocalHeap &lh) const = 0;
+
+
+    virtual void CalcElementMatrix(FlatMatrix<T> matrix,
+                                   ElementId ei_trial, ElementId ei_test,
+                                   LocalHeap &lh) const = 0;
     
     /** CalcFarFieldBlock computes a low-rank approximation of block with trialdofs and testdofs. */
     virtual unique_ptr<LowRankMatrix<T>>
@@ -154,6 +159,10 @@ namespace ngbem
 
     void CalcBlockMatrix(FlatMatrix<value_type> matrix, FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs, 
 			 LocalHeap &lh) const override;
+
+    void CalcElementMatrix(FlatMatrix<value_type> matrix,
+                           ElementId ei_trial, ElementId ei_test,
+                           LocalHeap &lh) const override;
     
     unique_ptr<LowRankMatrix<value_type>>
     CalcFarFieldBlock(FlatArray<DofId> trialdofs, FlatArray<DofId> testdofs,
