@@ -11,6 +11,10 @@ namespace kifmm {
 extern "C" {
   void lfmm3d_t_c_p_(double *eps, int *nsource, double *source, double *charge,
                      int *ntarget, double *target, double *pot, int *ier);
+  void hfmm3d_t_c_p_(double* eps, std::complex<double>* zk,
+                     int* nsources, double* sources,
+                     std::complex<double>* charges, int* ntargets, double* targets,
+                     std::complex<double>* potentials, int* ier);
 }
 #endif // USE_FMM3D
 
@@ -68,7 +72,7 @@ namespace ngbem
           kifmm::evaluate_laplace_fft_f64(fmm, false);
           // TODO: get potential and into fy
 #elif USE_FMM3D
-          static Timer t("FMM3D Apply");
+          static Timer t("nbem - FMM3D Apply Laplace");
           RegionTimer r(t);
           double eps = 1e-8;
           int ier;
@@ -89,6 +93,21 @@ namespace ngbem
         }
       else if constexpr (std::is_same<KERNEL, class HelmholtzSLKernel<3>>())
         {
+#ifdef USE_FMM3D
+          static Timer t("nbem - FMM3D Apply Helmholtz");
+          RegionTimer r(t);
+          double eps = 1e-8;
+          int ier;
+          std::complex<double> zk = kernel.GetKappa();
+          int size_x = xpts.Size();
+          int size_y = ypts.Size();
+          hfmm3d_t_c_p_(&eps, &zk, &size_x, xpts[0].Data(),
+                        fx.Data(), &size_y, ypts[0].Data(),
+                        fy.Data(), &ier);
+          if (ier != 0)
+            throw Exception("FMM3D failed with err code " + std::to_string(ier));
+          y *= 1.0 / (4*M_PI);
+#else // USE_FMM3D
           for (size_t ix = 0; ix < xpts.Size(); ix++)
             for (size_t iy = 0; iy < ypts.Size(); iy++)
               {
@@ -99,6 +118,7 @@ namespace ngbem
                     fy(iy) += kern * fx(ix);
                   }
               }
+#endif // USE_FMM3D
         }
       else
         throw Exception("fmm not available");
