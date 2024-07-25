@@ -221,9 +221,12 @@ namespace ngbem
     auto evaly = create_eval(*test_space, *test_evaluator);    
     auto fmmop = make_shared<FMM_Operator<KERNEL>> (kernel, std::move(xpts), std::move(ypts));
 
-    // ***************
-    // TODO
-    // nearfield operator:
+
+    if (trial_mesh != test_mesh)
+      return TransposeOperator(evaly) * fmmop * evalx;
+
+    
+    // **************   nearfield operator *****************
 
 
     Array<tuple<size_t, size_t>> pairs;
