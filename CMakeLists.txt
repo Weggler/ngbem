@@ -48,15 +48,23 @@ else(USE_KiFMM)
     )
     FetchContent_Populate(fmm3d)
 
-    # TODO: Add BYPRODUCTS to track if is up to date
-    add_custom_target(build_fmm3d ALL
-      COMMAND make lib -j 9 WORKING_DIRECTORY ${FETCHCONTENT_BASE_DIR}/fmm3d-src
+    set(fmm_lib_path ${fmm3d_SOURCE_DIR}/lib-static/libfmm3d.a)
+
+    add_custom_command(OUTPUT ${fmm_lib_path}
+      COMMAND make lib -j 9 WORKING_DIRECTORY ${fmm3d_SOURCE_DIR}
       USES_TERMINAL
     )
+    add_custom_target(build_fmm DEPENDS ${fmm_lib_path})
 
-    add_dependencies(_ngbem build_fmm3d)
-    target_include_directories(_ngbem PRIVATE ${FETCHCONTENT_BASE_DIR}/fmm3d-src/c)
-    target_link_libraries(_ngbem PRIVATE ${FETCHCONTENT_BASE_DIR}/fmm3d-src/lib-static/libfmm3d.a)
+    add_library(fmm STATIC IMPORTED GLOBAL)
+    set_target_properties(fmm PROPERTIES IMPORTED_LOCATION ${fmm_lib_path})
+    add_dependencies(fmm build_fmm)
+
+    find_library(fortran_lib NAMES gfortran)
+    find_package(OpenMP)
+
+    target_include_directories(_ngbem PRIVATE ${fmm3d_SOURCE_DIR}/fmm3d-src/c)
+    target_link_libraries(_ngbem PRIVATE fmm ${fortran_lib} ${OpenMP_omp_LIBRARY})
   endif(USE_FMM3D)
 endif(USE_KiFMM)
 
