@@ -130,6 +130,17 @@ namespace ngbem
 
     shared_ptr<DifferentialOperator> trial_evaluator;
     shared_ptr<DifferentialOperator> test_evaluator;
+
+
+    Array<Vec<2>> identic_panel_x, identic_panel_y;
+    Array<double> identic_panel_weight;
+    
+    Array<Vec<2>> common_vertex_x, common_vertex_y;
+    Array<double> common_vertex_weight;
+
+    Array<Vec<2>> common_edge_x, common_edge_y;
+    Array<double> common_edge_weight;
+    
     
   public:
     GenericIntegralOperator(shared_ptr<FESpace> _trial_space, shared_ptr<FESpace> _test_space,

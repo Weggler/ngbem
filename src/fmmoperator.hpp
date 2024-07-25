@@ -59,6 +59,8 @@ namespace ngbem
 
     void Mult(const BaseVector & x, BaseVector & y) const override
     {
+      static Timer tall("ngbem fmm apply"); RegionTimer reg(tall);
+      
       auto fx = x.FV<typename KERNEL::value_type>();
       auto fy = y.FV<typename KERNEL::value_type>();
       

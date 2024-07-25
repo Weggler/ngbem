@@ -119,7 +119,7 @@ namespace ngbem
   shared_ptr<BaseMatrix> GenericIntegralOperator<KERNEL> ::
   CreateMatrixFMM(LocalHeap & lh) const
   {
-    cout << "createFMM" << endl;
+    static Timer tall("ngbem fmm setup"); RegionTimer r(tall);
     Array<Vec<3>> xpts, ypts;
     IntegrationRule ir(ET_TRIG, param.intorder);
     auto trial_mesh = trial_space->GetMeshAccess();
@@ -228,7 +228,13 @@ namespace ngbem
     
     // **************   nearfield operator *****************
 
-
+    static Timer tfind("ngbem fmm find near");
+    static Timer tsetupgraph("ngbem fmm setup matrixgraph");
+    static Timer tassemble("ngbem fmm assemble nearfield");
+    static Timer tassSS("ngbem fmm assemble Sauter-Schwab");
+    static Timer tasscorr("ngbem fmm assemble correction");
+    
+    tfind.Start();
     Array<tuple<size_t, size_t>> pairs;
     for (ElementId ei : trial_mesh->Elements(BND))
       for (ElementId ej : test_mesh->Elements(BND))
@@ -242,7 +248,8 @@ namespace ngbem
           if (common)
             pairs.Append (tuple { ei.Nr(), ej.Nr() });
         }
-    
+    tfind.Stop();
+    tsetupgraph.Start();
     TableCreator<int> trial_elements_creator(pairs.Size()), test_elements_creator(pairs.Size());
 
     for ( ; !trial_elements_creator.Done(); trial_elements_creator++, test_elements_creator++)
@@ -265,28 +272,36 @@ namespace ngbem
     auto nearfield_correction =
       make_shared<SparseMatrix<value_type>> (test_space->GetNDof(), trial_space->GetNDof(),
                                              test_elements, trial_elements, false);
-    
+    tsetupgraph.Stop();
+    tassemble.Start();
     nearfield_correction->SetZero();
-    
-    Array<DofId> trial_dnums, test_dnums;
+
+
+    /*
     for (auto i : Range(pairs))
       {
         HeapReset hr(lh);
         ElementId ei_trial(BND,get<0> (pairs[i]));
         ElementId ei_test(BND,get<1> (pairs[i]));
-        // cout << "ei_trial/terst = " << ei_trial << ", " << ei_test << endl;
-        trial_space->GetDofNrs (ei_trial, trial_dnums);        
-        test_space->GetDofNrs (ei_test, test_dnums);
 
-        FlatMatrix<value_type> elmat(test_dnums.Size(), trial_dnums.Size(), lh);
-        CalcElementMatrix (elmat, ei_trial, ei_test, lh);
-        // cout << "elmat1 = " << elmat << endl;
-
-        // subtract terms from fmm:
         auto & trial_trafo = trial_mesh -> GetTrafo(ei_trial, lh);
         auto & test_trafo = test_mesh -> GetTrafo(ei_test, lh);
         auto & trial_fel = trial_space->GetFE(ei_trial, lh);
         auto & test_fel = test_space->GetFE(ei_test, lh);
+
+        Array<DofId> trial_dnums(trial_fel.GetNDof(), lh);
+        Array<DofId> test_dnums(test_fel.GetNDof(), lh);
+        
+        trial_space->GetDofNrs (ei_trial, trial_dnums);        
+        test_space->GetDofNrs (ei_test, test_dnums);
+
+        FlatMatrix<value_type> elmat(test_dnums.Size(), trial_dnums.Size(), lh);
+        tassSS.Start();
+        CalcElementMatrix (elmat, ei_trial, ei_test, lh);
+        tassSS.Stop();
+        tasscorr.Start();        
+
+        // subtract terms from fmm:
         
         MappedIntegrationRule<2,3> trial_mir(ir, trial_trafo, lh);
         MappedIntegrationRule<2,3> test_mir(ir, test_trafo, lh);
@@ -331,10 +346,93 @@ namespace ngbem
             kernel_shapesj = kernel_ixiy * Trans(shapesj1);
             elmat -= shapesi1 * kernel_shapesj;
           }
-        // cout << "elmat2 = " << endl << elmat << endl;
+        tasscorr.Stop();        
         nearfield_correction -> AddElementMatrix (test_dnums, trial_dnums, elmat);
       }
+    */
+
+    TableCreator<int> create_nbels;
+    for ( ; !create_nbels.Done(); create_nbels++)    
+      for (auto i : Range(pairs))
+        create_nbels.Add (get<0>(pairs[i]), get<1>(pairs[i]));
+    Table<int> nbels = create_nbels.MoveTable();
+
+    trial_mesh->IterateElements
+      (BND, lh, [&](auto ei_trial, LocalHeap & lh)
+      {
+        for (auto nrtest : nbels[ei_trial.Nr()])
+          {
+            ElementId ei_test(BND, nrtest);
+            
+            auto & trial_trafo = trial_mesh -> GetTrafo(ei_trial, lh);
+            auto & test_trafo = test_mesh -> GetTrafo(ei_test, lh);
+            auto & trial_fel = trial_space->GetFE(ei_trial, lh);
+            auto & test_fel = test_space->GetFE(ei_test, lh);
+            
+            Array<DofId> trial_dnums(trial_fel.GetNDof(), lh);
+            Array<DofId> test_dnums(test_fel.GetNDof(), lh);
+            
+            trial_space->GetDofNrs (ei_trial, trial_dnums);        
+            test_space->GetDofNrs (ei_test, test_dnums);
+            
+            FlatMatrix<value_type> elmat(test_dnums.Size(), trial_dnums.Size(), lh);
+            tassSS.Start();
+            CalcElementMatrix (elmat, ei_trial, ei_test, lh);
+            tassSS.Stop();
+            tasscorr.Start();        
+            
+            // subtract terms from fmm:
+            
+            MappedIntegrationRule<2,3> trial_mir(ir, trial_trafo, lh);
+            MappedIntegrationRule<2,3> test_mir(ir, test_trafo, lh);
+            
+            FlatMatrix<> shapesi(test_fel.GetNDof(), test_evaluator->Dim()*ir.Size(), lh);
+            FlatMatrix<> shapesj(trial_fel.GetNDof(), trial_evaluator->Dim()*ir.Size(), lh);
+            
+            test_evaluator -> CalcMatrix(test_fel, test_mir, Trans(shapesi), lh);
+            trial_evaluator-> CalcMatrix(trial_fel, trial_mir, Trans(shapesj), lh);
+            
+            for (auto term : kernel.terms)
+              {
+                HeapReset hr(lh);
+                FlatMatrix<value_type> kernel_ixiy(ir.Size(), ir.Size(), lh);
+                for (int ix = 0; ix < ir.Size(); ix++)
+                  {
+                    for (int iy = 0; iy < ir.Size(); iy++)
+                      {
+                        Vec<3> x = test_mir[ix].GetPoint();
+                        Vec<3> y = trial_mir[iy].GetPoint();
+                        
+                        Vec<3> nx = test_mir[ix].GetNV();
+                        Vec<3> ny = trial_mir[iy].GetNV();
+                        value_type kernel_ = 0.0;
+                        if (L2Norm2(x-y) > 0)
+                          kernel_ = kernel.Evaluate(x, y, nx, ny)(term.kernel_comp);
+                        
+                        double fac = test_mir[ix].GetWeight()*trial_mir[iy].GetWeight();
+                        kernel_ixiy(ix, iy) = term.fac*fac*kernel_;
+                      }
+                  }
+                
+                FlatMatrix<value_type> kernel_shapesj(ir.Size(), trial_fel.GetNDof(), lh);
+                FlatMatrix<> shapesi1(test_fel.GetNDof(), ir.Size(), lh);
+                FlatMatrix<> shapesj1(trial_fel.GetNDof(), ir.Size(), lh);
+                
+                for (int j = 0; j < ir.Size(); j++)
+                  {
+                    shapesi1.Col(j) = shapesi.Col(test_evaluator->Dim()*j+term.test_comp);
+                    shapesj1.Col(j) = shapesj.Col(trial_evaluator->Dim()*j+term.trial_comp);
+                  }
+                kernel_shapesj = kernel_ixiy * Trans(shapesj1);
+                elmat -= shapesi1 * kernel_shapesj;
+              }
+            tasscorr.Stop();        
+            nearfield_correction -> AddElementMatrix (test_dnums, trial_dnums, elmat);
+          }
+      });
+
     
+    tassemble.Stop();
     return TransposeOperator(evaly) * fmmop * evalx + nearfield_correction;
   }
   
@@ -548,6 +646,10 @@ namespace ngbem
   {
     LocalHeap lh(100000000);
 
+    tie(identic_panel_x, identic_panel_y, identic_panel_weight) = IdenticPanelIntegrationRule(param.intorder);
+    tie(common_vertex_x, common_vertex_y, common_vertex_weight) = CommonVertexIntegrationRule(param.intorder);
+    tie(common_edge_x, common_edge_y, common_edge_weight) = CommonEdgeIntegrationRule(param.intorder);
+    
     if (param.method == "fmm")
       {
         matrix = this->CreateMatrixFMM(lh);
@@ -981,8 +1083,11 @@ namespace ngbem
     static Timer tall("ngbem - elementmatrix " + KERNEL::Name());
     RegionTimer reg(tall);
 
+    static Timer t1("ngbem - elementmatrix, part1  " + KERNEL::Name());
+
+    t1.Start();
     IntegrationRule irtrig(ET_TRIG, param.intorder);
-    
+    /*
     auto [ identic_panel_x, identic_panel_y, identic_panel_weight ] =
       IdenticPanelIntegrationRule(param.intorder);
 
@@ -991,9 +1096,9 @@ namespace ngbem
     
     auto [ common_edge_x, common_edge_y, common_edge_weight ] =
       CommonEdgeIntegrationRule(param.intorder);
-
+    */
     matrix = 0; 
-
+    t1.Stop();
 
     Vec<3> x,y,nx,ny;
     typedef decltype(kernel.Evaluate (x,y,nx,ny)) KERNEL_COMPS_T;
