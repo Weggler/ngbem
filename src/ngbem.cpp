@@ -236,6 +236,7 @@ namespace ngbem
     
     tfind.Start();
     Array<tuple<size_t, size_t>> pairs;
+    /*
     for (ElementId ei : trial_mesh->Elements(BND))
       for (ElementId ej : test_mesh->Elements(BND))
         {
@@ -248,6 +249,23 @@ namespace ngbem
           if (common)
             pairs.Append (tuple { ei.Nr(), ej.Nr() });
         }
+    */
+
+    Array<size_t> other;
+    for (ElementId ei : trial_mesh->Elements(BND))
+      {
+        other.SetSize0();
+        for (auto v : trial_mesh->GetElement(ei).Vertices())
+          for (auto ej : trial_mesh->GetVertexElements(v,BND))
+            {
+              if (!other.Contains(ej))
+                {
+                  other.Append (ej );
+                  pairs.Append ( { ei.Nr(), ej });
+                }
+            }
+      }
+    
     tfind.Stop();
     tsetupgraph.Start();
     TableCreator<int> trial_elements_creator(pairs.Size()), test_elements_creator(pairs.Size());
