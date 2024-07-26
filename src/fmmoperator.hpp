@@ -31,15 +31,17 @@ namespace ngbem
   class FMM_Operator : public BaseMatrix
   {
     KERNEL kernel;
-    Array<Vec<3>> xpts, ypts;
+    Array<Vec<3>> xpts, ypts, xnv, ynv;
 #ifdef USE_KiFMM
     kifmm::LaplaceFft64* fmm;
     Array<size_t> expansion_order;
 #endif // USE_KiFMM
 
   public:
-    FMM_Operator(KERNEL _kernel, Array<Vec<3>> _xpts, Array<Vec<3>> _ypts)
-      : kernel(_kernel), xpts(std::move(_xpts)), ypts(std::move(_ypts))
+    FMM_Operator(KERNEL _kernel, Array<Vec<3>> _xpts, Array<Vec<3>> _ypts,
+                 Array<Vec<3>> _xnv, Array<Vec<3>> _ynv)
+      : kernel(_kernel), xpts(std::move(_xpts)), ypts(std::move(_ypts)),
+        xnv(std::move(_xnv)), ynv(std::move(_ynv))
     {
 #ifdef USE_KiFMM
       expansion_order =
@@ -122,6 +124,35 @@ namespace ngbem
               }
 #endif // USE_FMM3D
         }
+
+
+      else if constexpr (std::is_same<KERNEL, class CombinedFieldKernel<3>>())
+        {
+          /*
+            T norm = L2Norm(x-y);
+            T nxy = InnerProduct(ny, (x-y));
+            auto kern = exp(Complex(0,kappa)*norm) / (4 * M_PI * norm*norm*norm)
+            * ( nxy * (Complex(1,0)*T(1.) - Complex(0,kappa)*norm)  - Complex(0,kappa)*norm*norm);
+            // return kern;
+            return Vec<1,decltype(kern)> (kern);
+          */
+          double kappa = kernel.GetKappa();
+          for (size_t ix = 0; ix < xpts.Size(); ix++)
+            for (size_t iy = 0; iy < ypts.Size(); iy++)
+              {
+                double norm = L2Norm(xpts[ix]-ypts[iy]);
+                if (norm > 0)
+                  {
+                    // auto kern = exp(Complex(0,kernel.GetKappa())*norm) / (4 * M_PI * norm);
+                    // fy(iy) += kern * fx(ix);
+                    double nxy = InnerProduct(ynv[iy], xpts[ix]-ypts[iy]);
+                    auto kern = exp(Complex(0,kappa)*norm) / (4 * M_PI * norm*norm*norm)
+                      * ( nxy * (1.0 - Complex(0,kappa)*norm) - Complex(0,kappa)*norm*norm);
+                    fy(iy) += kern * fx(ix);                    
+                  }
+              }
+        }
+      
       else
         throw Exception("fmm not available");
     }

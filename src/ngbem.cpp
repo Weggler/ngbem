@@ -120,7 +120,7 @@ namespace ngbem
   CreateMatrixFMM(LocalHeap & lh) const
   {
     static Timer tall("ngbem fmm setup"); RegionTimer r(tall);
-    Array<Vec<3>> xpts, ypts;
+    Array<Vec<3>> xpts, ypts, xnv, ynv;
     IntegrationRule ir(ET_TRIG, param.intorder);
     auto trial_mesh = trial_space->GetMeshAccess();
     auto test_mesh = test_space->GetMeshAccess();
@@ -129,17 +129,25 @@ namespace ngbem
       {
         HeapReset hr(lh);
         auto & trafo = trial_mesh->GetTrafo(el, lh);
-        auto & mir = trafo(ir, lh);
+        // auto & mir = trafo(ir, lh);
+        auto & mir = static_cast<MappedIntegrationRule<2,3>&>(trafo(ir, lh));
         for (auto & mip : mir)
-          xpts.Append(mip.GetPoint());
+          {
+            xpts.Append(mip.GetPoint());
+            xnv.Append(mip.GetNV());
+          }
       }
     for (auto el : test_mesh->Elements(BND))
       {
         HeapReset hr(lh);
         auto & trafo = test_mesh->GetTrafo(el, lh);
-        auto & mir = trafo(ir, lh);
+        // auto & mir = trafo(ir, lh);   
+        auto & mir = static_cast<MappedIntegrationRule<2,3>&>(trafo(ir, lh));        
         for (auto & mip : mir)
-          ypts.Append(mip.GetPoint());
+          {
+            ypts.Append(mip.GetPoint());
+            ynv.Append(mip.GetNV());        
+          }
       }
 
     
@@ -219,7 +227,8 @@ namespace ngbem
 
     auto evalx = create_eval(*trial_space, *trial_evaluator);
     auto evaly = create_eval(*test_space, *test_evaluator);    
-    auto fmmop = make_shared<FMM_Operator<KERNEL>> (kernel, std::move(xpts), std::move(ypts));
+    auto fmmop = make_shared<FMM_Operator<KERNEL>> (kernel, std::move(xpts), std::move(ypts),
+                                                    std::move(xnv), std::move(ynv));
 
 
     if (trial_mesh != test_mesh)
