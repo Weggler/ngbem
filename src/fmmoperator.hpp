@@ -15,6 +15,12 @@ extern "C" {
                      int* nsources, double* sources,
                      std::complex<double>* charges, int* ntargets, double* targets,
                      std::complex<double>* potentials, int* ier);
+  void hfmm3d_t_cd_p_(double* eps, std::complex<double>* zk,
+                      int* nsources, double* sources,
+                      std::complex<double>* charges,
+                      std::complex<double>* dipvec,
+                      int* ntargets, double* targets,
+                      std::complex<double>* potentials, int* ier);
 }
 #endif // USE_FMM3D
 
@@ -43,20 +49,6 @@ namespace ngbem
       : kernel(_kernel), xpts(std::move(_xpts)), ypts(std::move(_ypts)),
         xnv(std::move(_xnv)), ynv(std::move(_ynv))
     {
-#ifdef USE_KiFMM
-      expansion_order =
-        { 5 };
-      static Timer t("KiFMM Setup");
-      RegionTimer r(t);
-      fmm = kifmm::laplace_fft_f64(expansion_order.Data(), expansion_order.Size(),
-                                   xpts[0].Data(), xpts.Size() * 3,
-                                   ypts[0].Data(), ypts.Size() * 3,
-                                   nullptr, 0, // charges
-                                   true,                       // prune empty
-                                   150,                        // n_crit
-                                   0,                          // depth
-                                   1);
-#endif // USE_KiFMM
     }
 
     void Mult(const BaseVector & x, BaseVector & y) const override
@@ -72,9 +64,20 @@ namespace ngbem
 #ifdef USE_KiFMM
           static Timer t("KiFMM Apply");
           RegionTimer r(t);
-          kifmm::clear_laplace_fft_f64(fmm, fx.Data(), fx.Size());
-          kifmm::evaluate_laplace_fft_f64(fmm, false);
-          // TODO: get potential and into fy
+          Array<size_t> expansion_order =
+            { 5 };
+          auto fmm = kifmm::laplace_blas_svd_f64_alloc
+            (expansion_order.Data(), expansion_order.Size(),
+             xpts[0].Data(), xpts.Size() * 3,
+             ypts[0].Data(), ypts.Size() * 3,
+             fx.Data(), fx.Size(), // charges
+             true,                       // prune empty
+             150,                        // n_crit
+             0,                          // depth
+             1e-8);
+          kifmm::evaluate(fmm, false);
+          auto potentials = kifmm::potentials(fmm);
+          fy = FlatVector<double>(potentials.len, (double*) potentials.data);
 #elif USE_FMM3D
           static Timer t("nbem - FMM3D Apply Laplace");
           RegionTimer r(t);
@@ -97,7 +100,8 @@ namespace ngbem
         }
       else if constexpr (std::is_same<KERNEL, class HelmholtzSLKernel<3>>())
         {
-#ifdef USE_FMM3D
+#ifdef USE_KiFMM
+#elif USE_FMM3D
           static Timer t("nbem - FMM3D Apply Helmholtz");
           RegionTimer r(t);
           double eps = 1e-8;
@@ -128,6 +132,31 @@ namespace ngbem
 
       else if constexpr (std::is_same<KERNEL, class CombinedFieldKernel<3>>())
         {
+#ifdef USE_KiFMM
+          // todo
+#elif USE_FMM3D
+          static Timer t("nbem - FMM3D Apply Helmholtz");
+          RegionTimer r(t);
+          double eps = 1e-8;
+          int ier;
+          std::complex<double> zk = kernel.GetKappa();
+          Vector<std::complex<double>> c(xpts.Size());
+          for(auto i : Range(c))
+            c[i] = -Complex(0, kernel.GetKappa()) * fx[i];
+          Vector<Vec<3, std::complex<double>>> v(xpts.Size());
+          for(auto i : Range(xnv))
+            v[i] = fx[i] * xnv[i];
+          int size_x = xpts.Size();
+          int size_y = ypts.Size();
+          hfmm3d_t_cd_p_(&eps, &zk, &size_x, xpts[0].Data(),
+                         c.Data(), v[0].Data(),
+                         &size_y, ypts[0].Data(),
+                         fy.Data(), &ier);
+          if (ier != 0)
+            throw Exception("FMM3D failed with err code " + std::to_string(ier));
+          for(auto i : Range(fy))
+            fy[i] *= 1 / (4*M_PI);
+#else // USE_FMM3D
           /*
             T norm = L2Norm(x-y);
             T nxy = InnerProduct(ny, (x-y));
@@ -151,8 +180,8 @@ namespace ngbem
                     fy(iy) += kern * fx(ix);                    
                   }
               }
+#endif // USE_FMM3D || USE_KiFMM
         }
-      
       else
         throw Exception("fmm not available");
     }
