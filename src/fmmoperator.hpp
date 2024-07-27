@@ -261,7 +261,7 @@ namespace ngbem
 
     void Mult(const BaseVector & x, BaseVector & y) const override
     {
-      static Timer tall("ngbem fmm apply LaplaceSL (FMM3D)"); RegionTimer reg(tall);
+      static Timer tall("ngbem fmm apply LaplaceSL (KiFMM)"); RegionTimer reg(tall);
       auto fx = x.FV<double>();
       auto fy = y.FV<double>();
 
@@ -269,7 +269,7 @@ namespace ngbem
       bool prune_empty = true;
       uint64_t n_crit = 150;
       uint64_t depth = 0;
-      double singular_value_threshold = 0.001;
+      double singular_value_threshold = 1e-3;
       
       uintptr_t expansion_order[] = {6};
       uintptr_t nexpansion_order = 1;
@@ -287,15 +287,18 @@ namespace ngbem
       
       bool timed = true;
       evaluate(evaluator, timed);
-
       MortonKeys *leaves = leaves_target_tree(evaluator);
-      
-      // printf("Number of leaf keys (n): %zu\n", leaves->len);
-      // for (uintptr_t i = 0; i < 5; ++i) {
-      // printf("Element %zu: %llu\n", i, leaves->data[i]);
-      // }
+      // cout << "num leaves = " << leaves->len << endl;      
+      /*
+      cout << "Number of leaf keys (n): %zu\n" << leaves->len << endl;
+      for (uintptr_t i = 0; i < 5; ++i) {
+        // printf("Element %zu: %lld\n", i, int(leaves->data[i]));
+        printf("Element %zu: %lx\n", i, int(leaves->data[i]));
+      }
+      */
 
-      Potentials *potentials = leaf_potentials(evaluator, leaves->data[123]);
+      // cout << "leaves->data[0] = " << leaves->data[0] << endl;
+      Potentials *potentials = leaf_potentials(evaluator, leaves->data[0]);
 
       /*
       Coordinates *coordinates =
@@ -308,41 +311,32 @@ namespace ngbem
                coords[i * 3 + 2]);
       }
       */
+
+
+      auto globind = global_indices_target_tree(evaluator);
       
       // printf("Number of potentials: %zu\n", potentials->n);
       Potential *pot = &potentials->data[0];
       const double *data = (const double *)pot->data;
-      for (uintptr_t i = 0; i < ypts.Size(); ++i) {
-        // printf("Element %zu: %f\n", i, data[i]);
-        fy(i) = data[i];
-      }
+      for (uintptr_t i = 0; i < ypts.Size(); ++i)
+        fy( ((size_t*)globind->data)[i]) = data[i];
 
+      // cout << "||y|| = " << L2Norm(y) << endl;
       // Cleanup
       free_fmm_evaluator(evaluator);
       free_morton_keys(leaves);
       free(potentials);
 
-
-      
       /*
-      fy = 0;
-
-      Array<size_t> expansion_order =
-        { 5 };
-      auto fmm = laplace_blas_svd_f64_alloc
-        (expansion_order.Data(), expansion_order.Size(),
-         xpts[0].Data(), xpts.Size() * 3,
-         ypts[0].Data(), ypts.Size() * 3,
-         fx.Data(), fx.Size(), // charges
-         true,                       // prune empty
-         150,                        // n_crit
-         0,                          // depth
-         1e-8);
-      evaluate(fmm, false);
-      auto potentials = potentials(fmm);
-      fy = FlatVector<double>(potentials.len, (double*) potentials.data);
-      */
+      Vector<> y2(ypts.Size());
+      y2 = 0.0;
+      for (size_t ix = 0; ix < xpts.Size(); ix++)
+        for (size_t iy = 0; iy < ypts.Size(); iy++)
+          y2(iy) += __Kernel(xpts[ix], ypts[iy]) * fx(ix);
       
+      cout << "fy[0:3] = " << fy.Range(0,3) << endl;
+      cout << "y2[0:3] = " << y2.Range(0,3) << endl;
+      */
     }
   };
 
