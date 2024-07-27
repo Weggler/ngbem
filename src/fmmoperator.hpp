@@ -3,7 +3,9 @@
 
 #ifdef USE_KiFMM
 // namespace kifmm {
+extern "C" {
   #include <kifmm_rs.h>
+}
 // }
 #endif // USE_KiFMM
 
@@ -310,7 +312,7 @@ namespace ngbem
       // printf("Number of potentials: %zu\n", potentials->n);
       Potential *pot = &potentials->data[0];
       const double *data = (const double *)pot->data;
-      for (uintptr_t i = 0; i < 5; ++i) {
+      for (uintptr_t i = 0; i < ypts.Size(); ++i) {
         // printf("Element %zu: %f\n", i, data[i]);
         fy(i) = data[i];
       }
