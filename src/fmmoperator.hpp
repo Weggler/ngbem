@@ -279,6 +279,7 @@ namespace ngbem
       struct FmmEvaluator *evaluator =
         laplace_fft_f64_alloc(
                               expansion_order, nexpansion_order,
+                              true,
                               xpts[0].Data(), 3*xpts.Size(), 
                               ypts[0].Data(), 3*ypts.Size(), 
                               fx.Data(), fx.Size(), 
