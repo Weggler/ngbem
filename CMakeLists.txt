@@ -27,8 +27,7 @@ if(USE_KiFMM)
     USES_TERMINAL
   )
 
-  target_compile_definitions(_ngbem PRIVATE USE_FMM3D)
-  target_include_directories(_ngbem PRIVATE ${FETCHCONTENT_BASE_DIR}/kifmm-src/target)
+  target_include_directories(_ngbem PRIVATE ${FETCHCONTENT_BASE_DIR}/kifmm-src/kifmm/include)
   target_link_libraries(_ngbem PRIVATE ${FETCHCONTENT_BASE_DIR}/kifmm-src/target/release/libkifmm.so)
   install(FILES ${FETCHCONTENT_BASE_DIR}/kifmm-src/target/release/libkifmm.so DESTINATION ${ADDON_INSTALL_DIR_PYTHON}/ngbem/)
   add_dependencies(_ngbem build_kifmm)
