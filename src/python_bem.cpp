@@ -120,15 +120,22 @@ PYBIND11_MODULE(_ngbem, m)
     py::arg("method")="aca", py::arg("testhmatrix")=false);
 
 
-  m.def("HelmholtzCombinedFieldOperator", [](shared_ptr<FESpace> trial_space, shared_ptr<FESpace> test_space, double kappa,
+  m.def("HelmholtzCombinedFieldOperator", [](shared_ptr<FESpace> trial_space, shared_ptr<FESpace> test_space,
+                                             optional<Region> trial_definedon, optional<Region> test_definedon,
+                                             double kappa,
                                              int intorder, int leafsize, double eta, double eps,
                                              string method, bool testhmatrix) -> shared_ptr<IntegralOperator<Complex>>
   {
     BEMParameters param({intorder, leafsize, eta, eps, method, testhmatrix});
-    return make_unique<GenericIntegralOperator<CombinedFieldKernel<3>>>(trial_space, test_space, CombinedFieldKernel<3>(kappa), param);
+    return make_unique<GenericIntegralOperator<CombinedFieldKernel<3>>>(trial_space, test_space, trial_definedon, test_definedon,
+                                                                        trial_space -> GetEvaluator(BND),
+                                                                        test_space -> GetEvaluator(BND),
+                                                                        CombinedFieldKernel<3>(kappa), param);
     
-  }, py::arg("trial_space"), py::arg("test_space")=nullptr, py::arg("kappa"), py::arg("intorder")=3, py::arg("leafsize")=40, py::arg("eta")=2., py::arg("eps")=1e-6,
-    py::arg("method")="aca", py::arg("testhmatrix")=false);
+  }, py::arg("trial_space"), py::arg("test_space")=nullptr,
+        py::arg("trial_definedon")=nullopt, py::arg("test_definedon")=nullopt,        
+        py::arg("kappa"), py::arg("intorder")=3, py::arg("leafsize")=40, py::arg("eta")=2., py::arg("eps")=1e-6,
+        py::arg("method")="aca", py::arg("testhmatrix")=false);
 
 
     m.def("HelmholtzHypersingularOperator", [](shared_ptr<FESpace> trial_space, shared_ptr<FESpace> test_space, double kappa,  int intorder, int leafsize, double eta, double eps, string method, bool testhmatrix) -> shared_ptr<IntegralOperator<Complex>>

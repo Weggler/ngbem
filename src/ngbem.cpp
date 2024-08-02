@@ -34,7 +34,6 @@ namespace ngbem
     auto mesh = trial_space->GetMeshAccess(); // trialspace
     auto mesh2 = test_space->GetMeshAccess(); // testspace
 
-
     if (trial_definedon)
       cout << "trial is definedon: " << (*trial_definedon).Mask() << endl;
     if (test_definedon)
@@ -124,34 +123,46 @@ namespace ngbem
     IntegrationRule ir(ET_TRIG, param.intorder);
     auto trial_mesh = trial_space->GetMeshAccess();
     auto test_mesh = test_space->GetMeshAccess();
-    
-    for (auto el : trial_mesh->Elements(BND))
-      {
-        HeapReset hr(lh);
-        auto & trafo = trial_mesh->GetTrafo(el, lh);
-        // auto & mir = trafo(ir, lh);
-        auto & mir = static_cast<MappedIntegrationRule<2,3>&>(trafo(ir, lh));
-        for (auto & mip : mir)
-          {
-            xpts.Append(mip.GetPoint());
-            xnv.Append(mip.GetNV());
-          }
-      }
-    for (auto el : test_mesh->Elements(BND))
-      {
-        HeapReset hr(lh);
-        auto & trafo = test_mesh->GetTrafo(el, lh);
-        // auto & mir = trafo(ir, lh);   
-        auto & mir = static_cast<MappedIntegrationRule<2,3>&>(trafo(ir, lh));        
-        for (auto & mip : mir)
-          {
-            ypts.Append(mip.GetPoint());
-            ynv.Append(mip.GetNV());        
-          }
-      }
 
+    Array<int> compress_trial_els(trial_mesh->GetNE(BND));
+    Array<int> compress_test_els(test_mesh->GetNE(BND));
+    compress_trial_els = -1;
+    compress_test_els = -1;
+    
+    int cnt = 0;
+    for (auto el : trial_mesh->Elements(BND))
+      if (trial_space->DefinedOn(el))
+        if (!trial_definedon || (*trial_definedon).Mask().Test(trial_mesh->GetElIndex(el)))      
+          {
+            HeapReset hr(lh);
+            auto & trafo = trial_mesh->GetTrafo(el, lh);
+            auto & mir = static_cast<MappedIntegrationRule<2,3>&>(trafo(ir, lh));
+            for (auto & mip : mir)
+              {
+                xpts.Append(mip.GetPoint());
+                xnv.Append(mip.GetNV());
+              }
+            compress_trial_els[el.Nr()] = cnt++;
+          }
+    
+    cnt = 0;
+    for (auto el : test_mesh->Elements(BND))
+      if (test_space->DefinedOn(el))      
+        if (!test_definedon || (*test_definedon).Mask().Test(test_mesh->GetElIndex(el)))            
+          {
+            HeapReset hr(lh);
+            auto & trafo = test_mesh->GetTrafo(el, lh);
+            auto & mir = static_cast<MappedIntegrationRule<2,3>&>(trafo(ir, lh));        
+            for (auto & mip : mir)
+              {
+                ypts.Append(mip.GetPoint());
+                ynv.Append(mip.GetNV());        
+              }
+            compress_test_els[el.Nr()] = cnt++;
+          }
     
     auto create_eval = [&](const FESpace & fes,
+                           const Array<int> & compress_els,
                            const DifferentialOperator & evaluator)
     {
       auto mesh = fes.GetMeshAccess();
@@ -168,7 +179,8 @@ namespace ngbem
       TableCreator<size_t> creator;
       for ( ; !creator.Done(); creator++)
         for (auto i : Range(classnr))
-          creator.Add (classnr[i], i);
+          if (compress_els[i] != -1)
+            creator.Add (classnr[i], i);
       Table<size_t> table = creator.MoveTable();
 
       shared_ptr<BaseMatrix> evalx;
@@ -197,7 +209,7 @@ namespace ngbem
               xdofsin[i] = dnumsx;
               
               for (int j = 0; j < ir.Size(); j++)
-                xdofsout[i][j] = elclass_inds[i]*ir.Size()+j;
+                xdofsout[i][j] = compress_els[elclass_inds[i]]*ir.Size()+j;
             }
           
           auto part_evalx = make_shared<ConstantElementByElementMatrix<typename KERNEL::value_type>>
@@ -209,24 +221,27 @@ namespace ngbem
           else
             evalx = part_evalx;
         }
-      
 
-      VVector<typename KERNEL::value_type> weights(mesh->GetNE(BND)*ir.Size());
+      int cnt = 0;
+      for (auto nr : compress_els) if (nr!=-1) cnt++;
+
+      VVector<typename KERNEL::value_type> weights(cnt*ir.Size());
       for (auto el : mesh->Elements(BND))
-        {
-          HeapReset hr(lh);
-          auto & trafo = mesh->GetTrafo(el, lh);
-          auto & mir = trafo(ir, lh);
-          for (auto j : Range(mir.Size()))
-            weights(el.Nr()*mir.Size()+j) = mir[j].GetWeight();
-        }
+        if (compress_els[el.Nr()] != -1)
+          {
+            HeapReset hr(lh);
+            auto & trafo = mesh->GetTrafo(el, lh);
+            auto & mir = trafo(ir, lh);
+            for (auto j : Range(mir.Size()))
+              weights(compress_els[el.Nr()]*mir.Size()+j) = mir[j].GetWeight();
+          }
       auto diagmat = make_shared<DiagonalMatrix<typename KERNEL::value_type>>(std::move(weights));
       
       return diagmat*evalx;
     };
 
-    auto evalx = create_eval(*trial_space, *trial_evaluator);
-    auto evaly = create_eval(*test_space, *test_evaluator);    
+    auto evalx = create_eval(*trial_space, compress_trial_els, *trial_evaluator);
+    auto evaly = create_eval(*test_space, compress_test_els, *test_evaluator);    
     auto fmmop = make_shared<FMM_Operator<KERNEL>> (kernel, std::move(xpts), std::move(ypts),
                                                     std::move(xnv), std::move(ynv));
 
@@ -245,35 +260,25 @@ namespace ngbem
     
     tfind.Start();
     Array<tuple<size_t, size_t>> pairs;
-    /*
-    for (ElementId ei : trial_mesh->Elements(BND))
-      for (ElementId ej : test_mesh->Elements(BND))
-        {
-          auto verti = trial_mesh->GetElement(ei).Vertices();
-          auto vertj = test_mesh->GetElement(ej).Vertices();
-          bool common = false;
-          for (auto vi : verti)
-            if (vertj.Contains(vi))
-              common = true;
-          if (common)
-            pairs.Append (tuple { ei.Nr(), ej.Nr() });
-        }
-    */
 
     Array<size_t> other;
     for (ElementId ei : trial_mesh->Elements(BND))
-      {
-        other.SetSize0();
-        for (auto v : trial_mesh->GetElement(ei).Vertices())
-          for (auto ej : trial_mesh->GetVertexElements(v,BND))
-            {
-              if (!other.Contains(ej))
-                {
-                  other.Append (ej );
-                  pairs.Append ( { ei.Nr(), ej });
-                }
-            }
-      }
+      if (trial_space->DefinedOn(ei))      
+        if (!trial_definedon || (*trial_definedon).Mask().Test(trial_mesh->GetElIndex(ei)))     
+        {
+          other.SetSize0();
+          for (auto v : trial_mesh->GetElement(ei).Vertices())
+            for (auto ej : trial_mesh->GetVertexElements(v,BND))
+              if (test_space->DefinedOn(ElementId(BND,ej)))                    
+                if (!test_definedon || (*test_definedon).Mask().Test(test_mesh->GetElIndex(ElementId(BND,ej))))
+                  {
+                    if (!other.Contains(ej))
+                      {
+                        other.Append (ej );
+                        pairs.Append ( { ei.Nr(), ej });
+                      }
+                  }
+        }
     
     tfind.Stop();
     tsetupgraph.Start();
