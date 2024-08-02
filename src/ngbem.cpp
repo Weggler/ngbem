@@ -233,7 +233,11 @@ namespace ngbem
             auto & trafo = mesh->GetTrafo(el, lh);
             auto & mir = trafo(ir, lh);
             for (auto j : Range(mir.Size()))
-              weights(compress_els[el.Nr()]*mir.Size()+j) = mir[j].GetWeight();
+              {
+                Mat<1,1> transformation;  // todo: general dimensions
+                evaluator.CalcTransformationMatrix(mir[j], transformation, lh);
+                weights(compress_els[el.Nr()]*mir.Size()+j) = mir[j].GetWeight()*transformation(0,0);
+              }
           }
       auto diagmat = make_shared<DiagonalMatrix<typename KERNEL::value_type>>(std::move(weights));
       

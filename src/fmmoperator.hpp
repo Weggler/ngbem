@@ -13,6 +13,10 @@ extern "C" {
 extern "C" {
   void lfmm3d_t_c_p_(double *eps, int *nsource, double *source, double *charge,
                      int *ntarget, double *target, double *pot, int *ier);
+
+  void lfmm3d_t_d_p_(double *eps, int *nsource, double *source, double *dipole,
+                     int *ntarget, double *target, double *pot, int *ier);
+
   void hfmm3d_t_c_p_(double* eps, std::complex<double>* zk,
                      int* nsources, double* sources,
                      std::complex<double>* charges, int* ntargets, double* targets,
@@ -179,6 +183,35 @@ namespace ngbem
   
   // or just specialze the apply method:
 
+  template <>
+  void FMM_Operator<LaplaceDLKernel<3>> :: Mult(const BaseVector & x, BaseVector & y) const 
+  {
+    static Timer tall("ngbem fmm apply Laplace DL (FMM3D)"); RegionTimer reg(tall);
+    auto fx = x.FV<double>();
+    auto fy = y.FV<double>();
+    
+    fy = 0;
+    
+    double eps = 1e-8;
+    int ier;
+
+    Vector<Vec<3>> v(xpts.Size());
+    for(auto i : Range(xnv))
+      v[i] = fx[i] * xnv[i];
+    int size_x = xpts.Size();
+    int size_y = ypts.Size();
+    lfmm3d_t_d_p_(&eps, &size_x, xpts[0].Data(),
+                  v[0].Data(),
+                  &size_y, ypts[0].Data(),
+                  fy.Data(), &ier);
+    if (ier != 0)
+      throw Exception("FMM3D failed with err code " + std::to_string(ier));
+    
+    fy *= 1 / (4*M_PI);
+  }
+
+
+  
   template <>
   void FMM_Operator<HelmholtzSLKernel<3>> :: Mult(const BaseVector & x, BaseVector & y) const 
   {
