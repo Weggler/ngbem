@@ -190,11 +190,12 @@ namespace ngbem
           if (elclass_inds.Size() == 0) continue;
           ElementId ei(BND, elclass_inds[0]);
           auto & felx = fes.GetFE (ei, lh);
-          
-          Matrix<double,ColMajor> bmat_(ir.Size(), felx.GetNDof());
+
+          int dim = evaluator.DimRef();
+          Matrix<double,ColMajor> bmat_(dim*ir.Size(), felx.GetNDof());
           
           for (int i : Range(ir.Size()))
-            evaluator.CalcMatrix(felx, ir[i], bmat_.Rows(i, i+1), lh);
+            evaluator.CalcMatrix(felx, ir[i], bmat_.Rows(dim*i, dim*(i+1)), lh);
           
           Matrix bmat = bmat_;
           
@@ -208,12 +209,12 @@ namespace ngbem
               fes.GetDofNrs(ei, dnumsx);
               xdofsin[i] = dnumsx;
               
-              for (int j = 0; j < ir.Size(); j++)
-                xdofsout[i][j] = compress_els[elclass_inds[i]]*ir.Size()+j;
+              for (int j = 0; j < dim*ir.Size(); j++)
+                xdofsout[i][j] = compress_els[elclass_inds[i]]*(dim*ir.Size())+j;
             }
-          
+
           auto part_evalx = make_shared<ConstantElementByElementMatrix<typename KERNEL::value_type>>
-            (mesh->GetNE(BND)*ir.Size(), fes.GetNDof(),
+            (mesh->GetNE(BND)*ir.Size()*dim, fes.GetNDof(),
              bmat, std::move(xdofsout), std::move(xdofsin));
           
           if (evalx)
@@ -225,6 +226,8 @@ namespace ngbem
       int cnt = 0;
       for (auto nr : compress_els) if (nr!=-1) cnt++;
 
+
+      /*
       VVector<typename KERNEL::value_type> weights(cnt*ir.Size());
       for (auto el : mesh->Elements(BND))
         if (compress_els[el.Nr()] != -1)
@@ -240,6 +243,27 @@ namespace ngbem
               }
           }
       auto diagmat = make_shared<DiagonalMatrix<typename KERNEL::value_type>>(std::move(weights));
+      */
+
+      Tensor<3, typename KERNEL::value_type> weights(cnt*ir.Size(),
+                                                     evaluator.Dim(), evaluator.DimRef());
+      Matrix<double> transformation(evaluator.Dim(), evaluator.DimRef()); 
+      
+      for (auto el : mesh->Elements(BND))
+        if (compress_els[el.Nr()] != -1)
+          {
+            HeapReset hr(lh);
+            auto & trafo = mesh->GetTrafo(el, lh);
+            auto & mir = trafo(ir, lh);
+            for (auto j : Range(mir.Size()))
+              {
+                evaluator.CalcTransformationMatrix(mir[j], transformation, lh);
+                weights(compress_els[el.Nr()]*mir.Size()+j,STAR,STAR) =
+                  mir[j].GetWeight()*transformation;
+              }
+          }
+
+      auto diagmat = make_shared<BlockDiagonalMatrix<typename KERNEL::value_type>>(std::move(weights));
       
       return diagmat*evalx;
     };

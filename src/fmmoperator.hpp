@@ -13,6 +13,8 @@ extern "C" {
 extern "C" {
   void lfmm3d_t_c_p_(double *eps, int *nsource, double *source, double *charge,
                      int *ntarget, double *target, double *pot, int *ier);
+  void lfmm3d_t_c_p_vec_(int *nd, double *eps, int *nsource, double *source, double *charge,
+                     int *ntarget, double *target, double *pot, int *ier);
 
   void lfmm3d_t_d_p_(double *eps, int *nsource, double *source, double *dipole,
                      int *ntarget, double *target, double *pot, int *ier);
@@ -211,6 +213,66 @@ namespace ngbem
   }
 
 
+
+
+  template <> 
+  class FMM_Operator<LaplaceHSKernel<3>> : public Base_FMM_Operator<double>
+  {
+    typedef LaplaceHSKernel<3> KERNEL;
+    typedef Base_FMM_Operator<double> BASE;
+    
+    KERNEL kernel;
+    using BASE::xpts, BASE::ypts, BASE::xnv, BASE::ynv;    
+
+  public:
+    FMM_Operator(KERNEL _kernel, Array<Vec<3>> _xpts, Array<Vec<3>> _ypts,
+                 Array<Vec<3>> _xnv, Array<Vec<3>> _ynv)
+      : BASE(std::move(_xpts), std::move( _ypts), std::move(_xnv), std::move(_ynv)),
+        kernel(_kernel)
+    { }
+
+    void Mult(const BaseVector & x, BaseVector & y) const override
+    {
+      static Timer tall("ngbem fmm apply Laplace DL (FMM3D)"); RegionTimer reg(tall);
+      auto fx = x.FV<double>();
+      auto fy = y.FV<double>();
+    
+      fy = 0;
+      
+      double eps = 1e-8;
+      int nd=3;
+      int ier;
+      
+      int size_x = xpts.Size();
+      int size_y = ypts.Size();
+      
+      if (x.Size() != 3*xpts.Size() || y.Size() != 3*ypts.Size())
+        throw Exception("sizes don't match");
+      
+      lfmm3d_t_c_p_vec_(&nd, &eps, &size_x, xpts[0].Data(),
+                        fx.Data(), &size_y, ypts[0].Data(),
+                        fy.Data(), &ier);
+
+      if (ier != 0)
+        throw Exception("FMM3D failed with err code " + std::to_string(ier));
+      
+      fy *= 1 / (4*M_PI);
+    }
+
+    AutoVector CreateRowVector () const override
+    {
+      return make_unique<VVector<double>>(3*xpts.Size());
+    }
+    AutoVector CreateColVector () const override
+    {
+      return make_unique<VVector<double>>(3*ypts.Size());
+    }
+
+  };
+
+  
+
+  
   
   template <>
   void FMM_Operator<HelmholtzSLKernel<3>> :: Mult(const BaseVector & x, BaseVector & y) const 

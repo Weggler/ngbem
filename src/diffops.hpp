@@ -37,6 +37,28 @@ namespace ngbem
         }
     }
 
+    static int DimRef() { return 2; } 
+    
+    template <typename IP, typename MAT>
+    static void GenerateMatrixRef (const FiniteElement & fel, const IP & ip,
+                                   MAT && mat, LocalHeap & lh)
+    {
+      Cast(fel).CalcDShape (ip, Trans(mat));
+    }
+
+    template <typename MIP, typename MAT>
+    static void CalcTransformationMatrix (const MIP & bmip,
+                                          MAT & mat, LocalHeap & lh)
+    {
+      auto & mip = static_cast<const MappedIntegrationPoint<2,3>&>(bmip); 
+      Vec<3> nv = mip.GetNV();
+      mat = Trans(mip.GetJacobianInverse());
+
+      for (int j = 0; j < 2; j++)
+        mat.Col(j) = Cross(nv, Vec<3> (mat.Col(j)));
+    }
+    
+
     /// mat is (ndof*3) x mip.Size()
     static void GenerateMatrixSIMDIR (const FiniteElement & fel,
                                       const SIMD_BaseMappedIntegrationRule & mir,
