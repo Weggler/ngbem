@@ -5,6 +5,11 @@
 ###############################################################################
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Set default build type to RelWithDebInfo
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING "Build type" FORCE)
+endif(NOT CMAKE_BUILD_TYPE)
+
 # Find NGSolve and Netgen using python
 if(CMAKE_VERSION VERSION_LESS "3.18")
   find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
