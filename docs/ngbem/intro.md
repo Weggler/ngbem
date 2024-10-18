@@ -15,7 +15,7 @@ It uses numerical integration following [Sauter-Schwab: Boundary Element Methods
 
 Installation:
 
-* Install a recent NGSolve (later than Feb. 10, 2024)
+* Install a recent NGSolve (later than June 19, 2024)
 
 * Install ngbem from github:
 

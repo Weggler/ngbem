@@ -17,7 +17,7 @@ if(USE_KiFMM)
   FetchContent_Declare(
     kifmm
     GIT_REPOSITORY https://github.com/bempp/kifmm.git
-    GIT_TAG "enh/c-abi"
+    GIT_TAG "main"
     EXCLUDE_FROM_ALL
   )
   FetchContent_Populate(kifmm)
