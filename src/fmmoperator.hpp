@@ -35,7 +35,6 @@ extern "C" {
 
 namespace ngbem
 {
-  
   inline double __Kernel(Vec<3> px, Vec<3> py)
   {
     if (L2Norm2(px-py)==0) return 0.0;
@@ -140,7 +139,7 @@ namespace ngbem
 
   };
 
-  // #define USE_NGFMM
+#define USE_NGFMM
 #ifdef USE_NGFMM
 
   template <>
@@ -189,7 +188,7 @@ namespace ngbem
 
 
     
-    auto singmp = make_shared<SingularMLMultiPole>(cx, rx, int(3*kappa*rx), kappa);
+    auto singmp = make_shared<ngsbem::SingularMLMultiPole<Complex>>(cx, rx, kappa);
 
     for (int i = 0; i < xpts.Size(); i++)
       singmp->AddCharge(xpts[i], fx(i));
@@ -199,7 +198,7 @@ namespace ngbem
     /*
     RegularMLMultiPole regmp (singmp, cy, ry, int(3*kappa*ry));
     */
-    RegularMLMultiPole regmp (cy, ry, int(3*kappa*ry), kappa);
+    ngsbem::RegularMLMultiPole regmp (cy, ry, kappa);
     for (int i = 0; i < ypts.Size(); i++)
       regmp.AddTarget(ypts[i]);
     regmp.CalcMP(singmp);
@@ -218,7 +217,7 @@ namespace ngbem
   void FMM_Operator<CombinedFieldKernel<3>> :: Mult(const BaseVector & x, BaseVector & y) const 
   {
     static Timer tall("ngbem fmm apply CombinedField (ngfmm)"); RegionTimer reg(tall);
-    static Timer t1("ngbem fmm apply CombinedField (ngfmm) find center/rad");
+    static Timer t1("ngbem fmm apply CombinedField (ngfmm) find center/rad + fill");
     static Timer t2("ngbem fmm apply CombinedField (ngfmm) sing");
     static Timer t3("ngbem fmm apply CombinedField (ngfmm) reg");
     static Timer t4("ngbem fmm apply CombinedField (ngfmm) eval");        
@@ -264,28 +263,28 @@ namespace ngbem
     for (int j = 0; j < 3; j++)
       ry = max(ry, ymax(j)-ymin(j));
 
-    t1.Stop();
-    t2.Start();
-    
-    auto singmp = make_shared<SingularMLMultiPole>(cx, rx, int(2*kappa*rx), kappa);
-
+    auto singmp = make_shared<ngsbem::SingularMLMultiPole<Complex>>(cx, rx, kappa);
     for (int i = 0; i < xpts.Size(); i++)
       {
         singmp->AddCharge(xpts[i], Complex(0,-kappa)*fx(i));
         singmp->AddDipole(xpts[i], -xnv[i], fx(i));        
       }
+
+    t1.Stop();
+    t2.Start();
+    
     singmp->CalcMP();
-    cout << "sing norm = " << singmp->Norm() << endl;
+    // cout << "sing norm = " << singmp->Norm() << ", coefs = " << singmp->NumCoefficients() << endl;
     t2.Stop();
     t3.Start();
     // RegularMLMultiPole regmp (singmp, cy, ry, int(2*kappa*ry));
 
-    RegularMLMultiPole regmp (cy, ry, int(3*kappa*ry), kappa);
+    ngsbem::RegularMLMultiPole regmp (cy, ry, kappa);
     for (int i = 0; i < ypts.Size(); i++)
       regmp.AddTarget(ypts[i]);
 
     regmp.CalcMP(singmp);
-    cout << "reg norm = " << regmp.Norm() << endl;
+    // cout << "reg norm = " << regmp.Norm() << ", coefs = " << regmp.NumCoefficients() << endl;
     t3.Stop();
     t4.Start();
     // for (int i = 0; i < ypts.Size(); i++)
