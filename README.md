@@ -1,3 +1,17 @@
+[!WARNING]
+
+**Archived project — no longer maintained**
+
+Development of this standalone NGSolve add-on has ended.
+This repository is retained for historical reference.
+Compatibility with current NGSolve/Netgen versions is not maintained.
+
+For current BEM development, see the [NGSolve project](https://github.com/NGSolve/ngsolve).
+The integrated BEM functionality is not necessarily a drop-in replacement for this add-on.
+
+The installation instructions below describe the historical setup.
+
+
 ngbem: Add-on to NGSolve implementing boundary element methods 
 
 Online documentation: https://weggler.github.io/ngbem/intro.html
